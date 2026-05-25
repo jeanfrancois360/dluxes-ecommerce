@@ -129,7 +129,8 @@ model User {
   totalReferrals    Int           @default(0) // Cached count of successful referrals (for performance)
   referrerReferrals Referral[]       @relation("ReferrerReferrals") // Referrals where this user is the referrer
   referredReferrals Referral[]       @relation("ReferredReferrals") // Referrals where this user was referred
-  referralCoupons   ReferralCoupon[] @relation("UserReferralCoupons") // Coupons issued to this user via referrals
+  referralCoupons   ReferralCoupon[]       @relation("UserReferralCoupons") // Coupons issued to this user via referrals
+  referralPayouts   ReferralPayoutRecord[] @relation("UserReferralPayouts") // Cash payout records for flat commission rewards
 
   // Trusted Devices (v2.12.0 - 2FA enforcement)
   trustedDevices    TrustedDevice[]
@@ -3950,36 +3951,77 @@ model ReferralCode {
 }
 
 model Referral {
-  id               String         @id @default(cuid())
+  id               String             @id @default(cuid())
   referrerId       String // The user who referred someone (owner of referral code)
   referredId       String // The user who was referred (used the referral code)
   referredUserRole UserRole // Role of referred user at time of registration (BUYER or SELLER)
-  rewardAmount     Decimal        @db.Decimal(10, 2) // Reward amount given to referrer
-  rewardCurrency   String         @default("USD") // Reward currency
-  status           ReferralStatus @default(PENDING) // Current status of this referral
-  orderId          String?        @unique // First qualifying order (for BUYER referrals)
+  rewardAmount     Decimal            @db.Decimal(10, 2) // Reward amount given to referrer
+  rewardCurrency   String             @default("USD") // Reward currency
+  rewardType       ReferralRewardType @default(STORE_CREDIT) // How the reward is delivered
+  status           ReferralStatus     @default(PENDING) // Current status of this referral
+  orderId          String?            @unique // First qualifying order (for BUYER referrals)
   storeId          String? // Store of first product created (for SELLER referrals)
   qualifiedAt      DateTime? // When referral qualified (buyer made purchase OR seller created product)
   paidAt           DateTime? // When reward was granted to referrer
   metadata         Json? // Additional tracking data
-  createdAt        DateTime       @default(now()) // When referred user registered
-  updatedAt        DateTime       @updatedAt
+  createdAt        DateTime           @default(now()) // When referred user registered
+  updatedAt        DateTime           @updatedAt
 
-  couponCode String? // Denormalized coupon code when reward_type = 'coupon'
+  couponCode String? // Denormalized coupon code when rewardType = COUPON
 
-  referrer       User            @relation("ReferrerReferrals", fields: [referrerId], references: [id], onDelete: Cascade)
-  referred       User            @relation("ReferredReferrals", fields: [referredId], references: [id], onDelete: Cascade)
-  order          Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  store          Store?          @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  referrer       User                  @relation("ReferrerReferrals", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred       User                  @relation("ReferredReferrals", fields: [referredId], references: [id], onDelete: Cascade)
+  order          Order?                @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  store          Store?                @relation(fields: [storeId], references: [id], onDelete: SetNull)
   referralCoupon ReferralCoupon?
+  referralPayout ReferralPayoutRecord? // Set when rewardType = FLAT_COMMISSION
 
   @@index([referrerId])
   @@index([referredId])
   @@index([status])
+  @@index([rewardType])
   @@index([orderId])
   @@index([storeId])
   @@index([createdAt])
   @@map("referrals")
+}
+
+/// Tracks a real cash payout owed to a referrer (rewardType = FLAT_COMMISSION).
+/// Admin reviews pending records and marks them paid after transferring money.
+model ReferralPayoutRecord {
+  id               String               @id @default(cuid())
+  referralId       String               @unique // One payout per referral
+  referrerId       String // The user to be paid
+  amount           Decimal              @db.Decimal(10, 2)
+  currency         String               @default("USD")
+  status           ReferralPayoutStatus @default(PENDING)
+  paymentMethod    String? // "bank_transfer" | "stripe_connect" | "paypal"
+  paymentReference String? // External reference (transfer ID, batch ID, etc.)
+  notes            String?              @db.Text
+  paidAt           DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  referral Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  referrer User     @relation("UserReferralPayouts", fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("referral_payout_records")
+}
+
+enum ReferralRewardType {
+  STORE_CREDIT    // Reward added to User.storeCredit (platform wallet)
+  COUPON          // Single-use ReferralCoupon issued for store credit redemption
+  FLAT_COMMISSION // Real cash payout queued for admin to process
+}
+
+enum ReferralPayoutStatus {
+  PENDING    // Awaiting admin action
+  PROCESSING // Admin initiated payment, awaiting confirmation
+  PAID       // Confirmed paid out to referrer
+  FAILED     // Payment attempt failed
 }
 
 model ReferralCoupon {

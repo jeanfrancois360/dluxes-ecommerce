@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useReferralStatistics, useAllReferrals, useReferralSettings } from '@/hooks/use-referral';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
+import { referralApi } from '@/lib/api/referral';
+import { toast } from '@/lib/utils/toast';
 import { formatDate } from '@/lib/utils/date-format';
 import {
   Gift,
@@ -14,6 +16,8 @@ import {
   CheckCircle,
   Filter,
   Download,
+  Banknote,
+  ChevronDown,
 } from 'lucide-react';
 import type { ReferralStatus } from '@/lib/api/types';
 
@@ -38,6 +42,46 @@ export default function AdminReferralsPage() {
   const { settings, isLoading: settingsLoading } = useReferralSettings();
 
   const isLoading = statsLoading || referralsLoading || settingsLoading;
+
+  // Flat commission payouts state
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
+  const [payoutStatusFilter, setPayoutStatusFilter] = useState('PENDING');
+  const [updatingPayout, setUpdatingPayout] = useState<string | null>(null);
+
+  const loadPayouts = useCallback(async () => {
+    try {
+      setPayoutsLoading(true);
+      const result = await referralApi.getReferralPayouts({
+        status: payoutStatusFilter || undefined,
+        limit: 50,
+      });
+      setPayouts(result?.data ?? []);
+    } catch {
+      toast.error('Failed to load payout records');
+    } finally {
+      setPayoutsLoading(false);
+    }
+  }, [payoutStatusFilter]);
+
+  // Load payouts when tab is first opened — lazy via button
+  const handlePayoutStatusUpdate = async (
+    payoutId: string,
+    status: string,
+    paymentMethod?: string,
+    paymentReference?: string
+  ) => {
+    try {
+      setUpdatingPayout(payoutId);
+      await referralApi.updateReferralPayout(payoutId, { status, paymentMethod, paymentReference });
+      toast.success('Payout status updated');
+      await loadPayouts();
+    } catch {
+      toast.error('Failed to update payout');
+    } finally {
+      setUpdatingPayout(null);
+    }
+  };
 
   const statCards = [
     {
@@ -380,6 +424,156 @@ export default function AdminReferralsPage() {
                   </nav>
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+        {/* Flat Commission Payouts */}
+        <div className="bg-white rounded-xl border border-neutral-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
+                <Banknote className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-neutral-900">Flat Commission Payouts</h2>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Cash payouts queued for referrers using the flat_commission reward type
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={payoutStatusFilter}
+                onChange={(e) => setPayoutStatusFilter(e.target.value)}
+                className="text-xs border border-neutral-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-neutral-300"
+              >
+                <option value="">All</option>
+                <option value="PENDING">Pending</option>
+                <option value="PROCESSING">Processing</option>
+                <option value="PAID">Paid</option>
+                <option value="FAILED">Failed</option>
+              </select>
+              <button
+                onClick={loadPayouts}
+                disabled={payoutsLoading}
+                className="text-xs font-medium bg-black text-white px-3 py-1.5 rounded-lg hover:bg-neutral-800 disabled:opacity-50 transition-colors"
+              >
+                {payoutsLoading ? 'Loading…' : 'Load Payouts'}
+              </button>
+            </div>
+          </div>
+
+          {payouts.length === 0 ? (
+            <div className="py-12 text-center">
+              <Banknote className="w-10 h-10 text-neutral-200 mx-auto mb-3" />
+              <p className="text-sm text-neutral-500">No payout records yet.</p>
+              <p className="text-xs text-neutral-400 mt-1">
+                Records appear here when the reward type is set to{' '}
+                <span className="font-mono bg-neutral-100 px-1 rounded">flat_commission</span>.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-neutral-50">
+                    {[
+                      'Referrer',
+                      'Amount',
+                      'Status',
+                      'Payment Method',
+                      'Reference',
+                      'Queued',
+                      'Actions',
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="px-5 py-3 text-left text-xs font-semibold text-neutral-400 uppercase tracking-wider"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-50">
+                  {payouts.map((p) => {
+                    const statusColors: Record<string, string> = {
+                      PENDING: 'bg-amber-50 text-amber-700',
+                      PROCESSING: 'bg-blue-50 text-blue-700',
+                      PAID: 'bg-emerald-50 text-emerald-700',
+                      FAILED: 'bg-red-50 text-red-700',
+                    };
+                    const name = p.referrer?.firstName
+                      ? `${p.referrer.firstName} ${p.referrer.lastName || ''}`.trim()
+                      : (p.referrer?.email ?? 'Unknown');
+                    return (
+                      <tr key={p.id} className="hover:bg-neutral-50/60 transition-colors">
+                        <td className="px-5 py-3">
+                          <p className="font-medium text-neutral-800 text-xs">{name}</p>
+                          <p className="text-neutral-400 text-xs">{p.referrer?.email}</p>
+                        </td>
+                        <td className="px-5 py-3 font-semibold text-neutral-900 text-xs">
+                          ${Number(p.amount).toFixed(2)} {p.currency}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[p.status] ?? 'bg-neutral-100 text-neutral-600'}`}
+                          >
+                            {p.status}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-xs text-neutral-500">
+                          {p.paymentMethod ?? '—'}
+                        </td>
+                        <td className="px-5 py-3 text-xs font-mono text-neutral-500">
+                          {p.paymentReference ?? '—'}
+                        </td>
+                        <td className="px-5 py-3 text-xs text-neutral-400">
+                          {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-1.5">
+                            {p.status === 'PENDING' && (
+                              <button
+                                onClick={() => handlePayoutStatusUpdate(p.id, 'PROCESSING')}
+                                disabled={updatingPayout === p.id}
+                                className="text-xs font-medium bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg hover:bg-blue-100 disabled:opacity-50 transition-colors"
+                              >
+                                Mark Processing
+                              </button>
+                            )}
+                            {(p.status === 'PENDING' || p.status === 'PROCESSING') && (
+                              <button
+                                onClick={() => {
+                                  const ref = prompt('Payment reference (optional):') ?? undefined;
+                                  const method =
+                                    prompt(
+                                      'Payment method (bank_transfer / stripe_connect / paypal):'
+                                    ) ?? undefined;
+                                  handlePayoutStatusUpdate(p.id, 'PAID', method, ref);
+                                }}
+                                disabled={updatingPayout === p.id}
+                                className="text-xs font-medium bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg hover:bg-emerald-100 disabled:opacity-50 transition-colors"
+                              >
+                                Mark Paid
+                              </button>
+                            )}
+                            {p.status !== 'FAILED' && p.status !== 'PAID' && (
+                              <button
+                                onClick={() => handlePayoutStatusUpdate(p.id, 'FAILED')}
+                                disabled={updatingPayout === p.id}
+                                className="text-xs font-medium bg-red-50 text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+                              >
+                                Fail
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
