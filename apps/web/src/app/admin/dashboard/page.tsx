@@ -440,7 +440,9 @@ function DashboardContent() {
                         ))}
                         <Label
                           content={({ viewBox }: any) => {
-                            const { cx, cy } = viewBox ?? {};
+                            const cx = viewBox?.cx;
+                            const cy = viewBox?.cy;
+                            if (cx == null || cy == null) return null;
                             return (
                               <text textAnchor="middle" dominantBaseline="middle">
                                 <tspan
