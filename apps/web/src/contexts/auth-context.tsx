@@ -281,6 +281,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           };
         }
 
+        // Check if Email OTP 2FA is required
+        if (response && (response as any).requiresEmailOTP) {
+          return {
+            requiresEmailOTP: true,
+            userId: (response as any).userId,
+          };
+        }
+
         // Validate response structure for normal login
         if (!response || !response.user) {
           throw new Error('Invalid response from server. Please try again.');
