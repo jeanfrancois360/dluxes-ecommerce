@@ -204,45 +204,9 @@ export class EnhancedAuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // MANDATORY: Email OTP (2FA via email) - Required for all users
-    if (!dto.emailOTPCode) {
-      // Generate and send OTP
-      const { code } = await this.emailOTPService.createEmailOTP(
-        user.id,
-        EmailOTPType.LOGIN,
-        ipAddress,
-        userAgent
-      );
-
-      // Send OTP email
-      await this.emailService.sendEmailOTP(
-        user.email,
-        user.firstName,
-        code,
-        EmailOTPType.LOGIN,
-        ipAddress
-      );
-
-      return {
-        requiresEmailOTP: true,
-        userId: user.id,
-        message: 'Please enter the verification code sent to your email',
-      };
-    }
-
-    // Verify email OTP
-    const isEmailOTPValid = await this.emailOTPService.verifyEmailOTP(
-      user.id,
-      dto.emailOTPCode,
-      EmailOTPType.LOGIN
-    );
-
-    if (!isEmailOTPValid) {
-      throw new UnauthorizedException('Invalid or expired verification code');
-    }
-
-    // Optional: Check TOTP 2FA (if user has it enabled)
+    // MANDATORY 2FA: TOTP (authenticator app) if enabled, otherwise Email OTP
     if (user.twoFactorEnabled) {
+      // TOTP path — user has set up an authenticator app
       if (!dto.twoFactorCode) {
         return {
           requires2FA: true,
@@ -254,6 +218,40 @@ export class EnhancedAuthService {
       const is2FAValid = await this.verify2FA(user.id, dto.twoFactorCode);
       if (!is2FAValid) {
         throw new UnauthorizedException('Invalid 2FA code');
+      }
+    } else {
+      // Email OTP path — default for all users without an authenticator app
+      if (!dto.emailOTPCode) {
+        const { code } = await this.emailOTPService.createEmailOTP(
+          user.id,
+          EmailOTPType.LOGIN,
+          ipAddress,
+          userAgent
+        );
+
+        await this.emailService.sendEmailOTP(
+          user.email,
+          user.firstName,
+          code,
+          EmailOTPType.LOGIN,
+          ipAddress
+        );
+
+        return {
+          requiresEmailOTP: true,
+          userId: user.id,
+          message: 'Please enter the verification code sent to your email',
+        };
+      }
+
+      const isEmailOTPValid = await this.emailOTPService.verifyEmailOTP(
+        user.id,
+        dto.emailOTPCode,
+        EmailOTPType.LOGIN
+      );
+
+      if (!isEmailOTPValid) {
+        throw new UnauthorizedException('Invalid or expired verification code');
       }
     }
 
