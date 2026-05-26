@@ -60,6 +60,21 @@ export class OrdersService {
 
     const subtotal = items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
 
+    // Fetch product details so fulfillmentType and gelatoProductUid are populated
+    // (required for Gelato Tier-0 detection and the POD fallback path)
+    const productIds = [...new Set(items.map((i) => i.productId))];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: {
+        id: true,
+        fulfillmentType: true,
+        gelatoProductUid: true,
+        storeId: true,
+        weight: true,
+      },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
     return await this.shippingTaxService.calculateShippingOptions(
       {
         country: address.country,
@@ -67,11 +82,18 @@ export class OrdersService {
         postalCode: address.postalCode,
         city: address.city,
       },
-      items.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        price: Number(item.price),
-      })),
+      items.map((item) => {
+        const product = productMap.get(item.productId);
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          price: Number(item.price),
+          fulfillmentType: product?.fulfillmentType || undefined,
+          gelatoProductUid: product?.gelatoProductUid || undefined,
+          storeId: product?.storeId || undefined,
+          weight: product?.weight ? Number(product.weight) * 1000 : undefined,
+        };
+      }),
       subtotal
     );
   }
