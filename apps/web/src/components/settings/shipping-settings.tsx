@@ -24,6 +24,7 @@ import { shippingSettingsSchema, type ShippingSettings } from '@/lib/validations
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 import { api } from '@/lib/api/client';
 
 // DHL Health Status Interface
@@ -384,6 +385,7 @@ export function ShippingSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
+  useUnsavedChangesGuard(isDirty);
   const currentMode = form.watch('shipping_mode');
   const freeShippingEnabled = form.watch('free_shipping_enabled');
 

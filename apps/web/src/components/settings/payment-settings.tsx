@@ -18,6 +18,7 @@ import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './s
 import { PaymentGatewayCard } from './payment/PaymentGatewayCard';
 import { GatewayBusinessConfig } from './payment/GatewayBusinessConfig';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 // Stripe configuration status interface
 interface StripeStatus {
@@ -86,23 +87,23 @@ export function PaymentSettingsSection() {
       payment_methods: ['stripe', 'paypal'],
       // Stripe fee defaults
       stripe_fee_percentage: 2.9,
-      stripe_fee_fixed_eur: 0.30,
-      stripe_fee_fixed_usd: 0.30,
-      stripe_fee_fixed_gbp: 0.20,
-      stripe_fee_fixed_aud: 0.30,
-      stripe_fee_fixed_cad: 0.30,
+      stripe_fee_fixed_eur: 0.3,
+      stripe_fee_fixed_usd: 0.3,
+      stripe_fee_fixed_gbp: 0.2,
+      stripe_fee_fixed_aud: 0.3,
+      stripe_fee_fixed_cad: 0.3,
       stripe_fee_fixed_jpy: 50,
-      stripe_fee_fixed_chf: 0.30,
+      stripe_fee_fixed_chf: 0.3,
       stripe_fee_fixed_rwf: 300,
       // PayPal fee defaults
       paypal_fee_percentage: 3.49,
       paypal_fee_fixed_eur: 0.35,
-      paypal_fee_fixed_usd: 0.30,
-      paypal_fee_fixed_gbp: 0.30,
-      paypal_fee_fixed_aud: 0.30,
-      paypal_fee_fixed_cad: 0.30,
+      paypal_fee_fixed_usd: 0.3,
+      paypal_fee_fixed_gbp: 0.3,
+      paypal_fee_fixed_aud: 0.3,
+      paypal_fee_fixed_cad: 0.3,
       paypal_fee_fixed_jpy: 50,
-      paypal_fee_fixed_chf: 0.30,
+      paypal_fee_fixed_chf: 0.3,
       paypal_fee_fixed_rwf: 300,
     },
   });
@@ -118,23 +119,23 @@ export function PaymentSettingsSection() {
         payment_methods: allFormData.payment_methods ?? ['stripe', 'paypal'],
         // Stripe fees
         stripe_fee_percentage: allFormData.stripe_fee_percentage ?? 2.9,
-        stripe_fee_fixed_eur: allFormData.stripe_fee_fixed_eur ?? 0.30,
-        stripe_fee_fixed_usd: allFormData.stripe_fee_fixed_usd ?? 0.30,
-        stripe_fee_fixed_gbp: allFormData.stripe_fee_fixed_gbp ?? 0.20,
-        stripe_fee_fixed_aud: allFormData.stripe_fee_fixed_aud ?? 0.30,
-        stripe_fee_fixed_cad: allFormData.stripe_fee_fixed_cad ?? 0.30,
+        stripe_fee_fixed_eur: allFormData.stripe_fee_fixed_eur ?? 0.3,
+        stripe_fee_fixed_usd: allFormData.stripe_fee_fixed_usd ?? 0.3,
+        stripe_fee_fixed_gbp: allFormData.stripe_fee_fixed_gbp ?? 0.2,
+        stripe_fee_fixed_aud: allFormData.stripe_fee_fixed_aud ?? 0.3,
+        stripe_fee_fixed_cad: allFormData.stripe_fee_fixed_cad ?? 0.3,
         stripe_fee_fixed_jpy: allFormData.stripe_fee_fixed_jpy ?? 50,
-        stripe_fee_fixed_chf: allFormData.stripe_fee_fixed_chf ?? 0.30,
+        stripe_fee_fixed_chf: allFormData.stripe_fee_fixed_chf ?? 0.3,
         stripe_fee_fixed_rwf: allFormData.stripe_fee_fixed_rwf ?? 300,
         // PayPal fees
         paypal_fee_percentage: allFormData.paypal_fee_percentage ?? 3.49,
         paypal_fee_fixed_eur: allFormData.paypal_fee_fixed_eur ?? 0.35,
-        paypal_fee_fixed_usd: allFormData.paypal_fee_fixed_usd ?? 0.30,
-        paypal_fee_fixed_gbp: allFormData.paypal_fee_fixed_gbp ?? 0.30,
-        paypal_fee_fixed_aud: allFormData.paypal_fee_fixed_aud ?? 0.30,
-        paypal_fee_fixed_cad: allFormData.paypal_fee_fixed_cad ?? 0.30,
+        paypal_fee_fixed_usd: allFormData.paypal_fee_fixed_usd ?? 0.3,
+        paypal_fee_fixed_gbp: allFormData.paypal_fee_fixed_gbp ?? 0.3,
+        paypal_fee_fixed_aud: allFormData.paypal_fee_fixed_aud ?? 0.3,
+        paypal_fee_fixed_cad: allFormData.paypal_fee_fixed_cad ?? 0.3,
         paypal_fee_fixed_jpy: allFormData.paypal_fee_fixed_jpy ?? 50,
-        paypal_fee_fixed_chf: allFormData.paypal_fee_fixed_chf ?? 0.30,
+        paypal_fee_fixed_chf: allFormData.paypal_fee_fixed_chf ?? 0.3,
         paypal_fee_fixed_rwf: allFormData.paypal_fee_fixed_rwf ?? 300,
       };
       if (!form.formState.isDirty || justSavedRef.current) {
@@ -225,11 +226,11 @@ export function PaymentSettingsSection() {
   // Helper to get setting value
   const getSetting = (key: string) => {
     // First try lowercase 'payment' category
-    let setting = settings.find(s => s.key === key);
+    let setting = settings.find((s) => s.key === key);
 
     // Fallback to uppercase 'PAYMENT' category
     if (!setting) {
-      setting = paymentSettingsUpper.find(s => s.key === key);
+      setting = paymentSettingsUpper.find((s) => s.key === key);
     }
 
     if (!setting) return undefined;
@@ -246,7 +247,7 @@ export function PaymentSettingsSection() {
   };
 
   const getUpperPaymentSetting = (key: string) => {
-    const setting = paymentSettingsUpper.find(s => s.key === key);
+    const setting = paymentSettingsUpper.find((s) => s.key === key);
     if (!setting) return undefined;
     if (setting.valueType === 'BOOLEAN') {
       if (typeof setting.value === 'string') {
@@ -269,6 +270,7 @@ export function PaymentSettingsSection() {
 
   const isProduction = process.env.NODE_ENV === 'production';
   const isDirty = form.formState.isDirty;
+  useUnsavedChangesGuard(isDirty);
 
   return (
     <div className="space-y-6">
@@ -331,7 +333,11 @@ export function PaymentSettingsSection() {
               value: getSetting('stripe_capture_method') || 'manual',
               options: CAPTURE_METHOD_OPTIONS,
               onChange: (value) =>
-                updateStripeSettingWithReload('stripe_capture_method', value, 'Updated Stripe capture method'),
+                updateStripeSettingWithReload(
+                  'stripe_capture_method',
+                  value,
+                  'Updated Stripe capture method'
+                ),
               disabled: updating,
             },
             {
@@ -343,7 +349,11 @@ export function PaymentSettingsSection() {
               maxLength: 22,
               placeholder: 'LUXURY ECOM',
               onChange: (value) =>
-                updateStripeSettingWithReload('stripe_statement_descriptor', value, 'Updated statement descriptor'),
+                updateStripeSettingWithReload(
+                  'stripe_statement_descriptor',
+                  value,
+                  'Updated statement descriptor'
+                ),
               disabled: updating,
             },
           ]}
@@ -412,7 +422,11 @@ export function PaymentSettingsSection() {
               value: getSetting('paypal_capture_method') || 'authorize',
               options: PAYPAL_CAPTURE_OPTIONS,
               onChange: (value) =>
-                updatePayPalSetting('paypal_capture_method', value, 'Updated PayPal capture method'),
+                updatePayPalSetting(
+                  'paypal_capture_method',
+                  value,
+                  'Updated PayPal capture method'
+                ),
               disabled: updating,
             },
           ]}
@@ -852,12 +866,13 @@ export function PaymentSettingsSection() {
               <div className="space-y-1">
                 <h5 className="text-sm font-medium text-blue-900">About Transaction Fees</h5>
                 <p className="text-sm text-blue-700">
-                  These fees are charged by payment processors and automatically deducted from seller earnings.
-                  Adjust these values if you've negotiated custom rates with Stripe or PayPal.
+                  These fees are charged by payment processors and automatically deducted from
+                  seller earnings. Adjust these values if you've negotiated custom rates with Stripe
+                  or PayPal.
                 </p>
                 <p className="text-xs text-blue-600 mt-2">
-                  💡 <strong>Example:</strong> With Stripe's 2.9% + €0.30 fee, a €100 order costs €3.20 in fees.
-                  Sellers receive €96.80 (minus platform commission).
+                  💡 <strong>Example:</strong> With Stripe's 2.9% + €0.30 fee, a €100 order costs
+                  €3.20 in fees. Sellers receive €96.80 (minus platform commission).
                 </p>
               </div>
             </div>
@@ -923,7 +938,11 @@ export function PaymentSettingsSection() {
             description="Automatically release payment after hold period expires"
             checked={getUpperPaymentSetting('escrow_auto_release_enabled') ?? true}
             onCheckedChange={async (checked) => {
-              await updateSetting('escrow_auto_release_enabled', checked, 'Toggled auto-release escrow');
+              await updateSetting(
+                'escrow_auto_release_enabled',
+                checked,
+                'Toggled auto-release escrow'
+              );
               await Promise.all([refetch(), refetchUpper()]);
             }}
             disabled={updating}
@@ -964,7 +983,9 @@ export function PaymentSettingsSection() {
             >
               <Select
                 value={form.watch('payout_schedule')}
-                onValueChange={(value) => form.setValue('payout_schedule', value as any, { shouldDirty: true })}
+                onValueChange={(value) =>
+                  form.setValue('payout_schedule', value as any, { shouldDirty: true })
+                }
               >
                 <SelectTrigger id="payout_schedule">
                   <SelectValue placeholder="Select schedule" />
@@ -990,13 +1011,11 @@ export function PaymentSettingsSection() {
             <div className="flex items-start gap-2">
               <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-medium text-amber-900 mb-1">
-                  Single Source of Truth
-                </h4>
+                <h4 className="text-sm font-medium text-amber-900 mb-1">Single Source of Truth</h4>
                 <p className="text-sm text-amber-700">
-                  This section controls which payment methods are available to customers during checkout.
-                  Gateway configuration above sets up API credentials and business logic, while these toggles
-                  control customer-facing availability.
+                  This section controls which payment methods are available to customers during
+                  checkout. Gateway configuration above sets up API credentials and business logic,
+                  while these toggles control customer-facing availability.
                 </p>
               </div>
             </div>
@@ -1007,7 +1026,8 @@ export function PaymentSettingsSection() {
             <div className="space-y-3">
               {PAYMENT_METHODS.map((method) => {
                 const currentMethods = form.watch('payment_methods') || [];
-                const isChecked = Array.isArray(currentMethods) && currentMethods.includes(method.id);
+                const isChecked =
+                  Array.isArray(currentMethods) && currentMethods.includes(method.id);
 
                 // Determine if gateway is configured
                 let isConfigured = true;
@@ -1022,10 +1042,16 @@ export function PaymentSettingsSection() {
                 }
 
                 return (
-                  <div key={method.id} className="flex items-start justify-between rounded-lg border p-4">
+                  <div
+                    key={method.id}
+                    className="flex items-start justify-between rounded-lg border p-4"
+                  >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor={`payment_method_${method.id}`} className="cursor-pointer text-sm font-medium">
+                        <Label
+                          htmlFor={`payment_method_${method.id}`}
+                          className="cursor-pointer text-sm font-medium"
+                        >
                           {method.label}
                         </Label>
                         {!isConfigured && (
@@ -1052,9 +1078,15 @@ export function PaymentSettingsSection() {
                       onCheckedChange={(checked) => {
                         const current = form.watch('payment_methods') || [];
                         if (checked) {
-                          form.setValue('payment_methods', [...current, method.id], { shouldDirty: true });
+                          form.setValue('payment_methods', [...current, method.id], {
+                            shouldDirty: true,
+                          });
                         } else {
-                          form.setValue('payment_methods', current.filter(m => m !== method.id), { shouldDirty: true });
+                          form.setValue(
+                            'payment_methods',
+                            current.filter((m) => m !== method.id),
+                            { shouldDirty: true }
+                          );
                         }
                       }}
                     />

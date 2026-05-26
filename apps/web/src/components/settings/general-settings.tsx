@@ -23,6 +23,7 @@ import { generalSettingsSchema, type GeneralSettings } from '@/lib/validations/s
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 const TIMEZONES = [
   'America/New_York',
@@ -116,6 +117,7 @@ export function GeneralSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
+  useUnsavedChangesGuard(isDirty);
 
   const getGeneralSetting = (key: string) => {
     const setting = settings.find((s) => s.key === key);

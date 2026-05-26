@@ -16,11 +16,16 @@ import { transformSettingsToForm } from '@/lib/settings-utils';
 import { invalidateCurrencySettings } from '@/lib/settings-cache';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 export function CurrencySettingsSection() {
   const { settings, loading, refetch } = useSettings('currency');
   const { updateSetting, updating } = useSettingsUpdate();
-  const { currencies: availableCurrencies, isLoading: currenciesLoading, error: currenciesError } = useCurrencyAdmin();
+  const {
+    currencies: availableCurrencies,
+    isLoading: currenciesLoading,
+    error: currenciesError,
+  } = useCurrencyAdmin();
   const justSavedRef = useRef(false);
   const [newCurrency, setNewCurrency] = useState('');
   const [syncing, setSyncing] = useState(false);
@@ -29,7 +34,10 @@ export function CurrencySettingsSection() {
   useEffect(() => {
     if (currenciesError) {
       console.error('Error loading currencies:', currenciesError);
-      toast.error('Failed to load currencies', currenciesError.message || 'Please check your connection');
+      toast.error(
+        'Failed to load currencies',
+        currenciesError.message || 'Please check your connection'
+      );
     }
   }, [currenciesError]);
 
@@ -83,10 +91,7 @@ export function CurrencySettingsSection() {
       justSavedRef.current = true;
       toast.success('Currency settings saved successfully');
 
-      await Promise.all([
-        refetch(),
-        invalidateCurrencySettings(),
-      ]);
+      await Promise.all([refetch(), invalidateCurrencySettings()]);
     } catch (error: any) {
       console.error('Failed to save settings:', error);
       justSavedRef.current = false;
@@ -109,7 +114,7 @@ export function CurrencySettingsSection() {
       const response = await fetch(`${API_URL}/currency/admin/sync`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -155,7 +160,11 @@ export function CurrencySettingsSection() {
       return;
     }
 
-    form.setValue('supported_currencies', current.filter(c => c !== code), { shouldDirty: true });
+    form.setValue(
+      'supported_currencies',
+      current.filter((c) => c !== code),
+      { shouldDirty: true }
+    );
   };
 
   if (loading || currenciesLoading) {
@@ -168,8 +177,9 @@ export function CurrencySettingsSection() {
     );
   }
 
-  const activeCurrencies = availableCurrencies.filter(c => c.isActive);
+  const activeCurrencies = availableCurrencies.filter((c) => c.isActive);
   const isDirty = form.formState.isDirty;
+  useUnsavedChangesGuard(isDirty);
 
   if (currenciesError) {
     return (
@@ -209,14 +219,16 @@ export function CurrencySettingsSection() {
         >
           <Select
             value={form.watch('default_currency')}
-            onValueChange={(value) => form.setValue('default_currency', value, { shouldDirty: true })}
+            onValueChange={(value) =>
+              form.setValue('default_currency', value, { shouldDirty: true })
+            }
           >
             <SelectTrigger id="default_currency">
               <SelectValue placeholder="Select currency" />
             </SelectTrigger>
             <SelectContent>
               {form.watch('supported_currencies')?.map((code) => {
-                const currency = activeCurrencies.find(c => c.currencyCode === code);
+                const currency = activeCurrencies.find((c) => c.currencyCode === code);
                 return (
                   <SelectItem key={code} value={code}>
                     {code} - {currency?.currencyName || code}
@@ -232,13 +244,15 @@ export function CurrencySettingsSection() {
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
               {form.watch('supported_currencies')?.map((code) => {
-                const currency = activeCurrencies.find(c => c.currencyCode === code);
+                const currency = activeCurrencies.find((c) => c.currencyCode === code);
                 return (
                   <div
                     key={code}
                     className="flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-md text-sm"
                   >
-                    <span>{currency?.symbol || ''} {code}</span>
+                    <span>
+                      {currency?.symbol || ''} {code}
+                    </span>
                     {form.watch('supported_currencies')?.length > 1 && (
                       <button
                         type="button"
@@ -261,8 +275,12 @@ export function CurrencySettingsSection() {
                 <SelectContent>
                   {(() => {
                     const supportedCodes = form.watch('supported_currencies') || [];
-                    const availableActive = activeCurrencies.filter(c => !supportedCodes.includes(c.currencyCode));
-                    const allInactive = availableCurrencies.filter(c => !c.isActive && !supportedCodes.includes(c.currencyCode));
+                    const availableActive = activeCurrencies.filter(
+                      (c) => !supportedCodes.includes(c.currencyCode)
+                    );
+                    const allInactive = availableCurrencies.filter(
+                      (c) => !c.isActive && !supportedCodes.includes(c.currencyCode)
+                    );
 
                     return (
                       <>
@@ -284,7 +302,11 @@ export function CurrencySettingsSection() {
                               ─── Inactive (Activate first) ───
                             </SelectItem>
                             {allInactive.map((currency) => (
-                              <SelectItem key={currency.currencyCode} value={currency.currencyCode} disabled>
+                              <SelectItem
+                                key={currency.currencyCode}
+                                value={currency.currencyCode}
+                                disabled
+                              >
                                 {currency.currencyCode} - {currency.currencyName} (Inactive)
                               </SelectItem>
                             ))}
@@ -319,20 +341,42 @@ export function CurrencySettingsSection() {
             </p>
             {activeCurrencies.length === 0 ? (
               <p className="text-sm text-amber-600">
-                ⚠️ No active currencies found. Please <a href="/admin/currencies" className="underline font-medium">activate currencies</a> first.
+                ⚠️ No active currencies found. Please{' '}
+                <a href="/admin/currencies" className="underline font-medium">
+                  activate currencies
+                </a>{' '}
+                first.
               </p>
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  {activeCurrencies.length} active {activeCurrencies.length === 1 ? 'currency' : 'currencies'} available.
+                  {activeCurrencies.length} active{' '}
+                  {activeCurrencies.length === 1 ? 'currency' : 'currencies'} available.
                   {availableCurrencies.length > activeCurrencies.length && (
-                    <> {availableCurrencies.length - activeCurrencies.length} inactive {availableCurrencies.length - activeCurrencies.length === 1 ? 'currency' : 'currencies'} can be activated in </>
+                    <>
+                      {' '}
+                      {availableCurrencies.length - activeCurrencies.length} inactive{' '}
+                      {availableCurrencies.length - activeCurrencies.length === 1
+                        ? 'currency'
+                        : 'currencies'}{' '}
+                      can be activated in{' '}
+                    </>
                   )}
-                  <a href="/admin/currencies" className="underline font-medium">Currency Management</a>.
+                  <a href="/admin/currencies" className="underline font-medium">
+                    Currency Management
+                  </a>
+                  .
                 </p>
-                {activeCurrencies.filter(c => !form.watch('supported_currencies')?.includes(c.currencyCode)).length === 0 && (
+                {activeCurrencies.filter(
+                  (c) => !form.watch('supported_currencies')?.includes(c.currencyCode)
+                ).length === 0 && (
                   <p className="text-sm text-blue-600">
-                    ✓ All active currencies are already supported. To add more, activate currencies in <a href="/admin/currencies" className="underline font-medium">Currency Management</a>.
+                    ✓ All active currencies are already supported. To add more, activate currencies
+                    in{' '}
+                    <a href="/admin/currencies" className="underline font-medium">
+                      Currency Management
+                    </a>
+                    .
                   </p>
                 )}
               </>
@@ -350,7 +394,9 @@ export function CurrencySettingsSection() {
           label="Auto-Sync Exchange Rates"
           description="Automatically update exchange rates from external API"
           checked={form.watch('currency_auto_sync')}
-          onCheckedChange={(checked) => form.setValue('currency_auto_sync', checked, { shouldDirty: true })}
+          onCheckedChange={(checked) =>
+            form.setValue('currency_auto_sync', checked, { shouldDirty: true })
+          }
           tooltip="When enabled, exchange rates will be automatically updated at the specified frequency"
         />
 
@@ -365,7 +411,9 @@ export function CurrencySettingsSection() {
           >
             <Select
               value={form.watch('currency_sync_frequency')}
-              onValueChange={(value) => form.setValue('currency_sync_frequency', value as any, { shouldDirty: true })}
+              onValueChange={(value) =>
+                form.setValue('currency_sync_frequency', value as any, { shouldDirty: true })
+              }
             >
               <SelectTrigger id="currency_sync_frequency">
                 <SelectValue placeholder="Select frequency" />
@@ -407,7 +455,9 @@ export function CurrencySettingsSection() {
               <p className="text-sm font-medium text-blue-900">Last Sync Result</p>
               <div className="mt-2 space-y-1 text-sm text-blue-700">
                 {lastSyncResult.synced > 0 && (
-                  <p>✓ Updated {lastSyncResult.synced} of {lastSyncResult.total} currencies</p>
+                  <p>
+                    ✓ Updated {lastSyncResult.synced} of {lastSyncResult.total} currencies
+                  </p>
                 )}
                 {lastSyncResult.lastSync && (
                   <p className="text-xs text-blue-600">
@@ -427,7 +477,8 @@ export function CurrencySettingsSection() {
         {/* Info Box */}
         <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
           <p className="text-xs text-purple-700">
-            <strong>Data Source:</strong> Exchange rates are fetched from exchangerate-api.com using USD as the base currency. All rates are updated relative to USD.
+            <strong>Data Source:</strong> Exchange rates are fetched from exchangerate-api.com using
+            USD as the base currency. All rates are updated relative to USD.
           </p>
         </div>
       </SettingsCard>

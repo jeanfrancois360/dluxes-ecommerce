@@ -21,6 +21,7 @@ import { useSettings, useSettingsUpdate } from '@/hooks/use-settings';
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 // Validation schema
 const sellerSettingsSchema = z.object({
@@ -97,6 +98,7 @@ export function SellerSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
+  useUnsavedChangesGuard(isDirty);
   const monthlyPrice = form.watch('seller_monthly_credit_price') || 29.99;
 
   return (
