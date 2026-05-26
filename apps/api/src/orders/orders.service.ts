@@ -1548,8 +1548,11 @@ export class OrdersService {
             `❌ Gelato submission failed for order ${id}: ${result.failed} of ${result.results.length} items failed`
           );
 
-          // Roll back the status change so the order does not get stuck in PROCESSING
+          // Roll back the status change and remove the stale timeline entry
           await this.prisma.order.update({ where: { id }, data: { status: order.status } });
+          await this.prisma.orderTimeline.deleteMany({
+            where: { orderId: id, status },
+          });
 
           throw new BadRequestException(
             `Cannot process order: ${result.failed} POD item(s) failed to submit to Gelato.\n\n` +
@@ -1570,6 +1573,9 @@ export class OrdersService {
             gelatoError.message
           );
           await this.prisma.order.update({ where: { id }, data: { status: order.status } });
+          await this.prisma.orderTimeline.deleteMany({
+            where: { orderId: id, status },
+          });
           throw new BadRequestException(
             `Cannot process order: POD fulfillment submission failed. ${gelatoError.message}`
           );
