@@ -1019,6 +1019,28 @@ export default function ProductForm({
     const newDescription = autoDescription.trim();
     const newImage = productDetails.previewUrl || '';
 
+    // Auto-populate base cost from variant data (fast path)
+    let variantBaseCost: number | undefined = productDetails?.variants?.[0]?.baseCost?.amount
+      ? parseFloat(productDetails.variants[0].baseCost.amount)
+      : undefined;
+
+    // If variant data has no baseCost, fetch via quote API
+    if (!variantBaseCost) {
+      try {
+        const priceData = await gelatoApi.getProductPrice(productUid, {
+          quantity: 1,
+          country: 'US',
+        });
+        variantBaseCost = priceData?.baseCost;
+      } catch {
+        // Seller will need to enter manually
+      }
+    }
+
+    const calculatedPrice = variantBaseCost
+      ? parseFloat((variantBaseCost * (1 + markup / 100)).toFixed(2))
+      : 0;
+
     // Store pending data and open preview modal
     setPendingGelatoData({
       productTitle: productDetails.title,
@@ -1026,9 +1048,9 @@ export default function ProductForm({
         name: newName,
         slug: newSlug,
         description: newDescription,
-        price: 0,
+        price: calculatedPrice,
         image: newImage,
-        baseCost: undefined,
+        baseCost: variantBaseCost,
         markupPercentage: markup,
       },
     });
@@ -1138,7 +1160,6 @@ export default function ProductForm({
 
       delete dataToSubmit.tags;
       delete dataToSubmit.sku;
-      delete dataToSubmit.markupPercentage;
 
       if (typeof dataToSubmit.seoKeywords === 'string') {
         dataToSubmit.seoKeywords = dataToSubmit.seoKeywords
@@ -1239,7 +1260,12 @@ export default function ProductForm({
               designFileUrl={formData.designFileUrl}
               gelatoMarkupPercent={formData.markupPercentage}
               productImages={formData.images || []}
-              onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+              onChange={(field, value) => {
+                // PodConfigurationSection fires 'gelatoMarkupPercent' but state key is 'markupPercentage'
+                const normalizedField =
+                  field === 'gelatoMarkupPercent' ? 'markupPercentage' : field;
+                setFormData({ ...formData, [normalizedField]: value });
+              }}
               onGelatoProductSelect={handleGelatoProductSelect}
               disabled={loading}
               isGelatoConfigured={isGelatoConfigured}
