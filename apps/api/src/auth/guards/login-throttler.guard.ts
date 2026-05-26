@@ -10,9 +10,16 @@ import { ThrottlerGuard } from '@nestjs/throttler';
  *
  * This guard keys by email instead, so each account has its own independent
  * request bucket and users never interfere with each other.
+ *
+ * Throttling is skipped entirely in non-production environments so developers
+ * aren't blocked during testing.
  */
 @Injectable()
 export class LoginThrottlerGuard extends ThrottlerGuard {
+  protected async shouldSkip(_context: ExecutionContext): Promise<boolean> {
+    return process.env.NODE_ENV !== 'production';
+  }
+
   protected generateKey(context: ExecutionContext, suffix: string, throttlerName: string): string {
     const request = context.switchToHttp().getRequest();
     const email = (request.body?.email ?? '').toLowerCase().trim();
