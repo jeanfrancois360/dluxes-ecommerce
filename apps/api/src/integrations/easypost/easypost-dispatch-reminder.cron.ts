@@ -9,6 +9,9 @@ const DISPATCH_REMINDER_HOURS = 48;
 /**
  * Sends a reminder email to sellers who have not purchased a shipping label
  * within 48 hours of a paid order being placed.
+ *
+ * Each order receives at most one reminder, tracked via dispatchReminderSentAt.
+ * The cron runs every hour but skips any order that has already been reminded.
  */
 @Injectable()
 export class EasyPostDispatchReminderCron {
@@ -20,10 +23,6 @@ export class EasyPostDispatchReminderCron {
     private readonly configService: ConfigService
   ) {}
 
-  /**
-   * Run every hour. Finds PAID orders older than 48h with no EasyPost label and
-   * sends a reminder to the associated seller.
-   */
   @Cron('0 * * * *', {
     name: 'easypost-dispatch-reminder',
     timeZone: 'UTC',
@@ -34,23 +33,22 @@ export class EasyPostDispatchReminderCron {
     try {
       const cutoff = new Date(Date.now() - DISPATCH_REMINDER_HOURS * 60 * 60 * 1000);
 
-      // Orders paid > 48h ago, not yet fully cancelled/delivered
+      // Shipped order IDs (have a non-PENDING EasyPost shipment)
+      const shippedOrderIds = (
+        await this.prisma.easyPostShipment.findMany({
+          select: { orderId: true },
+          where: { status: { not: 'PENDING' } },
+        })
+      ).map((s) => s.orderId);
+
+      // Orders paid > 48h ago, not shipped, and never sent a reminder
       const overdueOrders = await this.prisma.order.findMany({
         where: {
           paymentStatus: 'PAID',
           status: { in: ['PENDING', 'PROCESSING', 'CONFIRMED'] },
           createdAt: { lt: cutoff },
-          // No EasyPost shipment exists for this order
-          NOT: {
-            id: {
-              in: (
-                await this.prisma.easyPostShipment.findMany({
-                  select: { orderId: true },
-                  where: { status: { not: 'PENDING' } },
-                })
-              ).map((s) => s.orderId),
-            },
-          },
+          dispatchReminderSentAt: null, // Only orders that have never been reminded
+          NOT: shippedOrderIds.length > 0 ? { id: { in: shippedOrderIds } } : undefined,
         },
         include: {
           items: {
@@ -95,6 +93,12 @@ export class EasyPostDispatchReminderCron {
           orderId: order.id,
           orderUrl: `${frontendUrl}/seller/orders/${order.id}`,
           hoursOverdue,
+        });
+
+        // Mark reminder as sent — prevents this order from ever being picked up again
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: { dispatchReminderSentAt: new Date() },
         });
 
         sent++;

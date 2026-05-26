@@ -1282,6 +1282,9 @@ model Order {
   // DHL Shipments
   dhlShipments DhlShipment[]
 
+  // Dispatch Reminder Tracking
+  dispatchReminderSentAt DateTime? // Set when first reminder email is sent to seller
+
   @@index([userId])
   @@index([orderNumber])
   @@index([status])
