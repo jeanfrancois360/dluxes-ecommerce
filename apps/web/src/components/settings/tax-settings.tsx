@@ -58,6 +58,7 @@ export function TaxSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (
@@ -70,7 +71,6 @@ export function TaxSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
   const currentMode = form.watch('tax_calculation_mode');
 
   return (

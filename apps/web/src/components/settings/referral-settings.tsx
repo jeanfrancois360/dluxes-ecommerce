@@ -101,6 +101,7 @@ export function ReferralSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (
@@ -113,7 +114,6 @@ export function ReferralSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
   const enabled = form.watch('referral_enabled');
   const rewardType = form.watch('referral_reward_type');
   const currency = form.watch('referral_reward_currency');

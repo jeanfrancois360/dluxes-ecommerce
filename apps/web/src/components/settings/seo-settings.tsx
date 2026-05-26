@@ -62,6 +62,7 @@ export function SeoSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (
@@ -76,7 +77,6 @@ export function SeoSettingsSection() {
   const titleLength = form.watch('seo_meta_title')?.length || 0;
   const descriptionLength = form.watch('seo_meta_description')?.length || 0;
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

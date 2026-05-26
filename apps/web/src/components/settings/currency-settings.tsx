@@ -103,6 +103,7 @@ export function CurrencySettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   // Manual sync handler
   const handleManualSync = async () => {
@@ -179,7 +180,6 @@ export function CurrencySettingsSection() {
 
   const activeCurrencies = availableCurrencies.filter((c) => c.isActive);
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
 
   if (currenciesError) {
     return (

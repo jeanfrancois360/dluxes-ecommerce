@@ -64,6 +64,7 @@ export function DeliverySettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (
@@ -76,7 +77,6 @@ export function DeliverySettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

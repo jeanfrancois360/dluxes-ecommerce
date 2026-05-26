@@ -373,6 +373,7 @@ export function ShippingSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (
@@ -385,7 +386,6 @@ export function ShippingSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
   const currentMode = form.watch('shipping_mode');
   const freeShippingEnabled = form.watch('free_shipping_enabled');
 

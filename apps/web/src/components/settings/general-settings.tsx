@@ -105,6 +105,7 @@ export function GeneralSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (
@@ -117,7 +118,6 @@ export function GeneralSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
 
   const getGeneralSetting = (key: string) => {
     const setting = settings.find((s) => s.key === key);
