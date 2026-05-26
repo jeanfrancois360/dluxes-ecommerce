@@ -13,6 +13,7 @@ import { taxSettingsSchema, type TaxSettings } from '@/lib/validations/settings'
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 export function TaxSettingsSection() {
   const { settings, loading, refetch } = useSettings('tax');
@@ -23,7 +24,7 @@ export function TaxSettingsSection() {
     resolver: zodResolver(taxSettingsSchema),
     defaultValues: {
       tax_calculation_mode: 'disabled',
-      tax_default_rate: 0.10,
+      tax_default_rate: 0.1,
     },
   });
 
@@ -69,6 +70,7 @@ export function TaxSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
+  useUnsavedChangesGuard(isDirty);
   const currentMode = form.watch('tax_calculation_mode');
 
   return (
@@ -84,9 +86,15 @@ export function TaxSettingsSection() {
             <div className="space-y-1">
               <p className="text-sm font-medium text-blue-900">Tax Modes</p>
               <ul className="text-sm text-blue-700 space-y-1">
-                <li><strong>Disabled:</strong> No tax calculated</li>
-                <li><strong>Simple:</strong> Apply a single default tax rate to all orders</li>
-                <li><strong>By State:</strong> Use US state-specific tax rates (50 states)</li>
+                <li>
+                  <strong>Disabled:</strong> No tax calculated
+                </li>
+                <li>
+                  <strong>Simple:</strong> Apply a single default tax rate to all orders
+                </li>
+                <li>
+                  <strong>By State:</strong> Use US state-specific tax rates (50 states)
+                </li>
               </ul>
             </div>
           </div>
@@ -144,8 +152,8 @@ export function TaxSettingsSection() {
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
             <p className="text-sm font-medium mb-2">State Tax Rates</p>
             <p className="text-sm text-muted-foreground">
-              Using hardcoded US state tax rates (50 states + 2% local average).
-              No configuration needed - rates are automatically applied based on shipping address.
+              Using hardcoded US state tax rates (50 states + 2% local average). No configuration
+              needed - rates are automatically applied based on shipping address.
             </p>
           </div>
         )}

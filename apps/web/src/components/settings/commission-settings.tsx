@@ -22,6 +22,7 @@ import { transformSettingsToForm } from '@/lib/settings-utils';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 export function CommissionSettingsSection() {
   const { settings, loading, refetch } = useSettings('commission');
@@ -93,6 +94,7 @@ export function CommissionSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
+  useUnsavedChangesGuard(isDirty);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

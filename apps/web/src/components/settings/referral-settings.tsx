@@ -22,6 +22,7 @@ import { referralSettingsSchema, type ReferralSettings } from '@/lib/validations
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'CHF', 'JPY', 'RWF'];
 
@@ -112,6 +113,7 @@ export function ReferralSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
+  useUnsavedChangesGuard(isDirty);
   const enabled = form.watch('referral_enabled');
   const rewardType = form.watch('referral_reward_type');
   const currency = form.watch('referral_reward_currency');
