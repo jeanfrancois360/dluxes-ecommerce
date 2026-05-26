@@ -93,6 +93,7 @@ export function SecuritySettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   const addFileType = () => {
     const current = form.watch('allowed_file_types') || [];
@@ -126,7 +127,6 @@ export function SecuritySettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

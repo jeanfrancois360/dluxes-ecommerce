@@ -222,6 +222,7 @@ export function PaymentSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   // Helper to get setting value
   const getSetting = (key: string) => {
@@ -270,7 +271,6 @@ export function PaymentSettingsSection() {
 
   const isProduction = process.env.NODE_ENV === 'production';
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
 
   return (
     <div className="space-y-6">

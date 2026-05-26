@@ -91,6 +91,7 @@ export function NotificationSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   const toggleEvent = (eventValue: string) => {
     const current = form.watch('notification_events') || [];
@@ -116,7 +117,6 @@ export function NotificationSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

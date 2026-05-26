@@ -86,6 +86,7 @@ export function SellerSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (
@@ -98,7 +99,6 @@ export function SellerSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
   const monthlyPrice = form.watch('seller_monthly_credit_price') || 29.99;
 
   return (

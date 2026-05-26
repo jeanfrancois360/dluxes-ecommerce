@@ -82,6 +82,7 @@ export function CommissionSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (
@@ -94,7 +95,6 @@ export function CommissionSettingsSection() {
   }
 
   const isDirty = form.formState.isDirty;
-  useUnsavedChangesGuard(isDirty);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
