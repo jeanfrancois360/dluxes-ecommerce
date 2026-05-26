@@ -284,6 +284,8 @@ model Store {
   creditsLastDeducted DateTime?
   creditsExpiresAt    DateTime?
   creditsGraceEndsAt  DateTime? // Grace period deadline
+  lowCreditWarningSentAt   DateTime? // Last time a low-credit warning email was sent
+  gracePeriodWarningSentAt DateTime? // Last time a grace-period warning email was sent
 
   // Store Policies
   returnPolicy    String? @db.Text

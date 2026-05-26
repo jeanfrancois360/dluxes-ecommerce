@@ -136,7 +136,9 @@ export class SellerCreditsCronService {
 
   /**
    * Low credit warnings - Runs daily at 08:00 UTC
-   * Sends email notifications to sellers with low credits
+   * Sends email notifications to sellers with low credits or in grace period.
+   * Each store receives at most one warning per 7 days, tracked via
+   * lowCreditWarningSentAt / gracePeriodWarningSentAt on the Store model.
    */
   @Cron('0 8 * * *', {
     name: 'low-credit-warnings',
@@ -144,6 +146,9 @@ export class SellerCreditsCronService {
   })
   async sendLowCreditWarnings() {
     this.logger.log('📧 Checking for sellers with low credits...');
+
+    const WARNING_INTERVAL_DAYS = 7;
+    const cutoff = new Date(Date.now() - WARNING_INTERVAL_DAYS * 24 * 60 * 60 * 1000);
 
     try {
       const result = await this.sellerCreditsService.getStoresNeedingAttention();
@@ -155,24 +160,66 @@ export class SellerCreditsCronService {
 
       const { lowCredits, inGracePeriod } = result.data;
 
-      // Log low credit stores
-      if (lowCredits.length > 0) {
-        this.logger.warn(`⚠️  ${lowCredits.length} stores with low credits (≤2 months):`);
-        lowCredits.forEach((store) => {
+      // --- Low credit warnings ---
+      const lowCreditStoreIds = lowCredits.map((s) => s.storeId);
+      const recentlyWarnedLow =
+        lowCreditStoreIds.length > 0
+          ? new Set(
+              (
+                await this.prisma.store.findMany({
+                  where: { id: { in: lowCreditStoreIds }, lowCreditWarningSentAt: { gte: cutoff } },
+                  select: { id: true },
+                })
+              ).map((s) => s.id)
+            )
+          : new Set<string>();
+
+      const dueForLowCreditWarning = lowCredits.filter((s) => !recentlyWarnedLow.has(s.storeId));
+
+      if (dueForLowCreditWarning.length > 0) {
+        this.logger.warn(
+          `⚠️  ${dueForLowCreditWarning.length} stores with low credits (≤2 months):`
+        );
+        dueForLowCreditWarning.forEach((store) => {
           this.logger.warn(
             `   - ${store.storeName} (${store.ownerEmail}): ${store.creditsBalance} month${store.creditsBalance > 1 ? 's' : ''} remaining`
           );
         });
 
-        await this.emailService.sendLowCreditWarning(lowCredits);
+        await this.emailService.sendLowCreditWarning(dueForLowCreditWarning);
+
+        await this.prisma.store.updateMany({
+          where: { id: { in: dueForLowCreditWarning.map((s) => s.storeId) } },
+          data: { lowCreditWarningSentAt: new Date() },
+        });
       } else {
-        this.logger.log('✅ No stores with low credits');
+        this.logger.log(
+          `✅ No low-credit warnings due (${lowCredits.length} stores already warned within ${WARNING_INTERVAL_DAYS}d)`
+        );
       }
 
-      // Log grace period stores
-      if (inGracePeriod.length > 0) {
-        this.logger.warn(`🚨 ${inGracePeriod.length} stores in grace period:`);
-        inGracePeriod.forEach((store) => {
+      // --- Grace period warnings ---
+      const gracePeriodStoreIds = inGracePeriod.map((s) => s.storeId);
+      const recentlyWarnedGrace =
+        gracePeriodStoreIds.length > 0
+          ? new Set(
+              (
+                await this.prisma.store.findMany({
+                  where: {
+                    id: { in: gracePeriodStoreIds },
+                    gracePeriodWarningSentAt: { gte: cutoff },
+                  },
+                  select: { id: true },
+                })
+              ).map((s) => s.id)
+            )
+          : new Set<string>();
+
+      const dueForGraceWarning = inGracePeriod.filter((s) => !recentlyWarnedGrace.has(s.storeId));
+
+      if (dueForGraceWarning.length > 0) {
+        this.logger.warn(`🚨 ${dueForGraceWarning.length} stores in grace period:`);
+        dueForGraceWarning.forEach((store) => {
           const daysRemaining = Math.ceil(
             (new Date(store.graceEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
           );
@@ -181,9 +228,16 @@ export class SellerCreditsCronService {
           );
         });
 
-        await this.emailService.sendGracePeriodWarning(inGracePeriod);
+        await this.emailService.sendGracePeriodWarning(dueForGraceWarning);
+
+        await this.prisma.store.updateMany({
+          where: { id: { in: dueForGraceWarning.map((s) => s.storeId) } },
+          data: { gracePeriodWarningSentAt: new Date() },
+        });
       } else {
-        this.logger.log('✅ No stores in grace period');
+        this.logger.log(
+          `✅ No grace-period warnings due (${inGracePeriod.length} stores already warned within ${WARNING_INTERVAL_DAYS}d)`
+        );
       }
     } catch (error) {
       this.logger.error('❌ Low credit warning check failed:', error);
