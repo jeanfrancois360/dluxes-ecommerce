@@ -140,7 +140,8 @@ export class GelatoController {
     @Req() req: any,
     @Param('productUid') productUid: string,
     @Query('quantity') quantity?: string,
-    @Query('country') country?: string
+    @Query('country') country?: string,
+    @Query('storeId') storeId?: string
   ) {
     const userId = req.user?.id;
     const pricing = await this.productsService.calculateProductPrice(
@@ -149,7 +150,8 @@ export class GelatoController {
         quantity: quantity ? parseInt(quantity, 10) : 1,
         country: country || 'US',
       },
-      userId
+      userId,
+      storeId
     );
     return { success: true, data: pricing };
   }

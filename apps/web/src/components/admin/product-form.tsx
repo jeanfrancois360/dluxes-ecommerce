@@ -33,6 +33,7 @@ import {
   RentalFields,
 } from './product-type-fields';
 import { PodConfigurationSection } from '../gelato/pod-configuration-section';
+import { GelatoPreviewModal } from '../gelato/gelato-preview-modal';
 import { toast } from '@/lib/utils/toast';
 
 // Dynamically import EnhancedImageUpload to avoid SSR issues with framer-motion
@@ -193,6 +194,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [newTag, setNewTag] = useState('');
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [pendingGelatoData, setPendingGelatoData] = useState<any>(null);
 
   // Fetch categories on mount
   useEffect(() => {
@@ -344,6 +347,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         rentalIncludes: (product as any)?.rentalIncludes || [],
         rentalExcludes: (product as any)?.rentalExcludes || [],
         rentalNotes: (product as any)?.rentalNotes || '',
+        // Gelato POD fields
+        fulfillmentType: (product as any)?.fulfillmentType || 'SELF_FULFILLED',
+        gelatoProductUid: (product as any)?.gelatoProductUid || '',
+        designFileUrl: (product as any)?.designFileUrl || '',
+        baseCost: (product as any)?.baseCost || undefined,
+        markupPercentage: (product as any)?.markupPercentage || undefined,
       });
     }
   }, [product]);
@@ -765,48 +774,93 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   };
 
   const handleGelatoProductSelect = async (productDetails: any) => {
-    console.log('[DEBUG] Product details received:', productDetails);
-
-    // Auto-populate product details from Gelato
-    const markup = formData.markupPercentage !== undefined ? formData.markupPercentage : 50; // Default 50% markup
-
-    // Get product UID - check multiple possible field names
+    const markup = formData.markupPercentage !== undefined ? formData.markupPercentage : 50;
     const productUid = productDetails?.uid || productDetails?.productUid || productDetails?.id;
 
     if (!productUid) {
-      console.error('[ERROR] No product UID found in productDetails:', productDetails);
       toast.error('Could not identify Gelato product. Please try again.');
       return;
     }
 
-    // Build auto-populated description - strip HTML tags for plain text
+    // Build description from Gelato data
     let autoDescription = stripHtmlTags(productDetails.description || '');
     if (productDetails.variants && productDetails.variants.length > 0) {
       autoDescription += '\n\nAvailable options:\n';
       productDetails.variants.forEach((variant: any) => {
         const options = Object.entries(variant.options || {})
-          .map(([key, value]) => `${key}: ${value}`)
+          .map(([key, val]) => `${key}: ${val}`)
           .join(', ');
         autoDescription += `- ${variant.title || 'Variant'} (${options})\n`;
       });
     }
 
-    setFormData((prev: any) => ({
-      ...prev,
-      // Only auto-fill if fields are empty
-      name: prev.name || productDetails.title || '',
-      description: prev.description || autoDescription.trim(),
-      // baseCost must be entered manually - no automatic fetching
-      markupPercentage: markup,
-      // Add preview image if available and no images yet
-      ...(productDetails.previewUrl && (!prev.images || prev.images.length === 0)
-        ? { images: [{ url: productDetails.previewUrl, alt: productDetails.title }] }
-        : {}),
-    }));
+    const newName = productDetails.title || '';
+    const newSlug = generateSlug(newName);
+    const newDescription = autoDescription.trim();
+    const newImage = productDetails.previewUrl || '';
 
-    toast.success(
-      'Product details auto-filled from Gelato. Please enter the production cost manually.'
-    );
+    // Fast path: variant data already includes baseCost
+    let variantBaseCost: number | undefined = productDetails?.variants?.[0]?.baseCost?.amount
+      ? parseFloat(productDetails.variants[0].baseCost.amount)
+      : undefined;
+
+    // Fallback: call quote API — pass selected storeId so admin uses the right Gelato credentials
+    if (!variantBaseCost) {
+      try {
+        const priceData = await gelatoApi.getProductPrice(productUid, {
+          quantity: 1,
+          country: 'US',
+          storeId: formData.storeId || undefined,
+        });
+        variantBaseCost = priceData?.baseCost;
+      } catch {
+        // Admin will fill baseCost manually in the pricing section
+      }
+    }
+
+    const calculatedPrice = variantBaseCost
+      ? parseFloat((variantBaseCost * (1 + markup / 100)).toFixed(2))
+      : 0;
+
+    setPendingGelatoData({
+      productTitle: productDetails.title,
+      newValues: {
+        name: newName,
+        slug: newSlug,
+        description: newDescription,
+        price: calculatedPrice,
+        image: newImage,
+        baseCost: variantBaseCost,
+        markupPercentage: markup,
+      },
+    });
+    setIsPreviewModalOpen(true);
+  };
+
+  const applyGelatoChanges = () => {
+    if (!pendingGelatoData) return;
+    const { newValues } = pendingGelatoData;
+    setFormData((prev: any) => {
+      const updates: any = {
+        ...prev,
+        name: newValues.name || prev.name,
+        slug: newValues.slug || prev.slug,
+        description: newValues.description || prev.description,
+        price: newValues.price || prev.price,
+        baseCost: newValues.baseCost !== undefined ? newValues.baseCost : prev.baseCost,
+        markupPercentage:
+          newValues.markupPercentage !== undefined
+            ? newValues.markupPercentage
+            : prev.markupPercentage,
+      };
+      if (newValues.image) {
+        const existing = prev.images || [];
+        updates.images = [newValues.image, ...existing.slice(1)];
+      }
+      return updates;
+    });
+    toast.success('Product details applied from Gelato');
+    setPendingGelatoData(null);
   };
 
   // Memoized callback to prevent infinite loop in EnhancedImageUpload
@@ -861,952 +915,962 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     errors[field] ? <p className="mt-1 text-sm text-red-600">{errors[field]}</p> : null;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Store Selection - MUST BE FIRST */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Store Assignment</h2>
-        <div id="storeId">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Seller's Store <span className="text-red-500">*</span>
-          </label>
-          <select
-            required
-            value={formData.storeId}
-            onChange={(e) => handleChange('storeId', e.target.value)}
-            disabled={loadingStores}
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent disabled:bg-gray-100 ${errors.storeId ? 'border-red-500' : 'border-gray-300'}`}
-          >
-            <option value="">{loadingStores ? 'Loading...' : 'Select a seller store first'}</option>
-            {stores.map((store) => (
-              <option key={store.id} value={store.id}>
-                {store.name} ({store.user.email}) - {store._count.products} products
-                {store.gelatoSettings?.isEnabled && store.gelatoSettings?.isVerified
-                  ? ' ✓ Gelato POD'
-                  : ''}
-              </option>
-            ))}
-          </select>
-          <div className="mt-2 space-y-1">
-            <p className="text-xs text-gray-500">
-              Assign this product to a specific seller's store (required for commissions and
-              payouts)
-            </p>
-            {formData.storeId && selectedStore?.gelatoSettings?.isEnabled && (
-              <p className="text-xs text-green-600 flex items-center gap-1">
-                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Print-on-Demand available for this store
-              </p>
-            )}
-            {formData.storeId && !isGelatoAvailable && (
-              <p className="text-xs text-gray-500">
-                This store does not have Gelato POD configured
-              </p>
-            )}
-          </div>
-          <ErrorMessage field="storeId" />
-        </div>
-      </div>
-
-      {/* Fulfillment Type Selection */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">Fulfillment Method</h2>
-        <p className="text-sm text-gray-600 mb-4">
-          Choose how orders will be fulfilled for this product
-        </p>
-
-        <PodConfigurationSection
-          fulfillmentType={formData.fulfillmentType}
-          gelatoProductUid={formData.gelatoProductUid}
-          designFileUrl={formData.designFileUrl}
-          gelatoMarkupPercent={formData.markupPercentage}
-          productImages={formData.images || []}
-          onChange={handleChange}
-          onGelatoProductSelect={handleGelatoProductSelect}
-          disabled={loading}
-          isGelatoAvailable={isGelatoAvailable}
-          storeSelected={!!formData.storeId}
-        />
-      </div>
-
-      {/* Basic Information */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
-        <div className="space-y-4">
-          <div id="name">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Product Name <span className="text-red-500">*</span>
+    <>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Store Selection - MUST BE FIRST */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Store Assignment</h2>
+          <div id="storeId">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Seller's Store <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
+            <select
               required
-              value={formData.name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
-              placeholder="Enter product name"
-            />
-            <ErrorMessage field="name" />
+              value={formData.storeId}
+              onChange={(e) => handleChange('storeId', e.target.value)}
+              disabled={loadingStores}
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent disabled:bg-gray-100 ${errors.storeId ? 'border-red-500' : 'border-gray-300'}`}
+            >
+              <option value="">
+                {loadingStores ? 'Loading...' : 'Select a seller store first'}
+              </option>
+              {stores.map((store) => (
+                <option key={store.id} value={store.id}>
+                  {store.name} ({store.user.email}) - {store._count.products} products
+                  {store.gelatoSettings?.isEnabled && store.gelatoSettings?.isVerified
+                    ? ' ✓ Gelato POD'
+                    : ''}
+                </option>
+              ))}
+            </select>
+            <div className="mt-2 space-y-1">
+              <p className="text-xs text-gray-500">
+                Assign this product to a specific seller's store (required for commissions and
+                payouts)
+              </p>
+              {formData.storeId && selectedStore?.gelatoSettings?.isEnabled && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  Print-on-Demand available for this store
+                </p>
+              )}
+              {formData.storeId && !isGelatoAvailable && (
+                <p className="text-xs text-gray-500">
+                  This store does not have Gelato POD configured
+                </p>
+              )}
+            </div>
+            <ErrorMessage field="storeId" />
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div id="slug">
+        {/* Fulfillment Type Selection */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Fulfillment Method</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Choose how orders will be fulfilled for this product
+          </p>
+
+          <PodConfigurationSection
+            fulfillmentType={formData.fulfillmentType}
+            gelatoProductUid={formData.gelatoProductUid}
+            designFileUrl={formData.designFileUrl}
+            gelatoMarkupPercent={formData.markupPercentage}
+            productImages={formData.images || []}
+            onChange={handleChange}
+            onGelatoProductSelect={handleGelatoProductSelect}
+            disabled={loading}
+            isGelatoAvailable={isGelatoAvailable}
+            storeSelected={!!formData.storeId}
+          />
+        </div>
+
+        {/* Basic Information */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
+          <div className="space-y-4">
+            <div id="name">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Slug <span className="text-red-500">*</span>
+                Product Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                value={formData.slug}
-                onChange={(e) => handleChange('slug', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.slug ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="product-slug"
+                value={formData.name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.name ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder="Enter product name"
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Auto-generated from name, or customize it
-              </p>
-              <ErrorMessage field="slug" />
+              <ErrorMessage field="name" />
             </div>
-            {/* SKU Field - Only visible when editing (read-only) */}
-            {product?.sku && (
-              <div id="sku">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div id="slug">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  SKU{' '}
-                  <span className="text-xs font-normal text-gray-500 ml-2">
-                    (Auto-generated - Read only)
-                  </span>
+                  Slug <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  value={formData.sku}
-                  readOnly
-                  disabled
-                  className="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed border-gray-300"
+                  required
+                  value={formData.slug}
+                  onChange={(e) => handleChange('slug', e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.slug ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="product-slug"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  SKU is automatically generated by the system and cannot be modified
+                  Auto-generated from name, or customize it
                 </p>
+                <ErrorMessage field="slug" />
               </div>
-            )}
-            {/* Hidden note for new products */}
-            {!product && (
-              <div className="col-span-2">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-700">
-                    <strong>ℹ️ SKU Generation:</strong> A unique SKU will be automatically generated
-                    after you create the product. Format:{' '}
-                    <strong>{inventorySettings.skuPrefix}-MM-DD-XXXXXX</strong>
+              {/* SKU Field - Only visible when editing (read-only) */}
+              {product?.sku && (
+                <div id="sku">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    SKU{' '}
+                    <span className="text-xs font-normal text-gray-500 ml-2">
+                      (Auto-generated - Read only)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.sku}
+                    readOnly
+                    disabled
+                    className="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed border-gray-300"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    SKU is automatically generated by the system and cannot be modified
                   </p>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+              {/* Hidden note for new products */}
+              {!product && (
+                <div className="col-span-2">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-700">
+                      <strong>ℹ️ SKU Generation:</strong> A unique SKU will be automatically
+                      generated after you create the product. Format:{' '}
+                      <strong>{inventorySettings.skuPrefix}-MM-DD-XXXXXX</strong>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
 
-          <div id="description">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => handleChange('description', e.target.value)}
-              rows={4}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
-              placeholder="Enter product description"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              {formData.description?.length || 0}/5000 characters
-            </p>
-            <ErrorMessage field="description" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Short Description
-            </label>
-            <input
-              type="text"
-              value={formData.shortDescription}
-              onChange={(e) => handleChange('shortDescription', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-              placeholder="Brief one-line description"
-              maxLength={150}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Used in product cards and previews (max 150 characters)
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Product Type <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={formData.productType}
-                onChange={(e) => {
-                  const type = e.target.value;
-                  const forcedPurchaseType =
-                    type === 'DIGITAL'
-                      ? 'INSTANT'
-                      : ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(type)
-                        ? 'INQUIRY'
-                        : formData.purchaseType;
-                  handleChange('productType', type);
-                  handleChange('purchaseType', forcedPurchaseType);
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-              >
-                <option value="PHYSICAL">Physical Product</option>
-                <option value="REAL_ESTATE">Real Estate</option>
-                <option value="VEHICLE">Vehicle</option>
-                <option value="SERVICE">Service</option>
-                <option value="RENTAL">Rental</option>
-                <option value="DIGITAL">Digital Product</option>
-              </select>
+            <div id="description">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => handleChange('description', e.target.value)}
+                rows={4}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder="Enter product description"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.description?.length || 0}/5000 characters
+              </p>
+              <ErrorMessage field="description" />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Purchase Type <span className="text-red-500">*</span>
+                Short Description
               </label>
-              <select
-                required
-                value={formData.purchaseType}
-                disabled={
-                  formData.productType === 'DIGITAL' ||
-                  ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(formData.productType)
-                }
-                onChange={(e) => handleChange('purchaseType', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-              >
-                <option
-                  value="INSTANT"
-                  disabled={['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(
-                    formData.productType
-                  )}
-                >
-                  Instant Purchase (Add to Cart)
-                </option>
-                <option value="INQUIRY" disabled={formData.productType === 'DIGITAL'}>
-                  Inquiry Required (Contact Seller)
-                </option>
-              </select>
-              <p className="text-xs mt-1">
-                {formData.productType === 'DIGITAL' ? (
-                  <span className="text-amber-600">
-                    Digital products are purchased directly — Instant Purchase is required
-                  </span>
-                ) : ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(
-                    formData.productType
-                  ) ? (
-                  <span className="text-amber-600">
-                    {
-                      {
-                        SERVICE: 'Services require contact to arrange',
-                        RENTAL: 'Rentals require contact to arrange',
-                        VEHICLE: 'Vehicles require a test-drive inquiry',
-                        REAL_ESTATE: 'Properties require a viewing inquiry',
-                      }[formData.productType as 'SERVICE' | 'RENTAL' | 'VEHICLE' | 'REAL_ESTATE']
-                    }
-                  </span>
-                ) : (
-                  <span className="text-gray-500">
-                    {formData.purchaseType === 'INQUIRY'
-                      ? 'Customers will contact you for pricing and details'
-                      : 'Customers can purchase directly'}
-                  </span>
-                )}
+              <input
+                type="text"
+                value={formData.shortDescription}
+                onChange={(e) => handleChange('shortDescription', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                placeholder="Brief one-line description"
+                maxLength={150}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Used in product cards and previews (max 150 characters)
               </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Product Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.productType}
+                  onChange={(e) => {
+                    const type = e.target.value;
+                    const forcedPurchaseType =
+                      type === 'DIGITAL'
+                        ? 'INSTANT'
+                        : ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(type)
+                          ? 'INQUIRY'
+                          : formData.purchaseType;
+                    handleChange('productType', type);
+                    handleChange('purchaseType', forcedPurchaseType);
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                >
+                  <option value="PHYSICAL">Physical Product</option>
+                  <option value="REAL_ESTATE">Real Estate</option>
+                  <option value="VEHICLE">Vehicle</option>
+                  <option value="SERVICE">Service</option>
+                  <option value="RENTAL">Rental</option>
+                  <option value="DIGITAL">Digital Product</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Purchase Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.purchaseType}
+                  disabled={
+                    formData.productType === 'DIGITAL' ||
+                    ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(formData.productType)
+                  }
+                  onChange={(e) => handleChange('purchaseType', e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  <option
+                    value="INSTANT"
+                    disabled={['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(
+                      formData.productType
+                    )}
+                  >
+                    Instant Purchase (Add to Cart)
+                  </option>
+                  <option value="INQUIRY" disabled={formData.productType === 'DIGITAL'}>
+                    Inquiry Required (Contact Seller)
+                  </option>
+                </select>
+                <p className="text-xs mt-1">
+                  {formData.productType === 'DIGITAL' ? (
+                    <span className="text-amber-600">
+                      Digital products are purchased directly — Instant Purchase is required
+                    </span>
+                  ) : ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(
+                      formData.productType
+                    ) ? (
+                    <span className="text-amber-600">
+                      {
+                        {
+                          SERVICE: 'Services require contact to arrange',
+                          RENTAL: 'Rentals require contact to arrange',
+                          VEHICLE: 'Vehicles require a test-drive inquiry',
+                          REAL_ESTATE: 'Properties require a viewing inquiry',
+                        }[formData.productType as 'SERVICE' | 'RENTAL' | 'VEHICLE' | 'REAL_ESTATE']
+                      }
+                    </span>
+                  ) : (
+                    <span className="text-gray-500">
+                      {formData.purchaseType === 'INQUIRY'
+                        ? 'Customers will contact you for pricing and details'
+                        : 'Customers can purchase directly'}
+                    </span>
+                  )}
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Real Estate Fields - Conditional based on Product Type */}
-      {formData.productType === 'REAL_ESTATE' && (
-        <RealEstateFields
-          formData={formData}
-          onChange={handleChange}
-          errors={errors}
-          disabled={loading}
-        />
-      )}
+        {/* Real Estate Fields - Conditional based on Product Type */}
+        {formData.productType === 'REAL_ESTATE' && (
+          <RealEstateFields
+            formData={formData}
+            onChange={handleChange}
+            errors={errors}
+            disabled={loading}
+          />
+        )}
 
-      {/* Vehicle Fields - Conditional based on Product Type */}
-      {formData.productType === 'VEHICLE' && (
-        <VehicleFields
-          formData={formData}
-          onChange={handleChange}
-          errors={errors}
-          disabled={loading}
-        />
-      )}
+        {/* Vehicle Fields - Conditional based on Product Type */}
+        {formData.productType === 'VEHICLE' && (
+          <VehicleFields
+            formData={formData}
+            onChange={handleChange}
+            errors={errors}
+            disabled={loading}
+          />
+        )}
 
-      {/* Digital Fields - Conditional based on Product Type */}
-      {formData.productType === 'DIGITAL' && (
-        <DigitalFields
-          formData={formData}
-          onChange={handleChange}
-          errors={errors}
-          disabled={loading}
-        />
-      )}
+        {/* Digital Fields - Conditional based on Product Type */}
+        {formData.productType === 'DIGITAL' && (
+          <DigitalFields
+            formData={formData}
+            onChange={handleChange}
+            errors={errors}
+            disabled={loading}
+          />
+        )}
 
-      {/* Service Fields - Conditional based on Product Type */}
-      {formData.productType === 'SERVICE' && (
-        <ServiceFields
-          formData={formData}
-          onChange={handleChange}
-          errors={errors}
-          disabled={loading}
-        />
-      )}
+        {/* Service Fields - Conditional based on Product Type */}
+        {formData.productType === 'SERVICE' && (
+          <ServiceFields
+            formData={formData}
+            onChange={handleChange}
+            errors={errors}
+            disabled={loading}
+          />
+        )}
 
-      {/* Rental Fields - Conditional based on Product Type */}
-      {formData.productType === 'RENTAL' && (
-        <RentalFields
-          formData={formData}
-          onChange={handleChange}
-          errors={errors}
-          disabled={loading}
-        />
-      )}
+        {/* Rental Fields - Conditional based on Product Type */}
+        {formData.productType === 'RENTAL' && (
+          <RentalFields
+            formData={formData}
+            onChange={handleChange}
+            errors={errors}
+            disabled={loading}
+          />
+        )}
 
-      {/* Pricing & Inventory */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Pricing & Inventory
-          {formData.purchaseType === 'INQUIRY' && (
-            <span className="ml-2 text-sm font-normal text-gray-500">
-              (Optional for inquiry products)
-            </span>
-          )}
-        </h2>
+        {/* Pricing & Inventory */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Pricing & Inventory
+            {formData.purchaseType === 'INQUIRY' && (
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                (Optional for inquiry products)
+              </span>
+            )}
+          </h2>
 
-        {/* POD Pricing Section - Show FIRST for Gelato POD products */}
-        {formData.fulfillmentType === 'GELATO_POD' && (
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
-            <div>
-              <h4 className="text-sm font-semibold text-blue-900 mb-3">Print-on-Demand Pricing</h4>
-
-              {/* Instructions for finding base cost */}
-              <div className="mb-4 p-3 bg-white border border-blue-300 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <svg
-                    className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <div className="text-xs text-blue-900">
-                    <p className="font-semibold mb-1">📋 How to find production cost:</p>
-                    <ol className="list-decimal list-inside space-y-1 text-blue-800">
-                      <li>
-                        Log in to the seller's{' '}
-                        <a
-                          href="https://dashboard.gelato.com"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline hover:text-blue-600"
-                        >
-                          Gelato Dashboard
-                        </a>
-                      </li>
-                      <li>
-                        Go to <strong>Products</strong> → Select the product
-                      </li>
-                      <li>
-                        View the <strong>"Production Cost"</strong> or <strong>"Base Price"</strong>
-                      </li>
-                      <li>Enter that amount below</li>
-                    </ol>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Gelato Base Cost (Manual Input) */}
+          {/* POD Pricing Section - Show FIRST for Gelato POD products */}
+          {formData.fulfillmentType === 'GELATO_POD' && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
               <div>
-                <label htmlFor="baseCost" className="block text-sm font-medium text-gray-700 mb-2">
-                  Gelato Base Cost <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    id="baseCost"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.baseCost != null ? formData.baseCost : ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        baseCost: e.target.value ? parseFloat(e.target.value) : undefined,
-                      })
-                    }
-                    className="w-full pl-8 pr-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent bg-blue-50"
-                    placeholder="0.00"
-                    required={formData.fulfillmentType === 'GELATO_POD'}
-                  />
-                </div>
-                <p className="mt-1 text-xs text-blue-700 flex items-center gap-1">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  From seller's Gelato dashboard
+                <h4 className="text-sm font-semibold text-blue-900 mb-1">
+                  Print-on-Demand Pricing
+                </h4>
+                <p className="text-xs text-blue-700">
+                  Base cost is fetched automatically from Gelato when you select a product above.
+                  Adjust the markup to set your selling price.
                 </p>
               </div>
 
-              {/* Markup Percentage */}
-              <div>
-                <label
-                  htmlFor="markupPercentage"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Markup Percentage
-                </label>
-                <div className="relative">
-                  <input
-                    id="markupPercentage"
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={formData.markupPercentage || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        markupPercentage: parseFloat(e.target.value) || undefined,
-                      })
-                    }
-                    className="w-full pl-4 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                    placeholder="50"
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Gelato Base Cost (Manual Input) */}
+                <div>
+                  <label
+                    htmlFor="baseCost"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Gelato Base Cost <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
+                      $
+                    </span>
+                    <input
+                      id="baseCost"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.baseCost != null ? formData.baseCost : ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          baseCost: e.target.value ? parseFloat(e.target.value) : undefined,
+                        })
+                      }
+                      className="w-full pl-8 pr-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent bg-blue-50"
+                      placeholder="0.00"
+                      required={formData.fulfillmentType === 'GELATO_POD'}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-blue-700 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    From seller's Gelato dashboard
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">e.g., 50% = 1.5x base cost</p>
-              </div>
 
-              {/* Calculated Price (Auto-filled) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Calculated Price
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    type="text"
-                    value={formData.price != null ? Number(formData.price).toFixed(2) : '0.00'}
-                    readOnly
-                    className="w-full pl-8 pr-4 py-2 border border-green-300 rounded-lg bg-green-50 text-green-700 font-medium cursor-not-allowed"
-                  />
+                {/* Markup Percentage */}
+                <div>
+                  <label
+                    htmlFor="markupPercentage"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Markup Percentage
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="markupPercentage"
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={formData.markupPercentage || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          markupPercentage: parseFloat(e.target.value) || undefined,
+                        })
+                      }
+                      className="w-full pl-4 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                      placeholder="50"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">
+                      %
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">e.g., 50% = 1.5x base cost</p>
                 </div>
+
+                {/* Calculated Price (Auto-filled) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Calculated Price
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
+                      $
+                    </span>
+                    <input
+                      type="text"
+                      value={formData.price != null ? Number(formData.price).toFixed(2) : '0.00'}
+                      readOnly
+                      className="w-full pl-8 pr-4 py-2 border border-green-300 rounded-lg bg-green-50 text-green-700 font-medium cursor-not-allowed"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Auto-calculated from base cost + markup
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Regular Pricing - Show below POD section or at top if not POD */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div id="price">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Price{' '}
+                {formData.purchaseType === 'INSTANT' && <span className="text-red-500">*</span>}
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  required={formData.purchaseType === 'INSTANT'}
+                  min="0"
+                  step="0.01"
+                  value={formData.price === undefined ? '' : formData.price}
+                  onChange={(e) =>
+                    handleChange('price', e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
+                    errors.price ? 'border-red-500' : 'border-gray-300'
+                  } ${formData.fulfillmentType === 'GELATO_POD' ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                  placeholder={formData.purchaseType === 'INQUIRY' ? 'Optional' : '0.00'}
+                  readOnly={formData.fulfillmentType === 'GELATO_POD'}
+                  title={
+                    formData.fulfillmentType === 'GELATO_POD'
+                      ? 'Auto-calculated from POD pricing above'
+                      : ''
+                  }
+                />
+              </div>
+              {formData.purchaseType === 'INQUIRY' && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave empty if price varies or is negotiable
+                </p>
+              )}
+              {formData.fulfillmentType === 'GELATO_POD' && (
                 <p className="mt-1 text-xs text-gray-500">
                   Auto-calculated from base cost + markup
                 </p>
+              )}
+              <ErrorMessage field="price" />
+            </div>
+
+            <div id="compareAtPrice">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Compare At Price
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.compareAtPrice === undefined ? '' : formData.compareAtPrice}
+                  onChange={(e) =>
+                    handleChange(
+                      'compareAtPrice',
+                      e.target.value ? parseFloat(e.target.value) : undefined
+                    )
+                  }
+                  className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.compareAtPrice ? 'border-red-500' : 'border-gray-300'}`}
+                  disabled={formData.purchaseType === 'INQUIRY'}
+                  placeholder="0.00"
+                />
               </div>
+              <p className="text-xs text-gray-500 mt-1">Original price for sale items</p>
+              <ErrorMessage field="compareAtPrice" />
             </div>
           </div>
-        )}
 
-        {/* Regular Pricing - Show below POD section or at top if not POD */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div id="price">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Price {formData.purchaseType === 'INSTANT' && <span className="text-red-500">*</span>}
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-2 text-gray-500">$</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div id="stock">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Stock{' '}
+                {formData.purchaseType === 'INSTANT' && <span className="text-red-500">*</span>}
+              </label>
               <input
                 type="number"
                 required={formData.purchaseType === 'INSTANT'}
                 min="0"
-                step="0.01"
-                value={formData.price === undefined ? '' : formData.price}
+                value={formData.stock === undefined ? '' : formData.stock}
                 onChange={(e) =>
-                  handleChange('price', e.target.value ? parseFloat(e.target.value) : undefined)
+                  handleChange('stock', e.target.value ? parseInt(e.target.value) : undefined)
                 }
-                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
-                  errors.price ? 'border-red-500' : 'border-gray-300'
-                } ${formData.fulfillmentType === 'GELATO_POD' ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                placeholder={formData.purchaseType === 'INQUIRY' ? 'Optional' : '0.00'}
-                readOnly={formData.fulfillmentType === 'GELATO_POD'}
-                title={
-                  formData.fulfillmentType === 'GELATO_POD'
-                    ? 'Auto-calculated from POD pricing above'
-                    : ''
-                }
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.stock ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder={formData.purchaseType === 'INQUIRY' ? 'Optional' : '0'}
               />
-            </div>
-            {formData.purchaseType === 'INQUIRY' && (
-              <p className="text-xs text-gray-500 mt-1">
-                Leave empty if price varies or is negotiable
-              </p>
-            )}
-            {formData.fulfillmentType === 'GELATO_POD' && (
-              <p className="mt-1 text-xs text-gray-500">Auto-calculated from base cost + markup</p>
-            )}
-            <ErrorMessage field="price" />
-          </div>
-
-          <div id="compareAtPrice">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Compare At Price</label>
-            <div className="relative">
-              <span className="absolute left-3 top-2 text-gray-500">$</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.compareAtPrice === undefined ? '' : formData.compareAtPrice}
-                onChange={(e) =>
-                  handleChange(
-                    'compareAtPrice',
-                    e.target.value ? parseFloat(e.target.value) : undefined
-                  )
-                }
-                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.compareAtPrice ? 'border-red-500' : 'border-gray-300'}`}
-                disabled={formData.purchaseType === 'INQUIRY'}
-                placeholder="0.00"
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Original price for sale items</p>
-            <ErrorMessage field="compareAtPrice" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div id="stock">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Stock {formData.purchaseType === 'INSTANT' && <span className="text-red-500">*</span>}
-            </label>
-            <input
-              type="number"
-              required={formData.purchaseType === 'INSTANT'}
-              min="0"
-              value={formData.stock === undefined ? '' : formData.stock}
-              onChange={(e) =>
-                handleChange('stock', e.target.value ? parseInt(e.target.value) : undefined)
-              }
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${errors.stock ? 'border-red-500' : 'border-gray-300'}`}
-              placeholder={formData.purchaseType === 'INQUIRY' ? 'Optional' : '0'}
-            />
-            {formData.purchaseType === 'INQUIRY' && (
-              <p className="text-xs text-gray-500 mt-1">
-                Not applicable for inquiry-based products
-              </p>
-            )}
-            <ErrorMessage field="stock" />
-            {/* Stock Level Indicator - only show for existing products with stock data */}
-            {product &&
-              formData.stock !== undefined &&
-              formData.stock !== null &&
-              formData.stock !== '' &&
-              formData.purchaseType !== 'INQUIRY' && (
-                <div className="mt-3">
-                  <StockLevelIndicator stock={Number(formData.stock)} />
-                </div>
-              )}
-          </div>
-        </div>
-
-        {formData.purchaseType === 'INQUIRY' && (
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <svg
-                className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div>
-                <h4 className="text-sm font-semibold text-blue-900 mb-1">Inquiry Product</h4>
-                <p className="text-xs text-blue-800">
-                  This product will display "Contact for Price" instead of a price. Customers will
-                  submit an inquiry form to contact you about pricing and availability.
+              {formData.purchaseType === 'INQUIRY' && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Not applicable for inquiry-based products
                 </p>
-              </div>
+              )}
+              <ErrorMessage field="stock" />
+              {/* Stock Level Indicator - only show for existing products with stock data */}
+              {product &&
+                formData.stock !== undefined &&
+                formData.stock !== null &&
+                formData.stock !== '' &&
+                formData.purchaseType !== 'INQUIRY' && (
+                  <div className="mt-3">
+                    <StockLevelIndicator stock={Number(formData.stock)} />
+                  </div>
+                )}
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Organization */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Organization</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select
-              value={formData.category}
-              onChange={(e) => handleChange('category', e.target.value)}
-              disabled={loadingCategories}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent disabled:bg-gray-100"
-            >
-              <option value="">{loadingCategories ? 'Loading...' : 'Select category'}</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.slug}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-            >
-              <option value="DRAFT">Draft</option>
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Tags */}
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
-          <div className="flex gap-2 mb-2">
-            <input
-              type="text"
-              value={newTag}
-              onChange={(e) => setNewTag(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-              placeholder="Add tag"
-            />
-            <button
-              type="button"
-              onClick={handleAddTag}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              Add
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {formData.tags?.map((tag: string) => (
-              <span
-                key={tag}
-                className="px-3 py-1 bg-[#CBB57B] text-black rounded-full text-sm flex items-center gap-2"
-              >
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveTag(tag)}
-                  className="hover:text-red-600"
+          {formData.purchaseType === 'INQUIRY' && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <svg
+                  className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <div>
+                  <h4 className="text-sm font-semibold text-blue-900 mb-1">Inquiry Product</h4>
+                  <p className="text-xs text-blue-800">
+                    This product will display "Contact for Price" instead of a price. Customers will
+                    submit an inquiry form to contact you about pricing and availability.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Featured toggle */}
-        <div className="mt-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.featured}
-              onChange={(e) => handleChange('featured', e.target.checked)}
-              className="w-4 h-4 text-[#CBB57B] border-gray-300 rounded focus:ring-[#CBB57B]"
-            />
-            <span className="text-sm font-medium text-gray-700">Feature this product</span>
-          </label>
-          <p className="text-xs text-gray-500 mt-1 ml-6">
-            Featured products appear prominently on the homepage
-          </p>
-        </div>
-      </div>
-
-      {/* Images */}
-      <div className="bg-white rounded-lg shadow p-6" id="images">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Product Images {!product && <span className="text-red-500">*</span>}
-        </h2>
-
-        <EnhancedImageUpload
-          onImagesChange={handleImagesChange}
-          initialImages={formData.images || []}
-          maxImages={10}
-          folder="products"
-        />
-
-        {errors.images && <p className="mt-2 text-sm text-red-600">{errors.images}</p>}
-      </div>
-
-      {/* Product Attributes */}
-      {formData.productType === 'PHYSICAL' && (
+        {/* Organization */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Product Attributes</h2>
-
-          <div className="space-y-6">
-            {/* Available Colors */}
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Organization</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Available Colors
-              </label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  id="colorInput"
-                  placeholder="Enter color name"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const input = e.currentTarget;
-                      handleArrayFieldAdd('colors', input.value);
-                      input.value = '';
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById('colorInput') as HTMLInputElement;
-                    if (input) {
-                      handleArrayFieldAdd('colors', input.value);
-                      input.value = '';
-                    }
-                  }}
-                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
-                >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.colors.map((color: string, index: number) => (
-                  <span
-                    key={`color-${index}-${color}`}
-                    className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
-                  >
-                    {color}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayFieldRemove('colors', color)}
-                      className="hover:text-red-600 font-bold"
-                    >
-                      ×
-                    </button>
-                  </span>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <select
+                value={formData.category}
+                onChange={(e) => handleChange('category', e.target.value)}
+                disabled={loadingCategories}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent disabled:bg-gray-100"
+              >
+                <option value="">{loadingCategories ? 'Loading...' : 'Select category'}</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.slug}>
+                    {cat.name}
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
 
-            {/* Available Sizes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Available Sizes
-              </label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  id="sizeInput"
-                  placeholder="Enter size (e.g., S, M, L)"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const input = e.currentTarget;
-                      handleArrayFieldAdd('sizes', input.value);
-                      input.value = '';
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById('sizeInput') as HTMLInputElement;
-                    if (input) {
-                      handleArrayFieldAdd('sizes', input.value);
-                      input.value = '';
-                    }
-                  }}
-                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
-                >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.sizes.map((size: string, index: number) => (
-                  <span
-                    key={`size-${index}-${size}`}
-                    className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
-                  >
-                    {size}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayFieldRemove('sizes', size)}
-                      className="hover:text-red-600 font-bold"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => handleChange('status', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+              >
+                <option value="DRAFT">Draft</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
             </div>
+          </div>
 
-            {/* Materials */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Materials</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  id="materialInput"
-                  placeholder="Enter material"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const input = e.currentTarget;
-                      handleArrayFieldAdd('materials', input.value);
-                      input.value = '';
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById('materialInput') as HTMLInputElement;
-                    if (input) {
-                      handleArrayFieldAdd('materials', input.value);
-                      input.value = '';
-                    }
-                  }}
-                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
-                >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.materials.map((material: string, index: number) => (
-                  <span
-                    key={`material-${index}-${material}`}
-                    className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
-                  >
-                    {material}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayFieldRemove('materials', material)}
-                      className="hover:text-red-600 font-bold"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
+          {/* Tags */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                placeholder="Add tag"
+              />
+              <button
+                type="button"
+                onClick={handleAddTag}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Add
+              </button>
             </div>
-
-            {/* Product Badges */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Product Badges</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  id="badgeInput"
-                  placeholder="Enter badge (e.g., New, Sale)"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const input = e.currentTarget;
-                      handleArrayFieldAdd('badges', input.value);
-                      input.value = '';
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById('badgeInput') as HTMLInputElement;
-                    if (input) {
-                      handleArrayFieldAdd('badges', input.value);
-                      input.value = '';
-                    }
-                  }}
-                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+            <div className="flex flex-wrap gap-2">
+              {formData.tags?.map((tag: string) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1 bg-[#CBB57B] text-black rounded-full text-sm flex items-center gap-2"
                 >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.badges.map((badge: any, index: number) => {
-                  const badgeValue =
-                    typeof badge === 'string' ? badge : badge?.name || String(badge);
-                  return (
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    className="hover:text-red-600"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Featured toggle */}
+          <div className="mt-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.featured}
+                onChange={(e) => handleChange('featured', e.target.checked)}
+                className="w-4 h-4 text-[#CBB57B] border-gray-300 rounded focus:ring-[#CBB57B]"
+              />
+              <span className="text-sm font-medium text-gray-700">Feature this product</span>
+            </label>
+            <p className="text-xs text-gray-500 mt-1 ml-6">
+              Featured products appear prominently on the homepage
+            </p>
+          </div>
+        </div>
+
+        {/* Images */}
+        <div className="bg-white rounded-lg shadow p-6" id="images">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Product Images {!product && <span className="text-red-500">*</span>}
+          </h2>
+
+          <EnhancedImageUpload
+            onImagesChange={handleImagesChange}
+            initialImages={formData.images || []}
+            maxImages={10}
+            folder="products"
+          />
+
+          {errors.images && <p className="mt-2 text-sm text-red-600">{errors.images}</p>}
+        </div>
+
+        {/* Product Attributes */}
+        {formData.productType === 'PHYSICAL' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">Product Attributes</h2>
+
+            <div className="space-y-6">
+              {/* Available Colors */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Available Colors
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    id="colorInput"
+                    placeholder="Enter color name"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const input = e.currentTarget;
+                        handleArrayFieldAdd('colors', input.value);
+                        input.value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('colorInput') as HTMLInputElement;
+                      if (input) {
+                        handleArrayFieldAdd('colors', input.value);
+                        input.value = '';
+                      }
+                    }}
+                    className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.colors.map((color: string, index: number) => (
                     <span
-                      key={`badge-${index}-${badgeValue}`}
-                      className="px-3 py-1 bg-[#CBB57B] text-black rounded-full text-sm flex items-center gap-2"
+                      key={`color-${index}-${color}`}
+                      className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
                     >
-                      {badgeValue}
+                      {color}
                       <button
                         type="button"
-                        onClick={() => handleArrayFieldRemove('badges', badge)}
+                        onClick={() => handleArrayFieldRemove('colors', color)}
                         className="hover:text-red-600 font-bold"
                       >
                         ×
                       </button>
                     </span>
-                  );
-                })}
+                  ))}
+                </div>
+              </div>
+
+              {/* Available Sizes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Available Sizes
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    id="sizeInput"
+                    placeholder="Enter size (e.g., S, M, L)"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const input = e.currentTarget;
+                        handleArrayFieldAdd('sizes', input.value);
+                        input.value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('sizeInput') as HTMLInputElement;
+                      if (input) {
+                        handleArrayFieldAdd('sizes', input.value);
+                        input.value = '';
+                      }
+                    }}
+                    className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.sizes.map((size: string, index: number) => (
+                    <span
+                      key={`size-${index}-${size}`}
+                      className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
+                    >
+                      {size}
+                      <button
+                        type="button"
+                        onClick={() => handleArrayFieldRemove('sizes', size)}
+                        className="hover:text-red-600 font-bold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Materials */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Materials</label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    id="materialInput"
+                    placeholder="Enter material"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const input = e.currentTarget;
+                        handleArrayFieldAdd('materials', input.value);
+                        input.value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('materialInput') as HTMLInputElement;
+                      if (input) {
+                        handleArrayFieldAdd('materials', input.value);
+                        input.value = '';
+                      }
+                    }}
+                    className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.materials.map((material: string, index: number) => (
+                    <span
+                      key={`material-${index}-${material}`}
+                      className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm flex items-center gap-2"
+                    >
+                      {material}
+                      <button
+                        type="button"
+                        onClick={() => handleArrayFieldRemove('materials', material)}
+                        className="hover:text-red-600 font-bold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Product Badges */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Product Badges
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    id="badgeInput"
+                    placeholder="Enter badge (e.g., New, Sale)"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const input = e.currentTarget;
+                        handleArrayFieldAdd('badges', input.value);
+                        input.value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById('badgeInput') as HTMLInputElement;
+                      if (input) {
+                        handleArrayFieldAdd('badges', input.value);
+                        input.value = '';
+                      }
+                    }}
+                    className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.badges.map((badge: any, index: number) => {
+                    const badgeValue =
+                      typeof badge === 'string' ? badge : badge?.name || String(badge);
+                    return (
+                      <span
+                        key={`badge-${index}-${badgeValue}`}
+                        className="px-3 py-1 bg-[#CBB57B] text-black rounded-full text-sm flex items-center gap-2"
+                      >
+                        {badgeValue}
+                        <button
+                          type="button"
+                          onClick={() => handleArrayFieldRemove('badges', badge)}
+                          className="hover:text-red-600 font-bold"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Product Variants */}
+        <VariantManager productId={product?.id} productPrice={formData.price} />
+
+        {/* Actions */}
+        <div className="flex items-center justify-between gap-4 bg-white rounded-lg shadow p-6">
+          <div className="text-sm text-gray-600">
+            {Object.keys(errors).length > 0 && (
+              <p className="text-red-600">
+                Please fix {Object.keys(errors).length} error
+                {Object.keys(errors).length > 1 ? 's' : ''} above
+              </p>
+            )}
+          </div>
+          <div className="flex gap-4">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-3 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Saving...' : product ? 'Update Product' : 'Create Product'}
+            </button>
+          </div>
         </div>
+      </form>
+
+      {/* Gelato Preview Modal — shows auto-fetched baseCost + calculated price before applying */}
+      {pendingGelatoData && (
+        <GelatoPreviewModal
+          isOpen={isPreviewModalOpen}
+          onClose={() => {
+            setIsPreviewModalOpen(false);
+            setPendingGelatoData(null);
+          }}
+          onApply={() => {
+            applyGelatoChanges();
+            setIsPreviewModalOpen(false);
+          }}
+          currentValues={{
+            name: formData.name,
+            slug: formData.slug,
+            description: formData.description,
+            price: formData.price,
+          }}
+          newValues={pendingGelatoData.newValues}
+          productTitle={pendingGelatoData.productTitle}
+        />
       )}
-
-      {/* Product Variants */}
-      <VariantManager productId={product?.id} productPrice={formData.price} />
-
-      {/* Actions */}
-      <div className="flex items-center justify-between gap-4 bg-white rounded-lg shadow p-6">
-        <div className="text-sm text-gray-600">
-          {Object.keys(errors).length > 0 && (
-            <p className="text-red-600">
-              Please fix {Object.keys(errors).length} error
-              {Object.keys(errors).length > 1 ? 's' : ''} above
-            </p>
-          )}
-        </div>
-        <div className="flex gap-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-3 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Saving...' : product ? 'Update Product' : 'Create Product'}
-          </button>
-        </div>
-      </div>
-    </form>
+    </>
   );
 }
