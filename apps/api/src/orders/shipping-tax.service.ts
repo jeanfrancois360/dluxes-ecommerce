@@ -242,15 +242,14 @@ export class ShippingTaxService {
     try {
       const gelatoResult = await this.calculateGelatoShipping(address, items);
 
+      // Separate POD and non-POD items (needed for both success and null-result paths)
+      podItems = items.filter(
+        (item) => item.fulfillmentType === 'GELATO_POD' && item.gelatoProductUid
+      );
+      nonPodItems = items.filter((item) => item.fulfillmentType !== 'GELATO_POD');
+      const isPurePodCart = podItems.length > 0 && nonPodItems.length === 0;
+
       if (gelatoResult && gelatoResult.amount > 0) {
-        // Separate POD and non-POD items
-        podItems = items.filter(
-          (item) => item.fulfillmentType === 'GELATO_POD' && item.gelatoProductUid
-        );
-        nonPodItems = items.filter((item) => item.fulfillmentType !== 'GELATO_POD');
-
-        const isPurePodCart = podItems.length === items.length;
-
         if (isPurePodCart) {
           // Pure POD cart: Return only Gelato shipping options
           this.logger.log(
@@ -276,10 +275,68 @@ export class ShippingTaxService {
               `calculating fallback shipping for ${nonPodItems.length} non-POD items...`
           );
         }
+      } else if (gelatoResult === null && isPurePodCart) {
+        // Pure POD cart but Gelato API unavailable (seller unconfigured or API error):
+        // Return a Gelato-branded fallback estimate instead of EU/global carrier rates.
+        this.logger.warn(
+          '[Gelato Shipping] Pure POD cart — no Gelato quote available, returning POD fallback estimate'
+        );
+        return [
+          {
+            id: 'gelato-fallback-standard',
+            name: 'Gelato POD Shipping',
+            description: '5-7 business days (Print-on-Demand) — estimated rate',
+            price: 9.99,
+            estimatedDays: 7,
+            carrier: 'Gelato',
+            source: 'gelato',
+          },
+          {
+            id: 'gelato-fallback-express',
+            name: 'Gelato POD Express',
+            description: '3-5 business days (Print-on-Demand) — estimated rate',
+            price: 19.99,
+            estimatedDays: 5,
+            carrier: 'Gelato',
+            source: 'gelato',
+          },
+        ];
       }
     } catch (error) {
       this.logger.warn(`[Gelato Shipping] Failed to get Gelato quote: ${error.message}`);
-      // Continue to next tier with all items
+
+      // If ALL items are POD items, returning EU/global carrier rates would be misleading.
+      // Use a hardcoded Gelato POD fallback estimate instead of cascading to SendCloud/EasyPost.
+      const allArePod = items.every(
+        (item) => item.fulfillmentType === 'GELATO_POD' && item.gelatoProductUid
+      );
+      if (allArePod) {
+        this.logger.warn(
+          '[Gelato Shipping] Pure POD cart — Gelato API unavailable, returning POD fallback estimate'
+        );
+        return [
+          {
+            id: 'gelato-fallback-standard',
+            name: 'Gelato POD Shipping',
+            description: '5-7 business days (Print-on-Demand) — estimated rate',
+            price: 9.99,
+            estimatedDays: 7,
+            carrier: 'Gelato',
+            source: 'gelato',
+          },
+          {
+            id: 'gelato-fallback-express',
+            name: 'Gelato POD Express',
+            description: '3-5 business days (Print-on-Demand) — estimated rate',
+            price: 19.99,
+            estimatedDays: 5,
+            carrier: 'Gelato',
+            source: 'gelato',
+          },
+        ];
+      }
+
+      // Mixed cart or non-POD cart: continue cascade with all items
       nonPodItems = items;
     }
 
