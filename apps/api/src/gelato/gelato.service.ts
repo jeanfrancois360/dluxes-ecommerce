@@ -42,6 +42,7 @@ export class GelatoService implements OnModuleInit {
   private catalogBaseUrl: string; // For product catalog API (v3)
   private ecommerceBaseUrl: string; // For ecommerce API (v1) - store products
   private isPlatformConfigured = false;
+  isTestMode = false; // true → orderType: "draft" (no company info required)
 
   // Credentials cache (5-minute TTL)
   private credentialsCache = new Map<string, GelatoCredentials>();
@@ -78,6 +79,12 @@ export class GelatoService implements OnModuleInit {
     this.ecommerceBaseUrl = 'https://ecommerce.gelatoapis.com/v1'; // E-commerce API (store products)
     this.platformStoreId = this.configService.get('GELATO_STORE_ID');
     this.platformWebhookSecret = this.configService.get('GELATO_WEBHOOK_SECRET');
+    this.isTestMode = this.configService.get('GELATO_TEST_MODE', 'false') === 'true';
+    if (this.isTestMode) {
+      this.logger.warn(
+        '⚠️  Gelato running in TEST MODE — orders submitted as drafts (not fulfilled)'
+      );
+    }
 
     // DEBUG: Log loaded configuration
     this.logger.log(`🔧 Gelato Config Loaded:`);
@@ -741,11 +748,19 @@ export class GelatoService implements OnModuleInit {
 
     const credentials = await this.getSellerCredentials(storeId);
 
+    const payload = {
+      storeId: credentials.storeId,
+      ...orderData,
+      // In test mode, submit as draft so orders are not fulfilled and
+      // company information in Gelato portal is not required
+      orderType: this.isTestMode ? 'draft' : (orderData.orderType ?? 'order'),
+    };
+
     return this.request<GelatoOrderResponse>(
       '/orders',
       {
         method: 'POST',
-        body: JSON.stringify({ storeId: credentials.storeId, ...orderData }),
+        body: JSON.stringify(payload),
       },
       credentials
     );
