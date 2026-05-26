@@ -383,6 +383,23 @@ export class GelatoOrdersService {
       try {
         const storeId = item.product.storeId;
 
+        // Idempotency: skip items already submitted to Gelato
+        const existingPodOrder = await this.prisma.gelatoPodOrder.findFirst({
+          where: { orderItemId: item.id },
+        });
+        if (existingPodOrder) {
+          this.logger.log(
+            `⏭️ Item ${item.id} (${item.product.name}) already submitted to Gelato (podOrderId: ${existingPodOrder.id}), skipping`
+          );
+          results.push({
+            itemId: item.id,
+            productName: item.product.name,
+            status: 'submitted',
+            podOrderId: existingPodOrder.id,
+          });
+          continue;
+        }
+
         // Check if seller has Gelato configured (should have been validated earlier, but double-check)
         const sellerGelatoSettings = await this.prisma.sellerGelatoSettings.findUnique({
           where: { storeId },
@@ -752,6 +769,20 @@ export class GelatoOrdersService {
   private async updateMainOrderShipped(podOrderId: string, shipment: any) {
     const podOrder = await this.prisma.gelatoPodOrder.findUnique({ where: { id: podOrderId } });
     if (!podOrder) return;
+
+    // Only mark the main order SHIPPED once all POD sub-orders have shipped
+    const allPodOrders = await this.prisma.gelatoPodOrder.findMany({
+      where: { orderId: podOrder.orderId },
+    });
+    const allShipped = allPodOrders.every(
+      (o) => o.status === GelatoPodStatus.SHIPPED || o.status === GelatoPodStatus.DELIVERED
+    );
+    if (!allShipped) {
+      this.logger.log(
+        `POD order ${podOrderId} shipped but ${allPodOrders.filter((o) => o.status !== GelatoPodStatus.SHIPPED && o.status !== GelatoPodStatus.DELIVERED).length} sub-order(s) not yet shipped — deferring main order status update`
+      );
+      return;
+    }
 
     await this.prisma.order.update({
       where: { id: podOrder.orderId },

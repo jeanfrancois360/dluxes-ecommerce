@@ -1485,6 +1485,28 @@ export class OrdersService {
     // Validate status transition
     this.validateStatusTransition(order.status, status);
 
+    // For PROCESSING status: validate Gelato POD readiness BEFORE committing the DB change.
+    // This ensures the order never gets stuck in PROCESSING with no fulfillment.
+    if (status === OrderStatus.PROCESSING) {
+      const validation = await this.gelatoOrdersService.validatePodReadiness(id);
+
+      if (!validation.ready) {
+        const unreadyProducts = validation.unreadyItems
+          .map((item) => `"${item.productName}" (${item.reason})`)
+          .join(', ');
+
+        this.logger.error(
+          `❌ Cannot move order ${id} to PROCESSING: ${validation.unreadyItems.length}/${validation.totalPodItems} POD items not ready: ${unreadyProducts}`
+        );
+
+        throw new BadRequestException(
+          `Cannot process order: ${validation.unreadyItems.length} POD item(s) cannot be fulfilled. ` +
+            `The following items require seller Gelato configuration: ${unreadyProducts}. ` +
+            `Please contact the seller(s) to enable Print-on-Demand fulfillment.`
+        );
+      }
+    }
+
     // Update order status
     const updatedOrder = await this.prisma.order.update({
       where: { id },
@@ -1511,34 +1533,11 @@ export class OrdersService {
       data: timelineData,
     });
 
-    // Auto-submit Gelato POD items when order moves to PROCESSING
-    // This triggers after payment authorization (uncaptured) is confirmed
-    // Payment will be captured later after delivery confirmation
+    // Auto-submit Gelato POD items after the status is committed to DB
     if (status === OrderStatus.PROCESSING) {
-      // CRITICAL FIX: Validate POD readiness BEFORE allowing status change
       try {
-        const validation = await this.gelatoOrdersService.validatePodReadiness(id);
-
-        if (!validation.ready) {
-          const unreadyProducts = validation.unreadyItems
-            .map((item) => `"${item.productName}" (${item.reason})`)
-            .join(', ');
-
-          this.logger.error(
-            `❌ Cannot move order ${id} to PROCESSING: ${validation.unreadyItems.length}/${validation.totalPodItems} POD items not ready for fulfillment: ${unreadyProducts}`
-          );
-
-          throw new BadRequestException(
-            `Cannot process order: ${validation.unreadyItems.length} POD item(s) cannot be fulfilled. ` +
-              `The following items require seller Gelato configuration: ${unreadyProducts}. ` +
-              `Please contact the seller(s) to enable Print-on-Demand fulfillment.`
-          );
-        }
-
-        // All POD items ready - proceed with submission (ALL-OR-NOTHING)
         const result = await this.gelatoOrdersService.submitAllPodItems(id);
 
-        // ✅ Check if ALL items submitted successfully
         if (!result.success) {
           const failedItems = result.results.filter((r) => r.status === 'failed');
           const errorList = failedItems
@@ -1549,6 +1548,9 @@ export class OrdersService {
             `❌ Gelato submission failed for order ${id}: ${result.failed} of ${result.results.length} items failed`
           );
 
+          // Roll back the status change so the order does not get stuck in PROCESSING
+          await this.prisma.order.update({ where: { id }, data: { status: order.status } });
+
           throw new BadRequestException(
             `Cannot process order: ${result.failed} POD item(s) failed to submit to Gelato.\n\n` +
               `Failed items:\n${errorList}\n\n` +
@@ -1556,15 +1558,23 @@ export class OrdersService {
           );
         }
 
-        this.logger.log(
-          `✅ All Gelato POD items submitted successfully for order ${id}: ${result.submitted} item(s)`
-        );
+        if (result.submitted > 0) {
+          this.logger.log(
+            `✅ All Gelato POD items submitted successfully for order ${id}: ${result.submitted} item(s)`
+          );
+        }
       } catch (gelatoError) {
-        this.logger.error(`❌ Gelato POD submission failed for order ${id}:`, gelatoError.message);
-        // Re-throw to prevent status change if POD submission fails
-        throw new BadRequestException(
-          `Cannot process order: POD fulfillment validation or submission failed. ${gelatoError.message}`
-        );
+        if (!(gelatoError instanceof BadRequestException)) {
+          this.logger.error(
+            `❌ Gelato POD submission failed for order ${id}:`,
+            gelatoError.message
+          );
+          await this.prisma.order.update({ where: { id }, data: { status: order.status } });
+          throw new BadRequestException(
+            `Cannot process order: POD fulfillment submission failed. ${gelatoError.message}`
+          );
+        }
+        throw gelatoError;
       }
     }
 
