@@ -521,13 +521,17 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         colors: formData.colors || [],
         sizes: formData.sizes || [],
         materials: formData.materials || [],
-        // Gelato POD fields (markupPercentage is only for local calculation, not stored)
+        // Gelato POD fields
         fulfillmentType: formData.fulfillmentType || 'SELF_FULFILLED',
         gelatoProductUid: formData.gelatoProductUid || undefined,
         designFileUrl: formData.designFileUrl || undefined,
         baseCost:
           formData.baseCost !== undefined && formData.baseCost !== ''
             ? Number(formData.baseCost)
+            : undefined,
+        markupPercentage:
+          formData.markupPercentage !== undefined && formData.markupPercentage !== ''
+            ? Number(formData.markupPercentage)
             : undefined,
       };
 
@@ -737,7 +741,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   };
 
   const handleChange = (field: string, value: any) => {
-    setFormData((prev: any) => ({ ...prev, [field]: value }));
+    // PodConfigurationSection fires 'gelatoMarkupPercent' but state key is 'markupPercentage'
+    const normalizedField = field === 'gelatoMarkupPercent' ? 'markupPercentage' : field;
+    setFormData((prev: any) => ({ ...prev, [normalizedField]: value }));
     // Clear error for this field
     if (errors[field]) {
       setErrors((prev) => {

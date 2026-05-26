@@ -567,4 +567,10 @@ export class CreateProductDto {
   @Min(0)
   @Type(() => Number)
   baseCost?: number; // Base production cost from Gelato
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  markupPercentage?: number; // Seller's markup % over baseCost
 }
