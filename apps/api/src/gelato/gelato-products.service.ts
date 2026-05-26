@@ -435,7 +435,8 @@ export class GelatoProductsService {
   async calculateProductPrice(
     productUid: string,
     params: { quantity: number; country: string },
-    userId?: string
+    userId?: string,
+    storeId?: string
   ) {
     this.logger.log(
       `Fetching price for Gelato product ${productUid} (quantity: ${params.quantity}, country: ${params.country})`
@@ -443,12 +444,17 @@ export class GelatoProductsService {
 
     // First, try to get the product details to check if it has pricing information
     try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        include: { store: true },
-      });
+      // Admin can pass storeId directly; sellers look it up via userId
+      let resolvedStoreId = storeId;
+      if (!resolvedStoreId && userId) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          include: { store: true },
+        });
+        resolvedStoreId = user?.store?.id;
+      }
 
-      if (user?.store?.id) {
+      if (resolvedStoreId) {
         const productDetails = await this.gelatoService.getProduct(productUid, userId);
         this.logger.log(
           `Product details fetched. Has ${productDetails.variants?.length || 0} variants`
@@ -474,14 +480,14 @@ export class GelatoProductsService {
     }
 
     try {
-      // Get user's store ID if seller
-      let storeId: string | undefined;
-      if (userId) {
+      // Resolve storeId: admin passes it directly; seller looks it up via userId
+      let resolvedStoreIdForQuote = storeId;
+      if (!resolvedStoreIdForQuote && userId) {
         const user = await this.prisma.user.findUnique({
           where: { id: userId },
           include: { store: true },
         });
-        storeId = user?.store?.id;
+        resolvedStoreIdForQuote = user?.store?.id;
       }
 
       const pricing = await this.gelatoService.calculatePrice(
@@ -489,7 +495,7 @@ export class GelatoProductsService {
           items: [{ productUid, quantity: params.quantity }],
           country: params.country,
         },
-        storeId
+        resolvedStoreIdForQuote
       );
 
       if (pricing.items && pricing.items.length > 0) {

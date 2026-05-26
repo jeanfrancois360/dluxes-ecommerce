@@ -95,11 +95,12 @@ export const gelatoApi = {
 
   async getProductPrice(
     productUid: string,
-    params?: { quantity?: number; country?: string }
+    params?: { quantity?: number; country?: string; storeId?: string }
   ): Promise<{ baseCost: number; currency: string; productUid: string }> {
     const query = new URLSearchParams();
     if (params?.quantity) query.set('quantity', String(params.quantity));
     if (params?.country) query.set('country', params.country);
+    if (params?.storeId) query.set('storeId', params.storeId);
     const response = await api.get(`/gelato/catalog/products/${productUid}/price?${query}`);
     return response.data ?? response;
   },
