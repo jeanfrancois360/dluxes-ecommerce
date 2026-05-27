@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -10,7 +11,7 @@ import {
   TrendingUp,
   DollarSign,
   Star,
-  Calendar
+  Calendar,
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
@@ -61,7 +62,7 @@ export default function DeliveryCompanyDashboard() {
         throw new Error('Failed to fetch statistics');
       }
 
-      const data = await response.json();
+      const data = await safeJson(response);
       setStats(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load statistics');
@@ -157,9 +158,7 @@ export default function DeliveryCompanyDashboard() {
               <h1 className="text-3xl font-bold" style={{ fontFamily: 'Poppins' }}>
                 Delivery Company Dashboard
               </h1>
-              <p className="text-white/60 mt-1 font-light">
-                Welcome, {stats.provider.name}
-              </p>
+              <p className="text-white/60 mt-1 font-light">Welcome, {stats.provider.name}</p>
             </div>
             {stats.provider.logo && (
               <img
@@ -219,9 +218,7 @@ export default function DeliveryCompanyDashboard() {
                   <p className="text-2xl font-bold mt-1">
                     {stat.value}
                     {stat.suffix && (
-                      <span className="text-sm text-white/60 font-normal ml-1">
-                        {stat.suffix}
-                      </span>
+                      <span className="text-sm text-white/60 font-normal ml-1">{stat.suffix}</span>
                     )}
                   </p>
                 </div>
@@ -255,9 +252,7 @@ export default function DeliveryCompanyDashboard() {
               <h3 className="font-medium group-hover:text-orange-500 transition">
                 Track In Transit
               </h3>
-              <p className="text-sm text-white/60 mt-1">
-                {stats.kpis.inTransit} active deliveries
-              </p>
+              <p className="text-sm text-white/60 mt-1">{stats.kpis.inTransit} active deliveries</p>
             </button>
 
             <button
@@ -265,12 +260,8 @@ export default function DeliveryCompanyDashboard() {
               className="bg-blue-500/10 border border-blue-500/20 hover:border-blue-500/40 rounded-lg p-4 text-left transition group"
             >
               <Package className="w-6 h-6 text-blue-500 mb-2" />
-              <h3 className="font-medium group-hover:text-blue-500 transition">
-                Manage Drivers
-              </h3>
-              <p className="text-sm text-white/60 mt-1">
-                Assign deliveries to team
-              </p>
+              <h3 className="font-medium group-hover:text-blue-500 transition">Manage Drivers</h3>
+              <p className="text-sm text-white/60 mt-1">Assign deliveries to team</p>
             </button>
           </div>
         </div>

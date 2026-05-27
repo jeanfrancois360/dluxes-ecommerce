@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -336,7 +337,7 @@ export default function BecomeSellerPage() {
         body: fd,
       });
 
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.data?.url || data.url) {
         set('applicationDocumentUrl', data.data?.url || data.url);
         setDocFileName(file.name);
@@ -380,7 +381,7 @@ export default function BecomeSellerPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await safeJson(res);
       if (data.success) {
         toast.success(
           isUpdateMode

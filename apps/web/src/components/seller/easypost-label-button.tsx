@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useState } from 'react';
 import {
@@ -100,11 +101,11 @@ export function EasyPostLabelButton({
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await safeJson(response);
         throw new Error(error.message || 'Failed to fetch rates');
       }
 
-      const data = await response.json();
+      const data = await safeJson(response);
       setRates(data.rates || []);
       setShipmentId(data.shipmentId);
       setIsOpen(true);
@@ -144,11 +145,11 @@ export function EasyPostLabelButton({
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await safeJson(response);
         throw new Error(error.message || 'Failed to purchase label');
       }
 
-      const data = await response.json();
+      const data = await safeJson(response);
       setPurchasedLabel(data);
       toast.success('Shipping label purchased successfully!');
     } catch (error: any) {

@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
@@ -29,7 +30,7 @@ const fetcher = async (url: string) => {
     },
   });
   if (!res.ok) throw new Error('Failed to fetch');
-  const data = await res.json();
+  const data = await safeJson(res);
   return data.data || data;
 };
 

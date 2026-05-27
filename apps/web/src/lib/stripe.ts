@@ -1,4 +1,5 @@
 import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { safeJson } from '@/lib/safe-fetch';
 
 let stripePromise: Promise<Stripe | null> | null = null;
 let publishableKeyCache: string | null = null;
@@ -19,7 +20,7 @@ async function fetchPublishableKey(): Promise<string> {
     const response = await fetch(`${apiUrl}/settings/stripe/publishable-key`);
 
     if (response.ok) {
-      const result = await response.json();
+      const result = await safeJson(response);
       if (result.success && result.data?.publishableKey) {
         publishableKeyCache = result.data.publishableKey;
         console.log('✅ Loaded Stripe publishable key from database settings');
@@ -28,7 +29,9 @@ async function fetchPublishableKey(): Promise<string> {
     }
 
     // Log API error for debugging
-    console.warn('⚠️ Failed to fetch Stripe key from database, trying environment variable fallback');
+    console.warn(
+      '⚠️ Failed to fetch Stripe key from database, trying environment variable fallback'
+    );
   } catch (error) {
     console.warn('⚠️ Error fetching Stripe key from API:', error);
   }

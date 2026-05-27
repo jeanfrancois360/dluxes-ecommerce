@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 /**
  * Seller Security Settings Page
@@ -119,7 +120,7 @@ export default function SellerSecurityPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch sessions');
       }
-      return response.json();
+      return safeJson(response);
     },
     { revalidateOnFocus: false }
   );
@@ -134,7 +135,7 @@ export default function SellerSecurityPage() {
         headers: { Authorization: `Bearer ${TokenManager.getAccessToken()}` },
       });
       if (!response.ok) return { enabled: false };
-      return response.json();
+      return safeJson(response);
     },
     {
       revalidateOnFocus: false,
@@ -275,7 +276,7 @@ export default function SellerSecurityPage() {
         body: JSON.stringify({ password: deletePassword }),
       });
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (data.success) {
         // Clear local storage and redirect
@@ -306,7 +307,7 @@ export default function SellerSecurityPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (response.ok) {
         toast.success(t('deviceLoggedOut'));
@@ -337,7 +338,7 @@ export default function SellerSecurityPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (response.ok) {
         toast.success(t('allOtherLoggedOut'));
@@ -360,7 +361,7 @@ export default function SellerSecurityPage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${TokenManager.getAccessToken()}` },
       });
-      const data = await response.json();
+      const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Failed to start 2FA setup');
       setTwoFaSetupData({ secret: data.secret, qrCode: data.qrCode });
       setTwoFaStep('setup');
@@ -387,7 +388,7 @@ export default function SellerSecurityPage() {
         },
         body: JSON.stringify({ code: twoFaCode }),
       });
-      const data = await response.json();
+      const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Verification failed');
       setTwoFaBackupCodes(data.backupCodes || []);
       setTwoFaStep('done');
@@ -424,7 +425,7 @@ export default function SellerSecurityPage() {
         },
         body: JSON.stringify({ code: disable2FACode }),
       });
-      const data = await response.json();
+      const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Failed to disable 2FA');
       toast.success('Two-factor authentication disabled.');
       setShowDisable2FA(false);
@@ -445,7 +446,7 @@ export default function SellerSecurityPage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${TokenManager.getAccessToken()}` },
       });
-      const data = await response.json();
+      const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Failed to send verification code');
       setEmailOtpMaskedEmail(data.maskedEmail || '');
       setEmailOtpStep('awaiting-code');
@@ -472,7 +473,7 @@ export default function SellerSecurityPage() {
         },
         body: JSON.stringify({ code: emailOtpCode }),
       });
-      const data = await response.json();
+      const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Verification failed');
       toast.success('Email OTP two-factor authentication enabled.');
       setEmailOtpEnabled(true);
@@ -501,7 +502,7 @@ export default function SellerSecurityPage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${TokenManager.getAccessToken()}` },
       });
-      const data = await response.json();
+      const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Failed to send verification code');
       setEmailOtpMaskedEmail(data.maskedEmail || '');
       setEmailOtpStep('awaiting-disable-code');
@@ -528,7 +529,7 @@ export default function SellerSecurityPage() {
         },
         body: JSON.stringify({ code: emailOtpCode }),
       });
-      const data = await response.json();
+      const data = await safeJson(response);
       if (!response.ok) throw new Error(data.message || 'Failed to disable email OTP 2FA');
       toast.success('Two-factor authentication disabled.');
       setEmailOtpEnabled(false);

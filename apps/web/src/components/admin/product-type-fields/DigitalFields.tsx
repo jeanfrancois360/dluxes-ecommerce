@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import React, { useState, useRef } from 'react';
 import {
@@ -86,7 +87,7 @@ export function DigitalFields({
         `${process.env.NEXT_PUBLIC_API_URL}/upload/file?entityType=digital`,
         { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd }
       );
-      const result = await response.json();
+      const result = await safeJson(response);
       if (result.success && result.data?.url) {
         onChange('digitalFileUrl', result.data.url);
         onChange('digitalFileSize', file.size);

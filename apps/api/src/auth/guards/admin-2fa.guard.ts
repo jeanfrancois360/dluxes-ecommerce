@@ -1,4 +1,10 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SettingsService } from '../../settings/settings.service';
 import { PrismaService } from '../../database/prisma.service';
@@ -14,7 +20,7 @@ export class Admin2FAGuard implements CanActivate {
   constructor(
     private readonly settingsService: SettingsService,
     private readonly prisma: PrismaService,
-    private readonly reflector: Reflector,
+    private readonly reflector: Reflector
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -35,17 +41,18 @@ export class Admin2FAGuard implements CanActivate {
         return true; // 2FA not required
       }
 
-      // Check if user has 2FA enabled
+      // Check if user has 2FA enabled (TOTP or email OTP both satisfy the requirement)
       const userRecord = await this.prisma.user.findUnique({
         where: { id: user.id },
-        select: { twoFactorEnabled: true },
+        select: { twoFactorEnabled: true, emailOTPEnabled: true },
       });
 
-      if (!userRecord?.twoFactorEnabled) {
+      if (!userRecord?.twoFactorEnabled && !userRecord?.emailOTPEnabled) {
         this.logger.warn(`Admin ${user.email} attempted access without 2FA enabled`);
         throw new ForbiddenException({
           statusCode: 403,
-          message: 'Two-factor authentication is required for admin access. Please enable 2FA in your account settings.',
+          message:
+            'Two-factor authentication is required for admin access. Please enable 2FA in your account settings.',
           requires2FA: true,
           setupUrl: '/admin/account/security',
         });

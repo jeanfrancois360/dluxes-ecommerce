@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getProductsMetadata } from '@/lib/metadata';
+import { safeJson } from '@/lib/safe-fetch';
 
 const API_URL =
   process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
@@ -9,7 +10,7 @@ async function categoryExists(slug: string): Promise<boolean> {
   try {
     const res = await fetch(`${API_URL}/categories`, { next: { revalidate: 3600 } });
     if (!res.ok) return true; // fail open — don't 404 if API is down
-    const data = await res.json();
+    const data = await safeJson(res);
     const categories: { slug?: string; name?: string }[] = data?.data || data || [];
     return categories.some(
       (c) =>

@@ -1,4 +1,5 @@
 import useSWR from 'swr';
+import { safeJson } from '@/lib/safe-fetch';
 
 interface TrackingEvent {
   id: string;
@@ -33,11 +34,11 @@ const fetcher = async (url: string) => {
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await safeJson(response);
     throw new Error(error.message || 'Failed to fetch tracking data');
   }
 
-  return response.json();
+  return safeJson(response);
 };
 
 export function useEasyPostTracking(

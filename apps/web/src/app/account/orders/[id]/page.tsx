@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { use, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -114,7 +115,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
         credentials: 'include',
       });
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (data.success) {
         const { results } = data.data;
@@ -220,7 +221,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
         });
 
         if (response.ok) {
-          const data = await response.json();
+          const data = await safeJson(response);
           setShipments(data.data || []);
         }
       } catch (error) {
