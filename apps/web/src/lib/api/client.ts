@@ -135,7 +135,17 @@ const SILENT_FAIL_ENDPOINTS = [
 async function handleResponse(response: Response) {
   const contentType = response.headers.get('content-type');
   const isJson = contentType?.includes('application/json');
-  const data = isJson ? await response.json() : await response.text();
+  const text = await response.text();
+  let data: any;
+  if (isJson && text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  } else {
+    data = text || null;
+  }
 
   // Check if this is a non-critical endpoint that can fail silently
   const url = new URL(response.url);
