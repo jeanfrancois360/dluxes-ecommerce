@@ -229,6 +229,7 @@ export class SellerPayoutSettingsService {
   async getAllSettings(filters?: {
     verified?: boolean;
     paymentMethod?: string;
+    search?: string;
     page?: number;
     limit?: number;
   }) {
@@ -243,32 +244,55 @@ export class SellerPayoutSettingsService {
     if (filters?.paymentMethod) {
       where.paymentMethod = filters.paymentMethod;
     }
+    if (filters?.search) {
+      const q = filters.search.trim();
+      where.OR = [
+        { seller: { email: { contains: q, mode: 'insensitive' } } },
+        { seller: { firstName: { contains: q, mode: 'insensitive' } } },
+        { seller: { lastName: { contains: q, mode: 'insensitive' } } },
+        { store: { name: { contains: q, mode: 'insensitive' } } },
+        { paypalEmail: { contains: q, mode: 'insensitive' } },
+        { bankName: { contains: q, mode: 'insensitive' } },
+      ];
+    }
 
-    const [settings, total] = await Promise.all([
-      this.prisma.sellerPayoutSettings.findMany({
-        where,
-        include: {
-          seller: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
+    const [settings, total, totalVerified, totalRejected, stripeCount, paypalCount, wiseCount] =
+      await Promise.all([
+        this.prisma.sellerPayoutSettings.findMany({
+          where,
+          include: {
+            seller: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            store: {
+              select: {
+                id: true,
+                name: true,
+              },
             },
           },
-          store: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      this.prisma.sellerPayoutSettings.count({ where }),
-    ]);
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        this.prisma.sellerPayoutSettings.count({ where }),
+        // Global aggregate counts (always over full table, ignoring current filter)
+        this.prisma.sellerPayoutSettings.count({ where: { verified: true } }),
+        this.prisma.sellerPayoutSettings.count({
+          where: { verified: false, rejectionNotes: { not: null } },
+        }),
+        this.prisma.sellerPayoutSettings.count({ where: { paymentMethod: 'STRIPE_CONNECT' } }),
+        this.prisma.sellerPayoutSettings.count({ where: { paymentMethod: 'PAYPAL' } }),
+        this.prisma.sellerPayoutSettings.count({ where: { paymentMethod: 'WISE' } }),
+      ]);
+
+    const globalTotal = await this.prisma.sellerPayoutSettings.count();
+    const totalPending = globalTotal - totalVerified - totalRejected;
 
     // Mask sensitive data (decrypt then mask for admin display)
     const maskedSettings = settings.map((s) => ({
@@ -286,6 +310,18 @@ export class SellerPayoutSettingsService {
         limit,
         total,
         totalPages: Math.ceil(total / limit),
+      },
+      stats: {
+        total: globalTotal,
+        verified: totalVerified,
+        pending: totalPending,
+        rejected: totalRejected,
+        byMethod: {
+          STRIPE_CONNECT: stripeCount,
+          PAYPAL: paypalCount,
+          WISE: wiseCount,
+          bank_transfer: globalTotal - stripeCount - paypalCount - wiseCount,
+        },
       },
     };
   }
