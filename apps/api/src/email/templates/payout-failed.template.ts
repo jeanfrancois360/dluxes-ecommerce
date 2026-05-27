@@ -90,21 +90,25 @@ export function payoutFailedTemplate(data: PayoutFailedData): string {
     </table>
 
     <!-- CTAs -->
-    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 14px 0;">
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 12px 0;">
       <tr>
-        <td style="background-color: #0A0A0A; padding: 13px 28px;">
-          <a href="${data.dashboardUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
-            Update Payment Details
+        <td align="center" style="background-color: #0A0A0A; padding: 16px 28px;">
+          <a href="${data.dashboardUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; display: block;">
+            Update Payment Details &rarr;
           </a>
         </td>
       </tr>
     </table>
 
-    <p style="margin: 0;">
-      <a href="${data.supportUrl}" style="color: #6B7280; text-decoration: underline; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-        Contact support
-      </a>
-    </p>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+      <tr>
+        <td align="center" style="padding: 8px 0;">
+          <a href="${data.supportUrl}" style="color: #6B7280; text-decoration: underline; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Contact support
+          </a>
+        </td>
+      </tr>
+    </table>
   `;
 
   return baseEmailTemplate(content, {

@@ -11,6 +11,50 @@ const LOGO_HTML = `
   <img src="https://nextpik.com/images/logo-dark.png" alt="NextPik" width="140" height="40" class="email-logo email-logo-dark"  style="height: 40px; width: auto; display: none;  margin: 0 auto; border: 0;" />
 `;
 
+const _FONT = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`;
+
+/**
+ * Order journey progress tracker (4 steps).
+ * activeStep: 0=Confirmed, 1=Processing, 2=Shipped, 3=Delivered
+ */
+export function orderProgressTracker(activeStep: 0 | 1 | 2 | 3): string {
+  const steps = ['Confirmed', 'Processing', 'Shipped', 'Delivered'];
+
+  const stepCell = (i: number) => {
+    const done = i < activeStep;
+    const active = i === activeStep;
+    const bg = active ? '#CBB57B' : done ? '#0A0A0A' : '#E5E7EB';
+    const fg = done ? '#FFFFFF' : active ? '#0A0A0A' : '#9CA3AF';
+    const marker = done ? '&#x2713;' : `${i + 1}`;
+    const labelColor = done || active ? '#111827' : '#9CA3AF';
+    const labelWeight = active ? '700' : '400';
+    return `<td align="center" valign="top">
+          <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 auto;"><tr>
+            <td width="26" height="26" align="center" valign="middle" style="background-color: ${bg}; color: ${fg}; font-size: 12px; font-weight: 700; font-family: ${_FONT};">${marker}</td>
+          </tr></table>
+          <p style="color: ${labelColor}; font-size: 10px; font-weight: ${labelWeight}; text-transform: uppercase; letter-spacing: 0.5px; margin: 7px 0 0 0; font-family: ${_FONT}; white-space: nowrap;">${steps[i]}</p>
+        </td>`;
+  };
+
+  const connectorCell = (i: number) => {
+    const lineColor = i < activeStep ? '#0A0A0A' : '#E5E7EB';
+    return `<td valign="top" style="padding-top: 13px;"><table cellpadding="0" cellspacing="0" role="presentation" width="100%"><tr><td style="border-top: 2px solid ${lineColor}; font-size: 0; line-height: 0;">&nbsp;</td></tr></table></td>`;
+  };
+
+  const cells = steps.flatMap((_, i) =>
+    i < steps.length - 1 ? [stepCell(i), connectorCell(i)] : [stepCell(i)]
+  );
+
+  return `
+  <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 32px 0; background-color: #F9FAFB; border: 1px solid #E5E7EB;">
+    <tr><td style="padding: 20px 12px 16px;">
+      <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+        <tr>${cells.join('')}</tr>
+      </table>
+    </td></tr>
+  </table>`;
+}
+
 export const baseEmailTemplate = (
   content: string,
   options?: {

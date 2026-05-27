@@ -74,19 +74,19 @@ export const sellerApprovedTemplate = (data: {
       </tr>
     </table>
 
-    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 16px 0;">
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 12px 0;">
       <tr>
-        <td style="background-color: #CBB57B; padding: 13px 28px;">
-          <a href="${data.creditsUrl}" style="color: #0A0A0A; text-decoration: none; font-size: 14px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
-            Purchase Credits
+        <td align="center" style="background-color: #CBB57B; padding: 16px 28px;">
+          <a href="${data.creditsUrl}" style="color: #0A0A0A; text-decoration: none; font-size: 15px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; display: block;">
+            Purchase Credits &rarr;
           </a>
         </td>
       </tr>
     </table>
 
-    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 32px 0;">
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 32px 0;">
       <tr>
-        <td>
+        <td align="center" style="padding: 8px 0;">
           <a href="${data.dashboardUrl}" style="color: #6B7280; text-decoration: underline; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
             Go to seller dashboard
           </a>

@@ -93,11 +93,11 @@ export function payoutCompletedTemplate(data: PayoutCompletedData): string {
       Funds should appear in your ${method} account within 1&ndash;3 business days. Keep this email for your records.
     </p>
 
-    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 24px 0;">
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0;">
       <tr>
-        <td style="background-color: #0A0A0A; padding: 13px 28px;">
-          <a href="${data.dashboardUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
-            View Transaction Details
+        <td align="center" style="background-color: #0A0A0A; padding: 16px 28px;">
+          <a href="${data.dashboardUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; display: block;">
+            View Transaction Details &rarr;
           </a>
         </td>
       </tr>

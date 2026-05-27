@@ -48,11 +48,11 @@ export function paymentActionRequiredTemplate(data: PaymentActionRequiredData): 
       </tr>
     </table>
 
-    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 24px 0;">
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0;">
       <tr>
-        <td style="background-color: #D97706; padding: 13px 28px;">
-          <a href="${data.actionUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
-            Complete Payment
+        <td align="center" style="background-color: #D97706; padding: 16px 28px;">
+          <a href="${data.actionUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; display: block;">
+            Complete Payment Now &rarr;
           </a>
         </td>
       </tr>
