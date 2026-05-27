@@ -653,6 +653,60 @@ export class PayoutSchedulerService {
   }
 
   /**
+   * Retry a failed payout (Admin only)
+   * Resets the existing FAILED payout back to PENDING and re-links its commissions.
+   * Does NOT create a new payout record.
+   */
+  async retryPayout(payoutId: string) {
+    const payout = await this.prisma.payout.findUnique({
+      where: { id: payoutId },
+    });
+
+    if (!payout) {
+      throw new Error('Payout not found');
+    }
+
+    if (payout.status !== PayoutStatus.FAILED) {
+      throw new Error(`Cannot retry a payout with status ${payout.status}`);
+    }
+
+    return this.prisma.$transaction(async (prisma) => {
+      // Re-link any commissions for this seller/period that were unlinked when the payout failed
+      await prisma.commission.updateMany({
+        where: {
+          sellerId: payout.sellerId,
+          payoutId: null,
+          paidOut: false,
+          createdAt: {
+            gte: payout.periodStart,
+            lte: payout.periodEnd,
+          },
+        },
+        data: {
+          payoutId: payout.id,
+        },
+      });
+
+      // Count all commissions now linked to this payout
+      const linkedCount = await prisma.commission.count({
+        where: { payoutId: payout.id },
+      });
+
+      // Reset to PENDING, clear failure state
+      return prisma.payout.update({
+        where: { id: payoutId },
+        data: {
+          status: PayoutStatus.PENDING,
+          notes: null,
+          processedAt: null,
+          paymentReference: null,
+          commissionCount: linkedCount,
+        },
+      });
+    });
+  }
+
+  /**
    * Process pending payouts
    * Executes actual payment transfers for pending payouts
    */

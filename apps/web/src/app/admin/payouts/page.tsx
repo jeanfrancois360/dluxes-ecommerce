@@ -725,15 +725,15 @@ function PayoutsContent() {
     }
   };
 
-  const handleTriggerSeller = async (sellerId: string) => {
+  const handleRetryPayout = async (payoutId: string) => {
     try {
-      await api.post(`/payouts/admin/seller/${sellerId}/trigger`, {});
-      toast.success(t('toast.triggerSuccess'));
+      await api.post(`/payouts/admin/${payoutId}/retry`, {});
+      toast.success('Payout reset to Pending — use Execute to send funds');
       fetchPayouts();
       fetchBackendStats();
     } catch (error) {
-      console.error('Error triggering payout:', error);
-      toast.error(t('toast.triggerFailed'));
+      console.error('Error retrying payout:', error);
+      toast.error('Failed to retry payout');
     }
   };
 
@@ -1446,10 +1446,9 @@ function PayoutsContent() {
                                           {t('actions.complete')}
                                         </DropdownMenuItem>
                                       )}
-                                      {(payout.status === 'FAILED' ||
-                                        payout.status === 'PROCESSING') && (
+                                      {payout.status === 'FAILED' && (
                                         <DropdownMenuItem
-                                          onSelect={() => handleTriggerSeller(payout.sellerId)}
+                                          onSelect={() => handleRetryPayout(payout.id)}
                                         >
                                           <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
                                           {t('actions.retry')}

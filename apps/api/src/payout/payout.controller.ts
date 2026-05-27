@@ -156,7 +156,27 @@ export class PayoutController {
   }
 
   /**
+   * Retry a failed payout — resets it to PENDING and re-links commissions (Admin only)
+   * This does NOT create a new payout record.
+   */
+  @Post('admin/:payoutId/retry')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async retryPayout(@Param('payoutId') payoutId: string) {
+    try {
+      const data = await this.payoutService.retryPayout(payoutId);
+      return { success: true, data, message: 'Payout reset to pending — ready to execute' };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to retry payout',
+      };
+    }
+  }
+
+  /**
    * Trigger manual payout for specific seller (Admin only)
+   * Creates a new payout record for the seller.
    */
   @Post('admin/seller/:sellerId/trigger')
   @UseGuards(JwtAuthGuard, RolesGuard)
