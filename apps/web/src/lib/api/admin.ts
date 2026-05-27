@@ -395,12 +395,12 @@ export const adminProductsApi = {
     sortOrder?: 'asc' | 'desc';
   }): Promise<{ products: AdminProduct[]; total: number; pages: number }> {
     const response = await api.get(`/products${buildQueryString(params)}`);
-    const data = response.data || response;
+    const data = response?.data || response;
     // Map totalPages to pages for consistency
     return {
-      products: data.products,
-      total: data.total,
-      pages: data.totalPages || data.pages,
+      products: data?.products ?? [],
+      total: data?.total ?? 0,
+      pages: data?.totalPages || data?.pages || 0,
     };
   },
 
@@ -560,7 +560,11 @@ export const adminOrdersApi = {
     endDate?: string;
   }): Promise<{ orders: AdminOrder[]; total: number; pages: number }> {
     const response = await api.get(`/admin/orders${buildQueryString(params)}`);
-    return response;
+    return {
+      orders: response?.orders ?? [],
+      total: response?.total ?? 0,
+      pages: response?.pages ?? 0,
+    };
   },
 
   async getById(id: string): Promise<AdminOrder> {
@@ -608,10 +612,10 @@ export const adminCustomersApi = {
     if (params?.role) queryParams.role = params.role;
 
     const response = await api.get(`/admin/users${buildQueryString(queryParams)}`);
-    const data = response.data || response;
+    const data = response?.data || response;
 
     // Map response to expected format
-    let customers = (data.users || []).map((user: any) => ({
+    let customers = (data?.users ?? []).map((user: any) => ({
       id: user.id,
       name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
       email: user.email,
@@ -870,13 +874,14 @@ export const adminReviewsApi = {
     const response = await api.get(`/admin/reviews${buildQueryString(params)}`);
     // Add computed status field for UI convenience
     const reviews =
-      response.reviews?.map((review: Review) => ({
+      response?.reviews?.map((review: Review) => ({
         ...review,
         status: review.isApproved ? 'approved' : ('pending' as 'pending' | 'approved' | 'rejected'),
-      })) || [];
+      })) ?? [];
     return {
-      ...response,
       reviews,
+      total: response?.total ?? 0,
+      pages: response?.pages ?? 0,
     };
   },
 
