@@ -431,17 +431,20 @@ export function middleware(request: NextRequest) {
   // ============================================================================
 
   if (isAdminRoute(pathname)) {
-    // If a valid cookie is present, enforce the role check immediately.
-    // If no cookie, pass through — the AdminRoute React component handles
-    // auth/role checking client-side via localStorage, which the middleware
-    // (Edge runtime) cannot access. Blocking here would cause an infinite
-    // redirect loop whenever the cookie expires while localStorage still
-    // holds a valid token.
-    if (token && isAuthenticated && !isAdmin(token)) {
+    // Not authenticated - redirect to login
+    if (!isAuthenticated) {
+      const loginUrl = new URL('/auth/login', request.url);
+      loginUrl.searchParams.set('returnUrl', pathname);
+      return handleLocale(request, NextResponse.redirect(loginUrl));
+    }
+
+    // Authenticated but not admin - redirect to role-specific dashboard
+    if (token && !isAdmin(token)) {
       const dashboardUrl = getDashboardForRole(token);
       return handleLocale(request, NextResponse.redirect(new URL(dashboardUrl, request.url)));
     }
 
+    // Admin - allow access
     return handleLocale(request, NextResponse.next());
   }
 
