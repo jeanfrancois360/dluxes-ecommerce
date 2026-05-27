@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -185,12 +186,12 @@ export function MarkAsShippedModal({
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await safeJson(response);
         console.error('Shipment API Error Response:', error);
         throw new Error(error.message || 'Failed to create shipment');
       }
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (useAutoGenerate && data.data.trackingNumber) {
         toast.success(t('shipmentCreated', { trackingNumber: data.data.trackingNumber }));

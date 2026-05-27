@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -96,7 +97,7 @@ export default function DeliveryDetailsPage() {
 
       if (!response.ok) throw new Error('Failed to fetch delivery details');
 
-      const data = await response.json();
+      const data = await safeJson(response);
       setDelivery(data);
       setNewStatus(data.currentStatus);
     } catch (err) {
@@ -115,7 +116,7 @@ export default function DeliveryDetailsPage() {
 
       if (!response.ok) throw new Error('Failed to fetch drivers');
 
-      const data = await response.json();
+      const data = await safeJson(response);
       setDrivers(data.data);
     } catch (err) {
       console.error('Error:', err);
@@ -157,17 +158,14 @@ export default function DeliveryDetailsPage() {
     setUpdating(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${API_URL}/delivery-company/deliveries/${deliveryId}/status`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: newStatus, notes: statusNotes }),
-        }
-      );
+      const response = await fetch(`${API_URL}/delivery-company/deliveries/${deliveryId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus, notes: statusNotes }),
+      });
 
       if (!response.ok) throw new Error('Failed to update status');
 
@@ -185,20 +183,17 @@ export default function DeliveryDetailsPage() {
     setUpdating(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${API_URL}/delivery-company/deliveries/${deliveryId}/proof`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            notes: proofNotes,
-            // In a real app, you'd upload actual photos/signature here
-          }),
-        }
-      );
+      const response = await fetch(`${API_URL}/delivery-company/deliveries/${deliveryId}/proof`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          notes: proofNotes,
+          // In a real app, you'd upload actual photos/signature here
+        }),
+      });
 
       if (!response.ok) throw new Error('Failed to upload proof');
 
@@ -306,7 +301,10 @@ export default function DeliveryDetailsPage() {
               </h2>
               <div className="space-y-3">
                 {delivery.order.items.map((item, index) => (
-                  <div key={index} className="flex items-center gap-4 pb-3 border-b border-gray-200 last:border-0">
+                  <div
+                    key={index}
+                    className="flex items-center gap-4 pb-3 border-b border-gray-200 last:border-0"
+                  >
                     {item.product.heroImage && (
                       <img
                         src={item.product.heroImage}

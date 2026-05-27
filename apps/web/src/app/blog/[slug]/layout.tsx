@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { generateSeoMetadata } from '@/lib/seo';
+import { safeJson } from '@/lib/safe-fetch';
 
 /**
  * Blog post SEO metadata (Phase C.8 — server-side)
@@ -18,7 +19,7 @@ async function getBlogPostForMeta(slug: string, locale: string) {
       { next: { revalidate: 300 } }
     );
     if (!res.ok) return null;
-    const json = await res.json();
+    const json = await safeJson(res);
     // API returns { success: true, data: BlogPost }
     return json.data ?? null;
   } catch {

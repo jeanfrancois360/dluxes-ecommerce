@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
@@ -120,7 +121,7 @@ export function CurrencySettingsSection() {
         },
       });
 
-      const result = await response.json();
+      const result = await safeJson(response);
 
       if (result.success) {
         setLastSyncResult(result.data);

@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -194,7 +195,7 @@ function SellerDetailContent() {
     try {
       const res = await fetch(`${API_URL}/admin/sellers/${storeId}`, { headers: authHeaders });
       if (!res.ok) throw new Error('Failed to fetch seller');
-      const response = await res.json();
+      const response = await safeJson(res);
       setSeller(mapSellerData(response.data || response));
     } catch {
       toast.error('Failed to load seller');
@@ -210,7 +211,7 @@ function SellerDetailContent() {
         headers: authHeaders,
       });
       if (res.ok) {
-        const data = await res.json();
+        const data = await safeJson(res);
         setCreditHistory(data.data?.transactions || data.transactions || []);
       }
     } catch {
@@ -250,7 +251,7 @@ function SellerDetailContent() {
         body: body ? JSON.stringify(body) : undefined,
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
+        const err = await safeJson(res).catch(() => ({}));
         throw new Error(err.message || 'Action failed');
       }
       return true;

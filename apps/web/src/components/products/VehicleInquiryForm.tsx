@@ -1,8 +1,18 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Car, Calendar, Mail, Phone, MessageSquare, Check, DollarSign, RefreshCw } from 'lucide-react';
+import {
+  Car,
+  Calendar,
+  Mail,
+  Phone,
+  MessageSquare,
+  Check,
+  DollarSign,
+  RefreshCw,
+} from 'lucide-react';
 
 interface VehicleInquiryFormProps {
   productId: string;
@@ -72,7 +82,7 @@ export function VehicleInquiryForm({
         }),
       });
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (data.success) {
         setSubmitStatus('success');
@@ -139,15 +149,13 @@ export function VehicleInquiryForm({
             <Car className="w-6 h-6 text-purple-600" />
           </div>
           <div>
-            <h3 className="font-serif text-2xl font-bold text-black">
-              Schedule a Test Drive
-            </h3>
+            <h3 className="font-serif text-2xl font-bold text-black">Schedule a Test Drive</h3>
             <p className="text-sm text-neutral-600">{productName}</p>
           </div>
         </div>
         <p className="text-neutral-600 text-sm">
-          Complete the form below and our sales team will contact you to arrange a test drive
-          or provide additional information about this vehicle.
+          Complete the form below and our sales team will contact you to arrange a test drive or
+          provide additional information about this vehicle.
         </p>
       </div>
 
@@ -165,8 +173,8 @@ export function VehicleInquiryForm({
               <div>
                 <h4 className="font-bold text-green-900 mb-1">Inquiry Submitted!</h4>
                 <p className="text-sm text-green-800">
-                  Thank you for your interest. Our sales team will contact you within 24
-                  hours to discuss this vehicle and schedule your test drive.
+                  Thank you for your interest. Our sales team will contact you within 24 hours to
+                  discuss this vehicle and schedule your test drive.
                 </p>
               </div>
             </div>
@@ -208,10 +216,7 @@ export function VehicleInquiryForm({
         {/* Personal Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label
-              htmlFor="buyerName"
-              className="block text-sm font-bold text-black mb-2"
-            >
+            <label htmlFor="buyerName" className="block text-sm font-bold text-black mb-2">
               Full Name *
             </label>
             <input
@@ -230,10 +235,7 @@ export function VehicleInquiryForm({
           </div>
 
           <div>
-            <label
-              htmlFor="buyerPhone"
-              className="block text-sm font-bold text-black mb-2"
-            >
+            <label htmlFor="buyerPhone" className="block text-sm font-bold text-black mb-2">
               Phone Number
             </label>
             <div className="relative">
@@ -254,10 +256,7 @@ export function VehicleInquiryForm({
         </div>
 
         <div>
-          <label
-            htmlFor="buyerEmail"
-            className="block text-sm font-bold text-black mb-2"
-          >
+          <label htmlFor="buyerEmail" className="block text-sm font-bold text-black mb-2">
             Email Address *
           </label>
           <div className="relative">
@@ -333,10 +332,7 @@ export function VehicleInquiryForm({
 
         {/* Test Drive Date */}
         <div>
-          <label
-            htmlFor="scheduledViewing"
-            className="block text-sm font-bold text-black mb-2"
-          >
+          <label htmlFor="scheduledViewing" className="block text-sm font-bold text-black mb-2">
             <Calendar className="inline w-4 h-4 mr-1" />
             Preferred Test Drive Date (Optional)
           </label>
@@ -393,8 +389,7 @@ export function VehicleInquiryForm({
               />
               <div>
                 <span className="font-medium text-purple-900 flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4" />
-                  I Have a Trade-In
+                  <RefreshCw className="w-4 h-4" />I Have a Trade-In
                 </span>
                 <p className="text-xs text-purple-700 mt-0.5">
                   Get a valuation for your current vehicle
@@ -413,10 +408,7 @@ export function VehicleInquiryForm({
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <label
-                htmlFor="tradeInDetails"
-                className="block text-sm font-bold text-black mb-2"
-              >
+              <label htmlFor="tradeInDetails" className="block text-sm font-bold text-black mb-2">
                 Trade-In Vehicle Details
               </label>
               <input
@@ -438,10 +430,7 @@ export function VehicleInquiryForm({
 
         {/* Message */}
         <div>
-          <label
-            htmlFor="message"
-            className="block text-sm font-bold text-black mb-2"
-          >
+          <label htmlFor="message" className="block text-sm font-bold text-black mb-2">
             <MessageSquare className="inline w-4 h-4 mr-1" />
             Additional Questions or Comments *
           </label>
@@ -458,9 +447,7 @@ export function VehicleInquiryForm({
             className="w-full px-4 py-3 border-2 border-neutral-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all resize-none disabled:bg-neutral-100 disabled:cursor-not-allowed"
             placeholder="Tell us about your requirements, questions about the vehicle, or any specific features you're looking for..."
           />
-          <p className="text-xs text-neutral-500 mt-2">
-            {formData.message.length}/1000 characters
-          </p>
+          <p className="text-xs text-neutral-500 mt-2">{formData.message.length}/1000 characters</p>
         </div>
 
         {/* Action Buttons */}
@@ -527,8 +514,8 @@ export function VehicleInquiryForm({
             />
           </svg>
           <p>
-            Your information is kept confidential. Our sales team will reach out within 24
-            hours to discuss this vehicle and arrange your test drive.
+            Your information is kept confidential. Our sales team will reach out within 24 hours to
+            discuss this vehicle and arrange your test drive.
           </p>
         </div>
       </div>

@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -35,7 +36,7 @@ const fetcher = async (url: string) => {
     },
   });
   if (!res.ok) throw new Error('Failed to fetch');
-  return res.json();
+  return safeJson(res);
 };
 
 interface CreditBalance {
@@ -174,11 +175,11 @@ export default function SellingCreditsPage() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
+        const error = await safeJson(res);
         throw new Error(error.message || 'Failed to create checkout session');
       }
 
-      const response = await res.json();
+      const response = await safeJson(res);
       const sessionUrl = response.data?.sessionUrl || response.sessionUrl;
 
       if (sessionUrl) {

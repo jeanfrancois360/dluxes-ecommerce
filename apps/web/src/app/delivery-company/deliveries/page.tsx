@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -99,7 +100,7 @@ export default function DeliveriesPage() {
         throw new Error('Failed to fetch deliveries');
       }
 
-      const data = await response.json();
+      const data = await safeJson(response);
       setDeliveries(data.data);
       setPagination(data.pagination);
     } catch (err) {
@@ -118,7 +119,9 @@ export default function DeliveriesPage() {
     const Icon = config.icon;
 
     return (
-      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${config.bg} ${config.text}`}>
+      <span
+        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${config.bg} ${config.text}`}
+      >
         <Icon className="w-4 h-4" />
         {status.replace(/_/g, ' ')}
       </span>
@@ -286,9 +289,7 @@ export default function DeliveriesPage() {
                       </td>
                       <td className="px-6 py-4">
                         <button
-                          onClick={() =>
-                            router.push(`/delivery-company/deliveries/${delivery.id}`)
-                          }
+                          onClick={() => router.push(`/delivery-company/deliveries/${delivery.id}`)}
                           className="text-[#DDC36C] hover:text-[#DDC36C]/80 text-sm font-medium"
                         >
                           View Details

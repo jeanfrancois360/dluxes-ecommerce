@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -55,7 +56,7 @@ export function RealEstateInquiryForm({
         }),
       });
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (data.success) {
         setSubmitStatus('success');
@@ -120,15 +121,13 @@ export function RealEstateInquiryForm({
             <Home className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <h3 className="font-serif text-2xl font-bold text-black">
-              Schedule a Viewing
-            </h3>
+            <h3 className="font-serif text-2xl font-bold text-black">Schedule a Viewing</h3>
             <p className="text-sm text-neutral-600">{productName}</p>
           </div>
         </div>
         <p className="text-neutral-600 text-sm">
-          Complete the form below and our agent will contact you to arrange a viewing
-          or provide additional information.
+          Complete the form below and our agent will contact you to arrange a viewing or provide
+          additional information.
         </p>
       </div>
 
@@ -146,8 +145,8 @@ export function RealEstateInquiryForm({
               <div>
                 <h4 className="font-bold text-green-900 mb-1">Inquiry Submitted!</h4>
                 <p className="text-sm text-green-800">
-                  Thank you for your interest. Our agent will contact you within 24
-                  hours to discuss this property.
+                  Thank you for your interest. Our agent will contact you within 24 hours to discuss
+                  this property.
                 </p>
               </div>
             </div>
@@ -189,10 +188,7 @@ export function RealEstateInquiryForm({
         {/* Personal Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label
-              htmlFor="buyerName"
-              className="block text-sm font-bold text-black mb-2"
-            >
+            <label htmlFor="buyerName" className="block text-sm font-bold text-black mb-2">
               Full Name *
             </label>
             <input
@@ -211,10 +207,7 @@ export function RealEstateInquiryForm({
           </div>
 
           <div>
-            <label
-              htmlFor="buyerPhone"
-              className="block text-sm font-bold text-black mb-2"
-            >
+            <label htmlFor="buyerPhone" className="block text-sm font-bold text-black mb-2">
               Phone Number
             </label>
             <div className="relative">
@@ -235,10 +228,7 @@ export function RealEstateInquiryForm({
         </div>
 
         <div>
-          <label
-            htmlFor="buyerEmail"
-            className="block text-sm font-bold text-black mb-2"
-          >
+          <label htmlFor="buyerEmail" className="block text-sm font-bold text-black mb-2">
             Email Address *
           </label>
           <div className="relative">
@@ -313,10 +303,7 @@ export function RealEstateInquiryForm({
 
         {/* Viewing Date */}
         <div>
-          <label
-            htmlFor="scheduledViewing"
-            className="block text-sm font-bold text-black mb-2"
-          >
+          <label htmlFor="scheduledViewing" className="block text-sm font-bold text-black mb-2">
             <Calendar className="inline w-4 h-4 mr-1" />
             Preferred Viewing Date (Optional)
           </label>
@@ -359,10 +346,7 @@ export function RealEstateInquiryForm({
 
         {/* Message */}
         <div>
-          <label
-            htmlFor="message"
-            className="block text-sm font-bold text-black mb-2"
-          >
+          <label htmlFor="message" className="block text-sm font-bold text-black mb-2">
             <MessageSquare className="inline w-4 h-4 mr-1" />
             Additional Questions or Comments *
           </label>
@@ -379,9 +363,7 @@ export function RealEstateInquiryForm({
             className="w-full px-4 py-3 border-2 border-neutral-200 rounded-xl focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none disabled:bg-neutral-100 disabled:cursor-not-allowed"
             placeholder="Tell us about your requirements, timeline, or any specific questions..."
           />
-          <p className="text-xs text-neutral-500 mt-2">
-            {formData.message.length}/1000 characters
-          </p>
+          <p className="text-xs text-neutral-500 mt-2">{formData.message.length}/1000 characters</p>
         </div>
 
         {/* Action Buttons */}
@@ -448,8 +430,8 @@ export function RealEstateInquiryForm({
             />
           </svg>
           <p>
-            Your information is kept confidential. Our team will reach out within 24
-            hours to discuss this property.
+            Your information is kept confidential. Our team will reach out within 24 hours to
+            discuss this property.
           </p>
         </div>
       </div>

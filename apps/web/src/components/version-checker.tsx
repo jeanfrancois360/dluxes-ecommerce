@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -49,7 +50,7 @@ export function VersionChecker() {
 
         if (!response.ok) return;
 
-        const data = await response.json();
+        const data = await safeJson(response);
         const serverVersion = data.version;
         const lastSeenVersion = localStorage.getItem(LAST_SEEN_VERSION_KEY);
 

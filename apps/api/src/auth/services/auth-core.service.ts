@@ -672,6 +672,7 @@ export class AuthCoreService {
       role: user.role,
       emailVerified: user.emailVerified,
       twoFactorEnabled: user.twoFactorEnabled,
+      emailOTPEnabled: user.emailOTPEnabled,
       googleId: user.googleId,
       authProvider: user.authProvider,
       createdAt: user.createdAt,

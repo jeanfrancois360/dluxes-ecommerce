@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useState, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
@@ -47,7 +48,7 @@ const fetcher = async (url: string) => {
     throw new Error('Failed to fetch');
   }
 
-  const data = await res.json();
+  const data = await safeJson(res);
   return data.data || data;
 };
 
@@ -165,7 +166,7 @@ export default function AdminSellersPage() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
+        const error = await safeJson(res);
         throw new Error(error.message || 'Failed to approve seller');
       }
 
@@ -199,7 +200,7 @@ export default function AdminSellersPage() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
+        const error = await safeJson(res);
         throw new Error(error.message || 'Failed to reject seller');
       }
 
@@ -234,7 +235,7 @@ export default function AdminSellersPage() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
+        const error = await safeJson(res);
         throw new Error(error.message || 'Failed to suspend seller');
       }
 

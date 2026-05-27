@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { siteConfig } from '@/lib/seo';
+import { safeJson } from '@/lib/safe-fetch';
 
 // Re-generate sitemap every hour on the server
 export const revalidate = 3600;
@@ -20,7 +21,7 @@ async function getProducts() {
       return [];
     }
 
-    const data = await response.json();
+    const data = await safeJson(response);
     // API returns { success: true, data: { products: [...] } }
     return data.data?.products || data.products || [];
   } catch (error) {
@@ -41,7 +42,7 @@ async function getCategories() {
       return [];
     }
 
-    const data = await response.json();
+    const data = await safeJson(response);
     // API might return array directly or { data: [...] }
     return Array.isArray(data) ? data : data.data || [];
   } catch (error) {
@@ -62,7 +63,7 @@ async function getStores() {
       return [];
     }
 
-    const data = await response.json();
+    const data = await safeJson(response);
     return data.data || data.stores || [];
   } catch (error) {
     console.error('Error fetching stores for sitemap:', error);

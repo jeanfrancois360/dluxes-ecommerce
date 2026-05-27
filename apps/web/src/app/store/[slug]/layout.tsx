@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getStoreMetadata } from '@/lib/metadata';
 import { StructuredData, generateStoreSchema, siteConfig } from '@/lib/seo';
+import { safeJson } from '@/lib/safe-fetch';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -11,7 +12,7 @@ async function getStore(slug: string) {
       next: { revalidate: 300 }, // Revalidate every 5 minutes
     });
     if (!res.ok) return null;
-    return await res.json();
+    return safeJson(res);
   } catch {
     return null;
   }

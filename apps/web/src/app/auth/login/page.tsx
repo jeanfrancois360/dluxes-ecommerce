@@ -126,6 +126,11 @@ export default function LoginPage() {
         credentials.trustDevice = trustDevice;
       }
       await login(credentials);
+      // Respect returnUrl after 2FA success
+      const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect');
+      if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+        router.replace(returnUrl);
+      }
     } catch (err: any) {
       setOtpValue('');
       showAuthError(err, router);
@@ -211,7 +216,13 @@ export default function LoginPage() {
           duration: 2000,
         });
       }
-      // Auth context handles redirect
+      // Respect returnUrl if the user was redirected here from a protected page
+      const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect');
+      if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+        router.replace(returnUrl);
+        return;
+      }
+      // Auth context handles default role-based redirect
     } catch (err: any) {
       // Check if error is email verification required
       const errorData = err?.response?.data;

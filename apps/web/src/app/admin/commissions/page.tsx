@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
@@ -132,7 +133,7 @@ function CommissionOverridesContent() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await safeJson(response);
         setOverrides(data);
       }
     } catch (error) {
@@ -147,7 +148,7 @@ function CommissionOverridesContent() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories`);
       if (response.ok) {
-        const result = await response.json();
+        const result = await safeJson(response);
         // Backend wraps data in {success: true, data: [...]}
         const data = result.success ? result.data : result;
         setCategories(data);
@@ -363,7 +364,7 @@ function CommissionOverridesContent() {
           },
         });
         if (response.ok) {
-          const users = await response.json();
+          const users = await safeJson(response);
           if (users.length > 0) {
             sellerId = users[0].id;
           } else {
@@ -421,7 +422,7 @@ function CommissionOverridesContent() {
         resetForm();
         fetchOverrides();
       } else {
-        const error = await response.json();
+        const error = await safeJson(response);
         toast.error(error.message || t('toast.saveError'));
       }
     } catch (error) {

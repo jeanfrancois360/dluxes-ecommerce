@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -70,12 +71,12 @@ export default function PurchaseSuccessPage() {
               credentials: 'include',
               headers: {
                 'Content-Type': 'application/json',
-                ...(token && { 'Authorization': `Bearer ${token}` }),
+                ...(token && { Authorization: `Bearer ${token}` }),
               },
             }
           );
 
-          const data = await res.json();
+          const data = await safeJson(res);
 
           if (res.ok && data.success) {
             // Successfully verified and processed
@@ -93,11 +94,13 @@ export default function PurchaseSuccessPage() {
             // Wait with exponential backoff (2s, 4s, 8s, 16s, 32s)
             attempts++;
             const delay = Math.min(2000 * Math.pow(2, attempts - 1), 32000);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise((resolve) => setTimeout(resolve, delay));
             return verifyPurchase();
           } else {
             // Other error
-            setError(data.message || 'Failed to verify purchase. Please check your credit history.');
+            setError(
+              data.message || 'Failed to verify purchase. Please check your credit history.'
+            );
             setIsLoading(false);
             return;
           }
@@ -105,7 +108,9 @@ export default function PurchaseSuccessPage() {
           console.error('Failed to verify purchase:', error);
 
           if (attempts >= maxAttempts) {
-            setError('Unable to verify purchase. Please check your credit history or contact support.');
+            setError(
+              'Unable to verify purchase. Please check your credit history or contact support.'
+            );
             setIsLoading(false);
             return;
           }
@@ -113,7 +118,7 @@ export default function PurchaseSuccessPage() {
           // Retry with exponential backoff
           attempts++;
           const delay = Math.min(2000 * Math.pow(2, attempts - 1), 32000);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
           return verifyPurchase();
         }
       };
@@ -131,8 +136,18 @@ export default function PurchaseSuccessPage() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="text-center max-w-md">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-8 h-8 text-red-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Connection Error</h2>
@@ -219,9 +234,7 @@ export default function PurchaseSuccessPage() {
                 <CreditCard className="w-6 h-6" />
                 <h2 className="text-xl font-semibold">New Subscription Balance</h2>
               </div>
-              <div className="text-5xl font-bold mb-2">
-                {purchaseData.creditsBalance}
-              </div>
+              <div className="text-5xl font-bold mb-2">{purchaseData.creditsBalance}</div>
               <div className="text-sm opacity-90">
                 month{purchaseData.creditsBalance !== 1 ? 's' : ''}
               </div>

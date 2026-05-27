@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 /**
  * Seller Order Details Page — World-Class Production UI
@@ -371,7 +372,7 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch shipments');
-      const data = await response.json();
+      const data = await safeJson(response);
       return data.data || [];
     },
     { revalidateOnFocus: false }
@@ -421,7 +422,7 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
         body: JSON.stringify({}),
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err = await safeJson(res);
         throw new Error(err.message || 'Failed to mark as shipped');
       }
       await Promise.all([mutate(), mutateShipments()]);
@@ -451,7 +452,7 @@ export default function SellerOrderDetailsPage({ params }: { params: Promise<{ i
         }),
       });
       if (!response.ok) {
-        const err = await response.json();
+        const err = await safeJson(response);
         throw new Error(err.message || 'Failed to create shipment');
       }
       toast.success('Shipment created — tracking number generated automatically');

@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useState, useEffect } from 'react';
 import { AdminRoute } from '@/components/admin-route';
@@ -91,7 +92,7 @@ function AnnouncementsContent() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await safeJson(response);
         setAnnouncements(data);
       } else {
         toast.error('Failed to fetch announcements');
@@ -190,7 +191,7 @@ function AnnouncementsContent() {
         resetForm();
         fetchAnnouncements();
       } else {
-        const error = await response.json();
+        const error = await safeJson(response);
         toast.error(error.message || 'Failed to save announcement');
       }
     } catch (error) {

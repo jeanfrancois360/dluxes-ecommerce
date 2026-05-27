@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -60,7 +61,7 @@ export default function ApplicationStatusPage() {
         },
       });
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (data.success) {
         setStatus(data.data);

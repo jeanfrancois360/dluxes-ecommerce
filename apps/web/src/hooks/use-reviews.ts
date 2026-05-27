@@ -50,7 +50,8 @@ export function useReviews(productId: string, options: UseReviewsOptions = {}) {
         throw new Error('Failed to fetch reviews');
       }
 
-      const result = await response.json();
+      const text = await response.text();
+      const result = text ? JSON.parse(text) : {};
       // Backend wraps response in { success, data } format
       const data: ReviewListResponse = result.data || result;
       setReviews(data.reviews || []);
@@ -130,8 +131,9 @@ export function useCreateReview() {
           throw new Error('Failed to upload images');
         }
 
-        const uploadResult = await uploadResponse.json();
-        imageUrls = uploadResult.data.map((file: any) => file.url);
+        const uploadText = await uploadResponse.text();
+        const uploadResult = uploadText ? JSON.parse(uploadText) : {};
+        imageUrls = uploadResult.data?.map((file: any) => file.url) ?? [];
       }
 
       // Step 2: Create review with image URLs
@@ -158,12 +160,13 @@ export function useCreateReview() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errText = await response.text();
+        const errorData = errText ? JSON.parse(errText) : {};
         throw new Error(errorData.message || 'Failed to create review');
       }
 
-      const result = await response.json();
-      return result;
+      const resText = await response.text();
+      return resText ? JSON.parse(resText) : {};
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create review';
       setError(errorMessage);
@@ -206,8 +209,8 @@ export function useMarkHelpful() {
         throw new Error('Failed to mark review as helpful');
       }
 
-      const result = await response.json();
-      return result;
+      const resText = await response.text();
+      return resText ? JSON.parse(resText) : {};
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to mark review as helpful';
       setError(errorMessage);
@@ -253,8 +256,8 @@ export function useReportReview() {
         throw new Error('Failed to report review');
       }
 
-      const result = await response.json();
-      return result;
+      const resText = await response.text();
+      return resText ? JSON.parse(resText) : {};
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to report review';
       setError(errorMessage);
