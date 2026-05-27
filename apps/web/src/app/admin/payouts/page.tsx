@@ -219,8 +219,19 @@ function PayoutDetailFlyout({ payout, onClose }: { payout: Payout; onClose: () =
             <div className="rounded-xl border p-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Method</span>
-                <span className="font-medium">{payout.paymentMethod || '—'}</span>
+                <span className="font-medium">
+                  {formatPaymentMethod(payout.paymentMethod) || '—'}
+                </span>
               </div>
+              {payout.paymentMethod === 'bank_transfer' && payout.status === 'PROCESSING' && (
+                <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700 flex items-start gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  <span>
+                    This payout requires a manual bank transfer. Use the Complete action once the
+                    transfer is sent.
+                  </span>
+                </div>
+              )}
               {payout.paymentReference && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Reference</span>
@@ -284,6 +295,21 @@ function StatusBadge({ status }: { status: PayoutStatus }) {
   );
 }
 
+// ─── Payment method formatter ───────────────────────────────────────────────
+function formatPaymentMethod(method: string | null | undefined): string {
+  if (!method) return 'N/A';
+  const map: Record<string, string> = {
+    bank_transfer: 'Bank Transfer',
+    STRIPE_CONNECT: 'Stripe Connect',
+    PAYPAL: 'PayPal',
+    paypal: 'PayPal',
+    stripe_connect: 'Stripe Connect',
+    stripe: 'Stripe',
+    manual: 'Manual',
+  };
+  return map[method] ?? method.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────
 function PayoutsContent() {
   const t = useTranslations('adminPayouts');
@@ -316,6 +342,12 @@ function PayoutsContent() {
   // Last-updated timestamp (set after every successful fetch)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Execute transfers + sync statuses
+  const [executingTransfers, setExecutingTransfers] = useState(false);
+  const [syncingStatuses, setSyncingStatuses] = useState(false);
+  const [executeDialog, setExecuteDialog] = useState(false);
+  const [syncDialog, setSyncDialog] = useState(false);
 
   // Complete dialog
   const [completeDialog, setCompleteDialog] = useState<{
@@ -361,7 +393,7 @@ function PayoutsContent() {
   const fetchPayouts = async () => {
     try {
       const data = await api.get('/payouts/admin/all?limit=100');
-      setPayouts(data.data || []);
+      setPayouts(Array.isArray(data) ? data : data?.data || []);
     } catch (error) {
       console.error('Error fetching payouts:', error);
       toast.error(t('toast.loadFailed'));
@@ -584,6 +616,43 @@ function PayoutsContent() {
     }
   };
 
+  const handleExecuteTransfers = async () => {
+    setExecuteDialog(false);
+    setExecutingTransfers(true);
+    try {
+      const result = await api.post('/payouts/admin/process-pending', {});
+      const succeeded = result.processed ?? result.succeeded ?? 0;
+      const failed = result.failed ?? 0;
+      toast.success(
+        `Transfers executed: ${succeeded} processed${failed > 0 ? `, ${failed} failed` : ''}`
+      );
+      fetchPayouts();
+      fetchBackendStats();
+    } catch (error) {
+      console.error('Error executing transfers:', error);
+      toast.error('Failed to execute transfers. Check the console for details.');
+    } finally {
+      setExecutingTransfers(false);
+    }
+  };
+
+  const handleSyncStatuses = async () => {
+    setSyncDialog(false);
+    setSyncingStatuses(true);
+    try {
+      const result = await api.post('/payouts/admin/update-statuses', {});
+      const updated = result.updated ?? result.synced ?? 0;
+      toast.success(`Statuses synced: ${updated} payout${updated !== 1 ? 's' : ''} updated`);
+      fetchPayouts();
+      fetchBackendStats();
+    } catch (error) {
+      console.error('Error syncing statuses:', error);
+      toast.error('Failed to sync statuses. Check the console for details.');
+    } finally {
+      setSyncingStatuses(false);
+    }
+  };
+
   const handleTriggerSeller = async (sellerId: string) => {
     try {
       await api.post(`/payouts/admin/seller/${sellerId}/trigger`, {});
@@ -747,6 +816,26 @@ function PayoutsContent() {
               {t('buttons.payoutSettings')}
             </Button>
           </Link>
+          <Button
+            variant="outline"
+            onClick={() => setSyncDialog(true)}
+            disabled={syncingStatuses}
+            className="gap-2"
+            title="Poll PayPal and Stripe for status updates on PROCESSING payouts"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncingStatuses ? 'animate-spin' : ''}`} />
+            {syncingStatuses ? 'Syncing…' : 'Sync Statuses'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setExecuteDialog(true)}
+            disabled={executingTransfers}
+            className="gap-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+            title="Send funds for all PENDING payouts via Stripe Connect / PayPal"
+          >
+            <TrendingUp className={`h-4 w-4 ${executingTransfers ? 'animate-pulse' : ''}`} />
+            {executingTransfers ? 'Executing…' : 'Execute Transfers'}
+          </Button>
           <Button onClick={() => setProcessAllDialog(true)} disabled={processing}>
             <DollarSign className="h-4 w-4 mr-2" />
             {processing ? t('buttons.processing') : t('buttons.processAll')}
@@ -924,7 +1013,7 @@ function PayoutsContent() {
                 <SelectItem value="all">{t('filters.allMethods')}</SelectItem>
                 {paymentMethods.map((method) => (
                   <SelectItem key={method} value={method}>
-                    {method}
+                    {formatPaymentMethod(method)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1115,7 +1204,15 @@ function PayoutsContent() {
                           </TableCell>
                           <TableCell>{payout.commissionCount}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">{payout.paymentMethod || 'N/A'}</Badge>
+                            <Badge variant="outline">
+                              {formatPaymentMethod(payout.paymentMethod)}
+                            </Badge>
+                            {payout.paymentMethod === 'bank_transfer' &&
+                              payout.status === 'PROCESSING' && (
+                                <div className="text-xs text-amber-600 mt-0.5">
+                                  Manual transfer needed
+                                </div>
+                              )}
                           </TableCell>
                           <TableCell>
                             <StatusBadge status={payout.status} />
@@ -1157,7 +1254,7 @@ function PayoutsContent() {
                                 </Button>
                               )}
 
-                              {payout.status === 'PENDING' && (
+                              {(payout.status === 'PENDING' || payout.status === 'PROCESSING') && (
                                 <Button
                                   size="sm"
                                   variant="default"
@@ -1288,6 +1385,62 @@ function PayoutsContent() {
                 Cancel
               </Button>
               <Button onClick={handleProcessAll}>Confirm — Process All</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Execute Transfers Confirmation Dialog ───────────────────────── */}
+        <Dialog open={executeDialog} onOpenChange={setExecuteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Execute Transfers</DialogTitle>
+              <DialogDescription>
+                This will send funds for all{' '}
+                <span className="font-semibold text-foreground">{stats.pendingCount} pending</span>{' '}
+                payout{stats.pendingCount !== 1 ? 's' : ''} (
+                <span className="font-semibold text-foreground">
+                  {formatCurrencyAmount(stats.pending)}
+                </span>
+                ) via Stripe Connect or PayPal. Bank transfers will be moved to <em>Processing</em>{' '}
+                for manual completion.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setExecuteDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={handleExecuteTransfers}
+                disabled={stats.pendingCount === 0}
+              >
+                Confirm — Execute Transfers
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Sync Statuses Confirmation Dialog ───────────────────────────── */}
+        <Dialog open={syncDialog} onOpenChange={setSyncDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Sync Payout Statuses</DialogTitle>
+              <DialogDescription>
+                This will poll Stripe Connect and PayPal for the latest status of all{' '}
+                <span className="font-semibold text-foreground">
+                  {stats.processingCount} processing
+                </span>{' '}
+                payout{stats.processingCount !== 1 ? 's' : ''} and mark them <em>Completed</em> or{' '}
+                <em>Failed</em> accordingly.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSyncDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSyncStatuses} disabled={stats.processingCount === 0}>
+                Confirm — Sync Now
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
