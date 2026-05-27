@@ -155,6 +155,8 @@ interface ProductFormProps {
   initialData?: any;
   isEdit?: boolean;
   adminMode?: boolean;
+  /** When adminMode=true, reflects the selected store's Gelato verified+enabled status */
+  adminGelatoConfigured?: boolean;
   onSubmit: (data: Partial<ProductData>) => Promise<void>;
   onCancel: () => void;
 }
@@ -578,6 +580,7 @@ export default function ProductForm({
   initialData,
   isEdit = false,
   adminMode = false,
+  adminGelatoConfigured = false,
   onSubmit,
   onCancel,
 }: ProductFormProps) {
@@ -590,11 +593,15 @@ export default function ProductForm({
     { revalidateOnFocus: false, shouldRetryOnError: false }
   );
   const isGelatoConfigured = adminMode
-    ? false
+    ? adminGelatoConfigured
     : gelatoSettings
       ? gelatoSettings.isVerified
       : undefined;
-  const isGelatoEnabled = adminMode ? false : gelatoSettings ? gelatoSettings.isEnabled : undefined;
+  const isGelatoEnabled = adminMode
+    ? adminGelatoConfigured
+    : gelatoSettings
+      ? gelatoSettings.isEnabled
+      : undefined;
 
   // Categories state
   const [categories, setCategories] = useState<Category[]>([]);

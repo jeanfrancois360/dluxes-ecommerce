@@ -4,13 +4,13 @@
  * Admin Product Edit Page
  */
 
-import React, { use, useState } from 'react';
+import React, { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SellerProductForm from '@/components/seller/ProductForm';
 import { InventoryAdjustmentModal } from '@/components/admin/inventory-adjustment-modal';
 import { InventoryHistoryModal } from '@/components/admin/inventory-history-modal';
 import { useAdminProduct } from '@/hooks/use-admin';
-import { adminProductsApi, type AdminProduct } from '@/lib/api/admin';
+import { adminProductsApi, adminStoresApi, type AdminProduct } from '@/lib/api/admin';
 import { toast } from '@/lib/utils/toast';
 import { Button } from '@nextpik/ui';
 import { Package, History, RefreshCw } from 'lucide-react';
@@ -21,6 +21,17 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   const { product, loading, error, refetch } = useAdminProduct(resolvedParams.id);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [storeGelatoOk, setStoreGelatoOk] = useState(false);
+
+  // Once the product loads, check the store's Gelato status
+  useEffect(() => {
+    const storeId = (product as any)?.storeId;
+    if (!storeId) return;
+    adminStoresApi.getAll().then((stores) => {
+      const store = stores.find((s) => s.id === storeId);
+      setStoreGelatoOk(!!(store?.gelatoSettings?.isEnabled && store?.gelatoSettings?.isVerified));
+    });
+  }, [(product as any)?.storeId]);
 
   const handleSubmit = async (data: any) => {
     const images: string[] = data.images || [];
@@ -179,6 +190,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
           initialData={initialData}
           isEdit
           adminMode
+          adminGelatoConfigured={storeGelatoOk}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
         />
