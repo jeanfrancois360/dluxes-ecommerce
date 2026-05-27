@@ -17,7 +17,7 @@ import {
   storeUser,
   clearAllAuthData,
   setTokenExpiry,
-  isTokenExpired,
+  isJwtExpired,
   startSessionTimer,
   resetSessionTimer,
   clearSessionTimer,
@@ -141,29 +141,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        // Check if token is expired
-        if (isTokenExpired()) {
-          // Try to refresh token
-          try {
-            await authApi.refreshToken();
-          } catch (error: any) {
-            // Refresh failed, clear auth data
-            // Don't log 401 errors - they're expected for expired refresh tokens
-            const is401 = error?.status === 401 || error?.response?.status === 401;
-            if (!is401) {
-              console.error('Error refreshing token:', error);
-            }
-            clearAllAuthData();
-            setUser(null);
-            setIsInitialized(true);
-            setIsLoading(false);
-            return;
-          }
+        // Check if the JWT itself is expired (reads the token's own exp claim).
+        // There is no refresh endpoint — if expired, clear auth and stop.
+        if (isJwtExpired(token)) {
+          clearAllAuthData();
+          setUser(null);
+          setIsInitialized(true);
+          setIsLoading(false);
+          return;
         }
 
         // Re-sync the cookie from localStorage so the middleware can read it.
         // The cookie may have been cleared (browser restart, expiry, private browsing)
-        // while localStorage still holds a valid token.
+        // while localStorage still holds a valid non-expired token.
         TokenManager.setAccessToken(token);
 
         // Try to get stored user first (for faster initial render)
@@ -318,8 +308,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(userData);
         storeUser(userData);
 
-        // Set token expiry if available (default to 24 hours if not provided)
-        const expiresIn = response.expiresIn || 24 * 60 * 60 * 1000;
+        // Set token expiry — backend JWT lasts 7 days; use that as the default.
+        // setTokenExpiry expects seconds, not milliseconds.
+        const expiresIn = response.expiresIn || 7 * 24 * 60 * 60;
         setTokenExpiry(expiresIn);
 
         // Start session timer
@@ -377,8 +368,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(userData);
         storeUser(userData);
 
-        // Set token expiry if available (default to 24 hours if not provided)
-        const expiresIn = response.expiresIn || 24 * 60 * 60 * 1000;
+        // Set token expiry — backend JWT lasts 7 days; use that as the default.
+        // setTokenExpiry expects seconds, not milliseconds.
+        const expiresIn = response.expiresIn || 7 * 24 * 60 * 60;
         setTokenExpiry(expiresIn);
 
         // Start session timer
