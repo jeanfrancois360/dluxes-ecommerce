@@ -124,12 +124,35 @@ export class PayoutController {
 
   /**
    * Manually trigger payout processing (Admin only)
+   * Creates payout records for all eligible sellers
    */
   @Post('admin/process')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   async processPayouts(@Request() req) {
     return this.payoutService.processScheduledPayouts();
+  }
+
+  /**
+   * Execute transfers for all PENDING payouts (Admin only)
+   * Sends funds via Stripe Connect or PayPal for each pending payout record
+   */
+  @Post('admin/process-pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async processPendingPayouts() {
+    return this.payoutService.processPendingPayouts();
+  }
+
+  /**
+   * Poll payment providers and sync status of all PROCESSING payouts (Admin only)
+   * Resolves PayPal batch statuses and marks payouts COMPLETED or FAILED
+   */
+  @Post('admin/update-statuses')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async updatePayoutStatuses() {
+    return this.payoutService.updatePayoutStatuses();
   }
 
   /**
