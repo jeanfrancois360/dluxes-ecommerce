@@ -161,6 +161,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         }
 
+        // Re-sync the cookie from localStorage so the middleware can read it.
+        // The cookie may have been cleared (browser restart, expiry, private browsing)
+        // while localStorage still holds a valid token.
+        TokenManager.setAccessToken(token);
+
         // Try to get stored user first (for faster initial render)
         const storedUser = getStoredUser();
         if (storedUser) {
