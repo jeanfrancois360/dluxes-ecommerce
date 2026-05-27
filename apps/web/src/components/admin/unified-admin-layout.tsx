@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AdminSidebar from './admin-sidebar';
 import AdminTopbar from './admin-topbar';
 import TwoFactorBanner from '../seller/two-factor-banner';
-import { AdminRoute } from '@/components/admin-route';
 
 interface UnifiedAdminLayoutProps {
   children: ReactNode;
@@ -15,54 +14,52 @@ export default function UnifiedAdminLayout({ children }: UnifiedAdminLayoutProps
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <AdminRoute>
-      <div className="min-h-screen bg-neutral-50">
-        {/* Topbar */}
-        <AdminTopbar
-          onMobileMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-          isMobileMenuOpen={sidebarOpen}
-        />
+    <div className="min-h-screen bg-neutral-50">
+      {/* Topbar */}
+      <AdminTopbar
+        onMobileMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+        isMobileMenuOpen={sidebarOpen}
+      />
 
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:block">
-          <AdminSidebar />
-        </div>
-
-        {/* Mobile Sidebar Overlay */}
-        <AnimatePresence>
-          {sidebarOpen && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-                onClick={() => setSidebarOpen(false)}
-              />
-
-              {/* Mobile Sidebar */}
-              <motion.div
-                initial={{ x: -280 }}
-                animate={{ x: 0 }}
-                exit={{ x: -280 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="fixed inset-y-0 left-0 z-50 lg:hidden"
-              >
-                <AdminSidebar onNavigate={() => setSidebarOpen(false)} />
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-
-        {/* Main Content */}
-        <div className="lg:pl-64 pt-16">
-          {/* 2FA enforcement banner — visible only when 2FA is not yet enabled (v2.12.0) */}
-          <TwoFactorBanner setupUrl="/admin/account/security" />
-          <main className="min-h-screen bg-neutral-50">{children}</main>
-        </div>
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block">
+        <AdminSidebar />
       </div>
-    </AdminRoute>
+
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+
+            {/* Mobile Sidebar */}
+            <motion.div
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="fixed inset-y-0 left-0 z-50 lg:hidden"
+            >
+              <AdminSidebar onNavigate={() => setSidebarOpen(false)} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <div className="lg:pl-64 pt-16">
+        {/* 2FA enforcement banner — visible only when 2FA is not yet enabled (v2.12.0) */}
+        <TwoFactorBanner setupUrl="/admin/account/security" />
+        <main className="min-h-screen bg-neutral-50">{children}</main>
+      </div>
+    </div>
   );
 }
