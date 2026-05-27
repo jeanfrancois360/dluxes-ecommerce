@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import PageHeader from '@/components/admin/page-header';
@@ -1171,11 +1171,8 @@ function PayoutsContent() {
                     </TableRow>
                   ) : (
                     filteredPayouts.map((payout) => (
-                      <>
-                        <TableRow
-                          key={payout.id}
-                          className={selectedIds.has(payout.id) ? 'bg-muted/50' : ''}
-                        >
+                      <React.Fragment key={payout.id}>
+                        <TableRow className={selectedIds.has(payout.id) ? 'bg-muted/50' : ''}>
                           <TableCell>
                             <input
                               type="checkbox"
@@ -1306,7 +1303,7 @@ function PayoutsContent() {
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </React.Fragment>
                     ))
                   )}
                 </TableBody>
