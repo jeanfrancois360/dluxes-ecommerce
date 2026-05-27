@@ -154,6 +154,7 @@ interface ProductData {
 interface ProductFormProps {
   initialData?: any;
   isEdit?: boolean;
+  adminMode?: boolean;
   onSubmit: (data: Partial<ProductData>) => Promise<void>;
   onCancel: () => void;
 }
@@ -162,11 +163,13 @@ interface ProductFormProps {
 function ProductTypeSelector({
   value,
   onChange,
+  adminMode = false,
 }: {
   value: string;
   onChange: (value: string) => void;
+  adminMode?: boolean;
 }) {
-  const { canList, reasons, isLoading } = useCanListProductType(value);
+  const { canList, reasons, isLoading } = useCanListProductType(adminMode ? null : value);
   const requiresSubscription = SUBSCRIPTION_REQUIRED_TYPES.includes(value);
   const typeLabel = PRODUCT_TYPE_LABELS[value] || value;
 
@@ -574,6 +577,7 @@ function CategoryCombobox({
 export default function ProductForm({
   initialData,
   isEdit = false,
+  adminMode = false,
   onSubmit,
   onCancel,
 }: ProductFormProps) {
@@ -1352,6 +1356,7 @@ export default function ProductForm({
               {/* Product Type */}
               <ProductTypeSelector
                 value={formData.productType}
+                adminMode={adminMode}
                 onChange={(value) => {
                   // Auto-set purchase type when product type changes
                   const forcedPurchaseType =
