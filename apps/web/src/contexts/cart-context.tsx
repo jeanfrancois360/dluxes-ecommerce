@@ -17,6 +17,7 @@ export interface CartItem {
   currencyAtAdd?: string; // 🔒 Currency when item was added
   quantity: number;
   sku?: string;
+  fulfillmentType?: string | null;
 }
 
 export interface CartTotals {
@@ -301,6 +302,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         currencyAtAdd: item.currencyAtAdd, // 🔒 Locked currency
         quantity: item.quantity,
         sku: item.sku,
+        fulfillmentType: item.product?.fulfillmentType || item.fulfillmentType || null,
       }));
 
       setItems(transformedItems);
