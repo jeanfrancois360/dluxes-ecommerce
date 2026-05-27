@@ -118,6 +118,28 @@ export interface TaxCalculation {
   };
 }
 
+/** businessType values that indicate the seller handles their own tax obligations */
+const REGISTERED_BUSINESS_TYPES = ['corporation', 'registered_business'];
+
+export type SellerTaxHandling = 'NEXTPIK_COLLECTS' | 'PRICE_INCLUSIVE';
+
+export interface SellerTaxBreakdown {
+  storeId: string;
+  storeName: string;
+  businessType: string | null;
+  taxHandling: SellerTaxHandling;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  jurisdiction: string;
+}
+
+export interface TaxCalculationWithBreakdown extends TaxCalculation {
+  sellerBreakdown: SellerTaxBreakdown[];
+  hasTaxInclusiveItems: boolean;
+  hasTaxableItems: boolean;
+}
+
 export interface CartItem {
   productId: string;
   quantity: number;
@@ -1129,6 +1151,113 @@ export class ShippingTaxService {
     }
 
     return options;
+  }
+
+  /**
+   * Calculate tax per seller based on their businessType.
+   *
+   * - corporation / registered_business → PRICE_INCLUSIVE (seller remits their own tax, $0 extra)
+   * - individual / sole_proprietor / llc / null → NEXTPIK_COLLECTS (platform applies configured tax rate)
+   */
+  async calculateTaxPerSeller(
+    address: ShippingAddress,
+    items: CartItem[],
+    subtotal: number
+  ): Promise<TaxCalculationWithBreakdown> {
+    // Group items by storeId
+    const storeGroups = new Map<string, { items: CartItem[]; subtotal: number }>();
+    const unknownStoreItems: CartItem[] = [];
+
+    for (const item of items) {
+      if (!item.storeId) {
+        unknownStoreItems.push(item);
+        continue;
+      }
+      const group = storeGroups.get(item.storeId) ?? { items: [], subtotal: 0 };
+      group.items.push(item);
+      group.subtotal += item.price * item.quantity;
+      storeGroups.set(item.storeId, group);
+    }
+
+    // Handle items with no storeId as taxable (safe fallback)
+    if (unknownStoreItems.length > 0) {
+      const unknownSubtotal = unknownStoreItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+      const group = storeGroups.get('__unknown__') ?? { items: [], subtotal: 0 };
+      group.items.push(...unknownStoreItems);
+      group.subtotal += unknownSubtotal;
+      storeGroups.set('__unknown__', group);
+    }
+
+    // Fetch store info for all storeIds
+    const storeIds = [...storeGroups.keys()].filter((id) => id !== '__unknown__');
+    const stores = storeIds.length
+      ? await this.prisma.store.findMany({
+          where: { id: { in: storeIds } },
+          select: { id: true, name: true, businessType: true },
+        })
+      : [];
+
+    const storeMap = new Map(stores.map((s) => [s.id, s]));
+
+    const sellerBreakdown: SellerTaxBreakdown[] = [];
+    let totalTaxAmount = 0;
+    let hasTaxInclusiveItems = false;
+    let hasTaxableItems = false;
+
+    for (const [storeId, group] of storeGroups) {
+      const store = storeMap.get(storeId);
+      const businessType = store?.businessType ?? null;
+      const storeName = store?.name ?? (storeId === '__unknown__' ? 'Unknown Store' : storeId);
+
+      const isRegistered =
+        businessType !== null && REGISTERED_BUSINESS_TYPES.includes(businessType);
+
+      if (isRegistered) {
+        hasTaxInclusiveItems = true;
+        sellerBreakdown.push({
+          storeId,
+          storeName,
+          businessType,
+          taxHandling: 'PRICE_INCLUSIVE',
+          subtotal: group.subtotal,
+          taxRate: 0,
+          taxAmount: 0,
+          jurisdiction: 'Tax included in price',
+        });
+      } else {
+        hasTaxableItems = true;
+        const taxCalc = await this.calculateTax(address, group.subtotal);
+        totalTaxAmount += taxCalc.amount;
+        sellerBreakdown.push({
+          storeId,
+          storeName,
+          businessType,
+          taxHandling: 'NEXTPIK_COLLECTS',
+          subtotal: group.subtotal,
+          taxRate: taxCalc.rate,
+          taxAmount: taxCalc.amount,
+          jurisdiction: taxCalc.jurisdiction,
+        });
+      }
+    }
+
+    // Build overall TaxCalculation (for backward compat)
+    const overallRate = hasTaxableItems && subtotal > 0 ? totalTaxAmount / subtotal : 0;
+
+    return {
+      rate: overallRate,
+      amount: Math.round(totalTaxAmount * 100) / 100,
+      jurisdiction:
+        hasTaxInclusiveItems && hasTaxableItems
+          ? 'Mixed (platform + inclusive)'
+          : hasTaxInclusiveItems
+            ? 'Tax included by sellers'
+            : (sellerBreakdown[0]?.jurisdiction ?? 'N/A'),
+      breakdown: {},
+      sellerBreakdown,
+      hasTaxInclusiveItems,
+      hasTaxableItems,
+    };
   }
 
   /**

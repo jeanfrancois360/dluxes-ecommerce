@@ -3,11 +3,23 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown, Building2, User } from 'lucide-react';
 import { cn } from '@nextpik/ui';
 import type { CartItem } from '@/contexts/cart-context';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { useSelectedCurrency, useCurrencyConverter, useCurrencyRates } from '@/hooks/use-currency';
 import { useTranslations } from 'next-intl';
+
+interface SellerTaxBreakdownItem {
+  storeId: string;
+  storeName: string;
+  businessType: string | null;
+  taxHandling: 'NEXTPIK_COLLECTS' | 'PRICE_INCLUSIVE';
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  jurisdiction: string;
+}
 
 interface OrderSummaryProps {
   items: CartItem[];
@@ -15,7 +27,7 @@ interface OrderSummaryProps {
   shipping: number;
   tax: number;
   total: number;
-  cartCurrency?: string; // 🔒 Cart's locked currency
+  cartCurrency?: string;
   shippingMethod?: {
     name: string;
     price: number;
@@ -23,7 +35,12 @@ interface OrderSummaryProps {
   promoCode?: string;
   discount?: number;
   className?: string;
-  hasShippingAddress?: boolean; // Track if shipping address is entered
+  hasShippingAddress?: boolean;
+  taxBreakdown?: {
+    sellerBreakdown: SellerTaxBreakdownItem[];
+    hasTaxInclusiveItems: boolean;
+    hasTaxableItems: boolean;
+  };
 }
 
 export function OrderSummary({
@@ -32,12 +49,13 @@ export function OrderSummary({
   shipping,
   tax,
   total,
-  cartCurrency = 'USD', // 🔒 Default to USD if not provided
+  cartCurrency = 'USD',
   shippingMethod,
   promoCode,
   discount = 0,
   className,
-  hasShippingAddress = false, // Default to false if not provided
+  hasShippingAddress = false,
+  taxBreakdown,
 }: OrderSummaryProps) {
   const t = useTranslations('components.orderSummary');
   const [isSticky, setIsSticky] = useState(false);
@@ -46,6 +64,7 @@ export function OrderSummary({
   const [appliedPromo, setAppliedPromo] = useState(promoCode || '');
   const [promoError, setPromoError] = useState('');
   const [showAllItems, setShowAllItems] = useState(false);
+  const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
 
   // Use currency from the selected currency context
   const { currency } = useSelectedCurrency();
@@ -354,16 +373,106 @@ export function OrderSummary({
           </span>
         </div>
 
-        {/* Tax */}
-        <div className="flex justify-between text-sm">
-          <span className="text-neutral-600">{t('taxEstimated')}</span>
-          <span className="font-medium text-black">
-            {!hasShippingAddress ? (
-              <span className="text-neutral-400 text-xs">{t('calculatedAtNextStep')}</span>
-            ) : (
-              formatWithCurrency(tax, false)
+        {/* Tax — expandable per-seller breakdown */}
+        <div>
+          <button
+            type="button"
+            onClick={() => hasShippingAddress && taxBreakdown && setShowTaxBreakdown((v) => !v)}
+            className={cn(
+              'w-full flex items-center justify-between text-sm',
+              hasShippingAddress && taxBreakdown && 'cursor-pointer group'
             )}
-          </span>
+          >
+            <span className="flex items-center gap-1.5 text-neutral-600">
+              {t('taxEstimated')}
+              {hasShippingAddress && taxBreakdown && (
+                <>
+                  {taxBreakdown.hasTaxInclusiveItems && taxBreakdown.hasTaxableItems && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                      Mixed
+                    </span>
+                  )}
+                  {taxBreakdown.hasTaxInclusiveItems && !taxBreakdown.hasTaxableItems && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
+                      Included
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={cn(
+                      'w-3.5 h-3.5 text-neutral-400 transition-transform duration-200',
+                      showTaxBreakdown && 'rotate-180'
+                    )}
+                  />
+                </>
+              )}
+            </span>
+            <span className="font-medium text-black">
+              {!hasShippingAddress ? (
+                <span className="text-neutral-400 text-xs">{t('calculatedAtNextStep')}</span>
+              ) : (
+                formatWithCurrency(tax, false)
+              )}
+            </span>
+          </button>
+
+          {/* Per-seller tax breakdown accordion */}
+          <AnimatePresence>
+            {hasShippingAddress && showTaxBreakdown && taxBreakdown && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-2 space-y-2 pl-1">
+                  {taxBreakdown.sellerBreakdown.map((seller) => (
+                    <div
+                      key={seller.storeId}
+                      className={cn(
+                        'flex items-start justify-between gap-2 px-3 py-2 rounded-lg text-xs border',
+                        seller.taxHandling === 'PRICE_INCLUSIVE'
+                          ? 'bg-green-50 border-green-100'
+                          : 'bg-amber-50 border-amber-100'
+                      )}
+                    >
+                      <div className="flex items-start gap-2 min-w-0">
+                        {seller.taxHandling === 'PRICE_INCLUSIVE' ? (
+                          <Building2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <User className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-medium text-neutral-800 truncate">
+                            {seller.storeName}
+                          </p>
+                          {seller.taxHandling === 'PRICE_INCLUSIVE' ? (
+                            <p className="text-green-700 mt-0.5">Tax included in price</p>
+                          ) : (
+                            <p className="text-amber-700 mt-0.5">
+                              {(seller.taxRate * 100).toFixed(2)}% · {seller.jurisdiction}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 text-right">
+                        {seller.taxHandling === 'PRICE_INCLUSIVE' ? (
+                          <span className="text-green-700 font-semibold">—</span>
+                        ) : (
+                          <span className="text-amber-800 font-semibold">
+                            {formatWithCurrency(seller.taxAmount, false)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-neutral-400 pl-1">
+                    Tax on individual seller items is collected and remitted by NextPik
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Discount */}
