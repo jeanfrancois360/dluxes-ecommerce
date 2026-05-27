@@ -79,8 +79,9 @@ export function GelatoProductSelector({
       return;
     }
 
-    // If not in search results and we have a value, fetch directly from API
-    if (value) {
+    // If not in search results and we have a value, fetch directly from API.
+    // Skip if gelatoEnabled is false (e.g. admin context without seller credentials).
+    if (value && gelatoEnabled) {
       gelatoApi
         .getProductDetails(value)
         .then((product) => {
@@ -90,11 +91,13 @@ export function GelatoProductSelector({
         .catch((error) => {
           console.error('Failed to fetch product details for UID:', value, error);
           // Fallback: show truncated UID as name
-          setSelectedName(value);
+          setSelectedName(truncateUid(value));
           setSelectedImage('');
         });
+    } else if (value && !gelatoEnabled) {
+      setSelectedName(truncateUid(value));
     }
-  }, [value, products, selectedName]);
+  }, [value, products, selectedName, gelatoEnabled]);
 
   async function handleSelect(uid: string, name: string, image?: string) {
     try {
