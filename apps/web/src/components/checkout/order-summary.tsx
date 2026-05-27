@@ -31,11 +31,13 @@ interface OrderSummaryProps {
   shippingMethod?: {
     name: string;
     price: number;
+    estimatedDays?: number;
   };
   promoCode?: string;
   discount?: number;
   className?: string;
   hasShippingAddress?: boolean;
+  isLoadingShipping?: boolean;
   taxBreakdown?: {
     sellerBreakdown: SellerTaxBreakdownItem[];
     hasTaxInclusiveItems: boolean;
@@ -55,6 +57,7 @@ export function OrderSummary({
   discount = 0,
   className,
   hasShippingAddress = false,
+  isLoadingShipping = false,
   taxBreakdown,
 }: OrderSummaryProps) {
   const t = useTranslations('components.orderSummary');
@@ -350,25 +353,39 @@ export function OrderSummary({
       <div className="p-6 border-t border-neutral-200 space-y-3">
         {/* Subtotal */}
         <div className="flex justify-between text-sm">
-          <span className="text-neutral-600">{t('subtotal')}</span>
-          <span className="font-medium text-black">{formatWithCurrency(subtotal, false)}</span>
+          <span className="text-neutral-500">
+            {t('subtotal')}{' '}
+            <span className="text-neutral-400">
+              ({items.length} {items.length === 1 ? t('item') : t('items')})
+            </span>
+          </span>
+          <span className="font-medium text-neutral-900">
+            {formatWithCurrency(subtotal, false)}
+          </span>
         </div>
 
         {/* Shipping */}
         <div className="flex justify-between text-sm">
-          <div className="flex items-center gap-1">
-            <span className="text-neutral-600">{t('shipping')}</span>
-            {shippingMethod && (
-              <span className="text-xs text-neutral-500">({shippingMethod.name})</span>
+          <div className="min-w-0 flex-1 pr-2">
+            <span className="text-neutral-500">{t('shipping')}</span>
+            {hasShippingAddress && shippingMethod && (
+              <p className="text-[11px] text-neutral-400 mt-0.5 leading-tight truncate">
+                {shippingMethod.name}
+                {shippingMethod.estimatedDays != null && (
+                  <span> · {shippingMethod.estimatedDays}d est.</span>
+                )}
+              </p>
             )}
           </div>
-          <span className="font-medium text-black">
-            {!hasShippingAddress ? (
+          <span className="font-medium flex-shrink-0">
+            {isLoadingShipping ? (
+              <span className="inline-block w-14 h-4 bg-neutral-200 rounded animate-pulse" />
+            ) : !hasShippingAddress ? (
               <span className="text-neutral-400 text-xs">{t('calculatedAtNextStep')}</span>
             ) : shipping === 0 ? (
-              <span className="text-green-600 font-semibold">{t('free')}</span>
+              <span className="text-emerald-600 font-semibold">{t('free')}</span>
             ) : (
-              formatWithCurrency(shipping, false)
+              <span className="text-neutral-900">{formatWithCurrency(shipping, false)}</span>
             )}
           </span>
         </div>
@@ -383,8 +400,8 @@ export function OrderSummary({
               hasShippingAddress && taxBreakdown && 'cursor-pointer group'
             )}
           >
-            <span className="flex items-center gap-1.5 text-neutral-600">
-              {t('taxEstimated')}
+            <span className="flex items-center gap-1.5 text-neutral-500">
+              {hasShippingAddress ? 'Tax' : t('taxEstimated')}
               {hasShippingAddress && taxBreakdown && (
                 <>
                   {taxBreakdown.hasTaxInclusiveItems && taxBreakdown.hasTaxableItems && (
@@ -393,24 +410,32 @@ export function OrderSummary({
                     </span>
                   )}
                   {taxBreakdown.hasTaxInclusiveItems && !taxBreakdown.hasTaxableItems && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
                       Included
                     </span>
                   )}
-                  <ChevronDown
-                    className={cn(
-                      'w-3.5 h-3.5 text-neutral-400 transition-transform duration-200',
-                      showTaxBreakdown && 'rotate-180'
-                    )}
-                  />
+                  {taxBreakdown.sellerBreakdown.length > 0 && (
+                    <ChevronDown
+                      className={cn(
+                        'w-3.5 h-3.5 text-neutral-400 transition-transform duration-200',
+                        showTaxBreakdown && 'rotate-180'
+                      )}
+                    />
+                  )}
                 </>
               )}
             </span>
-            <span className="font-medium text-black">
-              {!hasShippingAddress ? (
+            <span className="font-medium">
+              {isLoadingShipping ? (
+                <span className="inline-block w-12 h-4 bg-neutral-200 rounded animate-pulse" />
+              ) : !hasShippingAddress ? (
                 <span className="text-neutral-400 text-xs">{t('calculatedAtNextStep')}</span>
+              ) : tax === 0 &&
+                taxBreakdown?.hasTaxInclusiveItems &&
+                !taxBreakdown.hasTaxableItems ? (
+                <span className="text-emerald-600 font-semibold text-xs">Included</span>
               ) : (
-                formatWithCurrency(tax, false)
+                <span className="text-neutral-900">{formatWithCurrency(tax, false)}</span>
               )}
             </span>
           </button>
@@ -425,20 +450,20 @@ export function OrderSummary({
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="mt-2 space-y-2 pl-1">
+                <div className="mt-2 space-y-1.5 pl-1">
                   {taxBreakdown.sellerBreakdown.map((seller) => (
                     <div
                       key={seller.storeId}
                       className={cn(
                         'flex items-start justify-between gap-2 px-3 py-2 rounded-lg text-xs border',
                         seller.taxHandling === 'PRICE_INCLUSIVE'
-                          ? 'bg-green-50 border-green-100'
+                          ? 'bg-emerald-50 border-emerald-100'
                           : 'bg-amber-50 border-amber-100'
                       )}
                     >
                       <div className="flex items-start gap-2 min-w-0">
                         {seller.taxHandling === 'PRICE_INCLUSIVE' ? (
-                          <Building2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" />
+                          <Building2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
                         ) : (
                           <User className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
                         )}
@@ -447,17 +472,19 @@ export function OrderSummary({
                             {seller.storeName}
                           </p>
                           {seller.taxHandling === 'PRICE_INCLUSIVE' ? (
-                            <p className="text-green-700 mt-0.5">Tax included in price</p>
+                            <p className="text-emerald-700 mt-0.5">Tax included in price</p>
                           ) : (
                             <p className="text-amber-700 mt-0.5">
-                              {(seller.taxRate * 100).toFixed(2)}% · {seller.jurisdiction}
+                              {(seller.taxRate * 100).toFixed(0)}% · {seller.jurisdiction}
                             </p>
                           )}
                         </div>
                       </div>
                       <div className="flex-shrink-0 text-right">
                         {seller.taxHandling === 'PRICE_INCLUSIVE' ? (
-                          <span className="text-green-700 font-semibold">—</span>
+                          <span className="text-emerald-600 font-semibold text-[10px] uppercase tracking-wide">
+                            Incl.
+                          </span>
                         ) : (
                           <span className="text-amber-800 font-semibold">
                             {formatWithCurrency(seller.taxAmount, false)}
@@ -466,8 +493,8 @@ export function OrderSummary({
                       </div>
                     </div>
                   ))}
-                  <p className="text-[10px] text-neutral-400 pl-1">
-                    Tax on individual seller items is collected and remitted by NextPik
+                  <p className="text-[10px] text-neutral-400 pl-1 pt-0.5">
+                    Tax on non-registered seller items is collected by NextPik
                   </p>
                 </div>
               </motion.div>
@@ -475,27 +502,42 @@ export function OrderSummary({
           </AnimatePresence>
         </div>
 
-        {/* Discount */}
+        {/* Store credit / discount */}
         {discount > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex justify-between text-sm"
           >
-            <span className="text-green-600">{t('discount')}</span>
-            <span className="font-medium text-green-600">
-              -{formatWithCurrency(discount, false)}
+            <span className="text-emerald-600 flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              Store credit
+            </span>
+            <span className="font-semibold text-emerald-600">
+              −{formatWithCurrency(discount, false)}
             </span>
           </motion.div>
         )}
 
         {/* Total */}
-        <div className="pt-3 border-t border-neutral-200">
+        <div className="pt-4 mt-1 border-t-2 border-neutral-200">
           <div className="flex justify-between items-center">
-            <span className="text-lg font-serif font-bold text-black">{t('total')}</span>
+            <div>
+              <span className="text-base font-bold text-neutral-900">{t('total')}</span>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                {cartCurrency !== 'USD' ? `All amounts in ${cartCurrency}` : 'Including all taxes'}
+              </p>
+            </div>
             <div className="text-right">
               {discount > 0 && (
-                <p className="text-sm text-neutral-500 line-through">
+                <p className="text-xs text-neutral-400 line-through mb-0.5">
                   {formatWithCurrency(total, false)}
                 </p>
               )}
@@ -506,26 +548,12 @@ export function OrderSummary({
           </div>
         </div>
 
-        {/* Free Shipping Info */}
-        {shipping > 0 && subtotal < 200 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-3 bg-blue-50 border border-blue-200 rounded-lg"
-          >
-            <p className="text-xs text-blue-900">
-              Add <strong className="font-semibold">{formatWithCurrency(200 - subtotal)}</strong>{' '}
-              more for <strong className="font-semibold text-gold">free shipping</strong>
-            </p>
-          </motion.div>
-        )}
-
-        {/* Trust badges */}
-        <div className="pt-3 border-t border-neutral-100">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="flex flex-col items-center gap-1.5 text-center">
+        {/* Trust row */}
+        <div className="pt-4 border-t border-neutral-100">
+          <div className="flex items-center justify-center gap-5">
+            <div className="flex items-center gap-1.5 text-neutral-500">
               <svg
-                className="w-5 h-5 text-green-600"
+                className="w-4 h-4 text-emerald-500"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -537,15 +565,11 @@ export function OrderSummary({
                   d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                 />
               </svg>
-              <span className="text-xs text-neutral-500 leading-tight">
-                Buyer
-                <br />
-                Protection
-              </span>
+              <span className="text-[11px]">Buyer Protection</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5 text-center">
+            <div className="flex items-center gap-1.5 text-neutral-500">
               <svg
-                className="w-5 h-5 text-neutral-600"
+                className="w-4 h-4 text-neutral-500"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -557,15 +581,11 @@ export function OrderSummary({
                   d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                 />
               </svg>
-              <span className="text-xs text-neutral-500 leading-tight">
-                SSL Secure
-                <br />
-                Checkout
-              </span>
+              <span className="text-[11px]">SSL Secure</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5 text-center">
+            <div className="flex items-center gap-1.5 text-neutral-500">
               <svg
-                className="w-5 h-5 text-neutral-600"
+                className="w-4 h-4 text-neutral-500"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -577,11 +597,7 @@ export function OrderSummary({
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              <span className="text-xs text-neutral-500 leading-tight">
-                Easy
-                <br />
-                Returns
-              </span>
+              <span className="text-[11px]">Easy Returns</span>
             </div>
           </div>
         </div>
