@@ -148,7 +148,8 @@ export default function ReferralsPage() {
           referralApi.getReferralSettings(),
         ]);
         setSummary(summaryRes);
-        setHistory(historyRes?.data || []);
+        // handleResponse already unwraps { success, data } → returns the array directly
+        setHistory(Array.isArray(historyRes) ? historyRes : (historyRes as any)?.data || []);
         setSettings(settingsRes as ReferralSettings);
       } catch {
         if (!silent) toast.error(t('toast.loadError'));
@@ -302,70 +303,111 @@ export default function ReferralsPage() {
         >
           {/* Decorative background */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[#CBB57B]/10 blur-3xl" />
-            <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full bg-[#CBB57B]/5 blur-2xl" />
-            <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_40px,rgba(255,255,255,0.01)_40px,rgba(255,255,255,0.01)_41px)]" />
+            <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-[#CBB57B]/8 blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-[#CBB57B]/5 blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-white/[0.015] blur-2xl" />
+            <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_60px,rgba(255,255,255,0.008)_60px,rgba(255,255,255,0.008)_61px)]" />
           </div>
 
-          <div className="relative p-7 lg:p-9">
+          <div className="relative p-7 lg:p-10">
             {summary?.referralCode ? (
-              <div className="flex flex-col lg:flex-row lg:items-center gap-8">
+              <div className="flex flex-col lg:flex-row lg:items-start gap-8">
                 {/* Left: code info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 rounded-md bg-[#CBB57B]/20 flex items-center justify-center">
-                      <Gift className="w-3.5 h-3.5 text-[#CBB57B]" />
+                  {/* Label row */}
+                  <div className="flex items-center gap-2 mb-5">
+                    <div className="w-7 h-7 rounded-lg bg-[#CBB57B]/20 flex items-center justify-center">
+                      <Gift className="w-4 h-4 text-[#CBB57B]" />
                     </div>
-                    <span className="text-xs font-semibold text-[#CBB57B] uppercase tracking-widest">
+                    <span className="text-xs font-bold text-[#CBB57B] uppercase tracking-widest">
                       {t('yourCode')}
                     </span>
                     {summary.codeActive && (
-                      <span className="ml-1 flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                      <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-full">
                         <BadgeCheck className="w-3 h-3" /> Active
                       </span>
                     )}
                     {justGenerated && (
-                      <span className="ml-1 flex items-center gap-1 text-[10px] font-bold text-[#CBB57B] bg-[#CBB57B]/15 px-2 py-0.5 rounded-full animate-pulse">
-                        <Sparkles className="w-3 h-3" /> New!
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-[#CBB57B] bg-[#CBB57B]/15 border border-[#CBB57B]/30 px-2.5 py-1 rounded-full animate-pulse">
+                        <Sparkles className="w-3 h-3" /> Just created!
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3 mb-4">
-                    <span
+                  {/* Code block — the hero element */}
+                  <div className="relative mb-5">
+                    <div
                       className={[
-                        'text-4xl lg:text-5xl font-mono font-black tracking-[0.15em] text-white transition-all duration-500',
-                        justGenerated ? 'drop-shadow-[0_0_24px_rgba(203,181,123,0.6)]' : '',
+                        'flex items-center justify-between bg-white/[0.06] border rounded-2xl px-6 py-5 transition-all duration-500',
+                        justGenerated
+                          ? 'border-[#CBB57B]/60 shadow-[0_0_40px_rgba(203,181,123,0.15)]'
+                          : 'border-white/10',
                       ].join(' ')}
                     >
-                      {summary.referralCode}
-                    </span>
+                      <span
+                        className={[
+                          'text-3xl sm:text-4xl lg:text-5xl font-mono font-black tracking-[0.18em] transition-all duration-500',
+                          justGenerated
+                            ? 'text-[#e8d49a] drop-shadow-[0_0_20px_rgba(203,181,123,0.5)]'
+                            : 'text-white',
+                        ].join(' ')}
+                      >
+                        {summary.referralCode}
+                      </span>
+                      <button
+                        onClick={() => copyToClipboard(summary.referralCode!, 'code')}
+                        className={[
+                          'flex-shrink-0 ml-4 flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all active:scale-95',
+                          copied === 'code'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-[#CBB57B] hover:bg-[#e8d49a] text-black',
+                        ].join(' ')}
+                      >
+                        {copied === 'code' ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span className="hidden sm:inline">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4" />
+                            <span className="hidden sm:inline">{t('copy')}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
 
-                  <p className="text-sm text-neutral-400 mb-5 max-w-sm">{t('shareDesc')}</p>
+                  <p className="text-sm text-neutral-400 mb-5 max-w-md leading-relaxed">
+                    {t('shareDesc')}
+                  </p>
 
                   {/* Referral link row */}
-                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 mb-4 max-w-md">
-                    <Link2 className="w-3.5 h-3.5 text-neutral-500 flex-shrink-0" />
-                    <span className="text-xs text-neutral-400 truncate flex-1">{referralLink}</span>
+                  <div className="flex items-center gap-2 bg-white/[0.04] border border-white/8 rounded-xl px-4 py-3 mb-4 max-w-lg group hover:border-white/15 transition-colors">
+                    <Link2 className="w-3.5 h-3.5 text-neutral-600 flex-shrink-0" />
+                    <span className="text-xs text-neutral-500 truncate flex-1 font-mono">
+                      {referralLink}
+                    </span>
                     <button
                       onClick={() => copyToClipboard(referralLink, 'link')}
-                      className="flex-shrink-0 text-xs text-[#CBB57B] hover:text-[#e8d49a] font-medium transition-colors"
+                      className="flex-shrink-0 text-xs text-[#CBB57B] hover:text-[#e8d49a] font-semibold transition-colors whitespace-nowrap"
                     >
-                      {copied === 'link' ? 'Copied!' : 'Copy link'}
+                      {copied === 'link' ? '✓ Copied' : 'Copy link'}
                     </button>
                   </div>
 
                   {/* Usage bar */}
                   {maxUsage > 0 && (
                     <div className="max-w-sm">
-                      <div className="flex justify-between text-xs text-neutral-500 mb-1.5">
-                        <span>{usageCount} uses</span>
+                      <div className="flex justify-between text-xs text-neutral-600 mb-1.5">
+                        <span>
+                          {usageCount} use{usageCount !== 1 ? 's' : ''}
+                        </span>
                         <span>{maxUsage} max</span>
                       </div>
-                      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-1 bg-white/8 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-[#CBB57B] to-[#e8d49a] rounded-full transition-all duration-500"
+                          className="h-full bg-gradient-to-r from-[#CBB57B] to-[#e8d49a] rounded-full transition-all duration-700"
                           style={{ width: `${usagePct}%` }}
                         />
                       </div>
@@ -373,25 +415,11 @@ export default function ReferralsPage() {
                   )}
                 </div>
 
-                {/* Right: action buttons */}
-                <div className="flex flex-row lg:flex-col gap-3 lg:min-w-[160px]">
-                  <button
-                    onClick={() => copyToClipboard(summary.referralCode!, 'code')}
-                    className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-[#CBB57B] hover:bg-[#e8d49a] active:scale-95 text-black font-semibold px-5 py-3 rounded-xl transition-all text-sm"
-                  >
-                    {copied === 'code' ? (
-                      <>
-                        <Check className="w-4 h-4" /> Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" /> {t('copy')} Code
-                      </>
-                    )}
-                  </button>
+                {/* Right: share action */}
+                <div className="flex flex-row lg:flex-col gap-3 lg:min-w-[148px] lg:pt-14">
                   <button
                     onClick={handleShare}
-                    className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 active:scale-95 text-white font-medium px-5 py-3 rounded-xl transition-all text-sm border border-white/10"
+                    className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-white/8 hover:bg-white/12 active:scale-95 text-white font-semibold px-5 py-3 rounded-xl transition-all text-sm border border-white/10"
                   >
                     <Share2 className="w-4 h-4" />
                     {t('share')}
@@ -399,17 +427,48 @@ export default function ReferralsPage() {
                 </div>
               </div>
             ) : (
-              /* No code yet */
-              <div className="flex flex-col items-center text-center py-6 max-w-sm mx-auto">
-                <div className="w-16 h-16 rounded-2xl bg-[#CBB57B]/15 flex items-center justify-center mb-5">
-                  <Sparkles className="w-8 h-8 text-[#CBB57B]" />
+              /* ── No code yet — world-class empty state ── */
+              <div className="flex flex-col items-center text-center py-8 max-w-lg mx-auto">
+                {/* Animated icon */}
+                <div className="relative w-20 h-20 mb-7">
+                  <div className="absolute inset-0 rounded-2xl bg-[#CBB57B]/10 animate-pulse" />
+                  <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#CBB57B]/25 to-[#CBB57B]/8 border border-[#CBB57B]/20 flex items-center justify-center">
+                    <Sparkles className="w-9 h-9 text-[#CBB57B]" />
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold mb-2">{t('noCodeYet')}</h3>
-                <p className="text-sm text-neutral-400 mb-6">{t('generateDesc')}</p>
+
+                <h3 className="text-2xl font-black mb-3 bg-gradient-to-r from-white to-neutral-300 bg-clip-text text-transparent">
+                  Turn your network into rewards
+                </h3>
+                <p className="text-sm text-neutral-400 mb-8 max-w-sm leading-relaxed">
+                  Get a unique code, share it with friends, and earn every time someone signs up and
+                  shops on NextPik.
+                </p>
+
+                {/* Feature preview */}
+                <div className="grid grid-cols-3 gap-3 w-full mb-8">
+                  {[
+                    { icon: Zap, label: 'Instant code', desc: 'Ready in seconds' },
+                    { icon: Gift, label: 'Real rewards', desc: 'Per qualified referral' },
+                    { icon: TrendingUp, label: 'Live tracking', desc: 'Full dashboard' },
+                  ].map(({ icon: Icon, label, desc }) => (
+                    <div
+                      key={label}
+                      className="bg-white/5 border border-white/8 rounded-xl p-3.5 text-left"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-[#CBB57B]/15 flex items-center justify-center mb-2.5">
+                        <Icon className="w-3.5 h-3.5 text-[#CBB57B]" />
+                      </div>
+                      <p className="text-xs font-bold text-white">{label}</p>
+                      <p className="text-[10px] text-neutral-500 mt-0.5">{desc}</p>
+                    </div>
+                  ))}
+                </div>
+
                 <button
                   onClick={handleGenerate}
                   disabled={isGenerating}
-                  className="flex items-center gap-2 bg-[#CBB57B] hover:bg-[#e8d49a] active:scale-95 text-black font-semibold px-7 py-3 rounded-xl transition-all disabled:opacity-60 text-sm"
+                  className="flex items-center gap-2.5 bg-[#CBB57B] hover:bg-[#e8d49a] active:scale-95 text-black font-bold px-8 py-3.5 rounded-xl transition-all disabled:opacity-60 text-sm shadow-[0_8px_32px_rgba(203,181,123,0.25)]"
                 >
                   {isGenerating ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -418,6 +477,7 @@ export default function ReferralsPage() {
                   )}
                   {isGenerating ? t('generating') : t('generateCode')}
                 </button>
+
                 {generateError && (
                   <div className="mt-4 flex items-start gap-2 bg-red-500/10 border border-red-500/20 text-red-300 text-xs rounded-xl px-4 py-3 max-w-xs text-left">
                     <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
