@@ -133,27 +133,31 @@ export default function ReferralsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [justGenerated, setJustGenerated] = useState(false);
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
   const [redeemingCoupon, setRedeemingCoupon] = useState<string | null>(null);
   const [savingRewardType, setSavingRewardType] = useState<RewardType | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [summaryRes, historyRes, settingsRes] = await Promise.all([
-        referralApi.getReferralSummary(),
-        referralApi.getReferralHistory({ limit: 50 }),
-        referralApi.getReferralSettings(),
-      ]);
-      setSummary(summaryRes);
-      setHistory(historyRes?.data || []);
-      setSettings(settingsRes as ReferralSettings);
-    } catch {
-      toast.error(t('toast.loadError'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
+  const load = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) setIsLoading(true);
+        const [summaryRes, historyRes, settingsRes] = await Promise.all([
+          referralApi.getReferralSummary(),
+          referralApi.getReferralHistory({ limit: 50 }),
+          referralApi.getReferralSettings(),
+        ]);
+        setSummary(summaryRes);
+        setHistory(historyRes?.data || []);
+        setSettings(settingsRes as ReferralSettings);
+      } catch {
+        if (!silent) toast.error(t('toast.loadError'));
+      } finally {
+        if (!silent) setIsLoading(false);
+      }
+    },
+    [t]
+  );
 
   useEffect(() => {
     if (!authLoading && user) load();
@@ -180,9 +184,38 @@ export default function ReferralsPage() {
       setIsGenerating(true);
       setGenerateError(null);
       const result = await referralApi.generateReferralCode();
-      await load();
       const code = result?.code;
-      toast.success(code ? `Referral code ${code} created!` : 'Referral code created!');
+      if (code) {
+        // Immediately show the code — don't wait for a full reload
+        setSummary((prev) => ({
+          referralCode: code,
+          codeActive: true,
+          usageCount: 0,
+          maxUsage: prev?.maxUsage ?? 0,
+          preferredRewardType: prev?.preferredRewardType ?? null,
+          storeCredit: prev?.storeCredit ?? 0,
+          totalReferrals: prev?.totalReferrals ?? 0,
+          pending: prev?.pending ?? { count: 0, potentialEarnings: 0 },
+          qualified: prev?.qualified ?? { count: 0, amount: 0 },
+          paid: prev?.paid ?? { count: 0, amount: 0 },
+          expired: prev?.expired ?? { count: 0 },
+        }));
+        setJustGenerated(true);
+        setTimeout(() => setJustGenerated(false), 4000);
+        // Auto-copy for instant usability
+        try {
+          await navigator.clipboard.writeText(code);
+          toast.success(`Code ${code} created and copied to clipboard!`);
+        } catch {
+          toast.success(`Referral code ${code} created!`);
+        }
+        // Background refresh — no spinner
+        load(true);
+      } else {
+        // Fallback: full reload
+        await load();
+        toast.success(t('toast.codeGenerated') || 'Referral code created!');
+      }
     } catch (err: any) {
       const msg = err?.message || t('toast.generateError');
       setGenerateError(msg);
@@ -291,10 +324,20 @@ export default function ReferralsPage() {
                         <BadgeCheck className="w-3 h-3" /> Active
                       </span>
                     )}
+                    {justGenerated && (
+                      <span className="ml-1 flex items-center gap-1 text-[10px] font-bold text-[#CBB57B] bg-[#CBB57B]/15 px-2 py-0.5 rounded-full animate-pulse">
+                        <Sparkles className="w-3 h-3" /> New!
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3 mb-4">
-                    <span className="text-4xl lg:text-5xl font-mono font-black tracking-[0.15em] text-white">
+                    <span
+                      className={[
+                        'text-4xl lg:text-5xl font-mono font-black tracking-[0.15em] text-white transition-all duration-500',
+                        justGenerated ? 'drop-shadow-[0_0_24px_rgba(203,181,123,0.6)]' : '',
+                      ].join(' ')}
+                    >
                       {summary.referralCode}
                     </span>
                   </div>
