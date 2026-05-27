@@ -346,7 +346,7 @@ export default function ReferralsPage() {
                     >
                       <span
                         className={[
-                          'text-3xl sm:text-4xl lg:text-5xl font-mono font-black tracking-[0.18em] transition-all duration-500',
+                          'text-lg sm:text-xl font-mono font-bold tracking-[0.12em] transition-all duration-500',
                           justGenerated
                             ? 'text-[#e8d49a] drop-shadow-[0_0_20px_rgba(203,181,123,0.5)]'
                             : 'text-white',
