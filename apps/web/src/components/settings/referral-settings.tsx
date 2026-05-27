@@ -192,7 +192,7 @@ export function ReferralSettingsSection() {
           render={({ field }) => (
             <SettingsToggle
               label="Allow Users to Choose Their Reward Type"
-              description="When enabled, users can pick Store Credit, Discount Coupon, or Flat Commission from their referrals page. Their choice overrides the platform default above."
+              description="When enabled, users can pick Store Credit, Discount Coupon, or Flat Commission from their referrals page. Their choice overrides the platform default set in the Reward Type section below."
               checked={!!field.value}
               onCheckedChange={field.onChange}
               disabled={!enabled}
