@@ -1534,10 +1534,17 @@ function PayoutsContent() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="reference">{t('dialog.complete.referenceLabel')}</Label>
+                  <Label htmlFor="reference">
+                    {t('dialog.complete.referenceLabel')}{' '}
+                    <span className="text-muted-foreground font-normal text-xs">(optional)</span>
+                  </Label>
                   <Input
                     id="reference"
-                    placeholder={t('dialog.complete.referencePlaceholder')}
+                    placeholder={
+                      completeDialog.payout?.paymentMethod === 'bank_transfer'
+                        ? 'Wire transfer ref / SWIFT ID / confirmation #'
+                        : t('dialog.complete.referencePlaceholder')
+                    }
                     value={completeDialog.reference}
                     onChange={(e) =>
                       setCompleteDialog({ ...completeDialog, reference: e.target.value })
@@ -1568,9 +1575,7 @@ function PayoutsContent() {
               >
                 {t('dialog.complete.cancel')}
               </Button>
-              <Button onClick={handleCompletePayout} disabled={!completeDialog.reference}>
-                {t('dialog.complete.confirm')}
-              </Button>
+              <Button onClick={handleCompletePayout}>{t('dialog.complete.confirm')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

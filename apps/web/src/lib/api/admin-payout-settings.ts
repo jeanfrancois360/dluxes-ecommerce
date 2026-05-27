@@ -9,8 +9,22 @@ import { SellerPayoutSettings } from './seller-payout';
 export interface AdminPayoutSettingsFilters {
   verified?: boolean;
   paymentMethod?: string;
+  search?: string;
   page?: number;
   limit?: number;
+}
+
+export interface AdminPayoutSettingsStats {
+  total: number;
+  verified: number;
+  pending: number;
+  rejected: number;
+  byMethod: {
+    STRIPE_CONNECT: number;
+    PAYPAL: number;
+    WISE: number;
+    bank_transfer: number;
+  };
 }
 
 export interface AdminPayoutSettingsListResponse {
@@ -21,6 +35,7 @@ export interface AdminPayoutSettingsListResponse {
     total: number;
     totalPages: number;
   };
+  stats: AdminPayoutSettingsStats;
 }
 
 export interface VerifyPayoutSettingsDto {
@@ -37,6 +52,7 @@ export async function getAllPayoutSettings(
   const params = new URLSearchParams();
   if (filters?.verified !== undefined) params.set('verified', String(filters.verified));
   if (filters?.paymentMethod) params.set('paymentMethod', filters.paymentMethod);
+  if (filters?.search) params.set('search', filters.search);
   if (filters?.page) params.set('page', String(filters.page));
   if (filters?.limit) params.set('limit', String(filters.limit));
   const query = params.toString();

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import PageHeader from '@/components/admin/page-header';
 import Image from 'next/image';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -20,46 +21,74 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  DollarSign,
-  Zap,
   ShieldCheck,
+  Zap,
+  Info,
+  ArrowRight,
+  X,
 } from 'lucide-react';
-import { adminPayoutAPI, VerifyPayoutSettingsDto } from '@/lib/api/admin-payout-settings';
+import {
+  adminPayoutAPI,
+  VerifyPayoutSettingsDto,
+  AdminPayoutSettingsStats,
+} from '@/lib/api/admin-payout-settings';
 import { SellerPayoutSettings } from '@/lib/api/seller-payout';
-import { formatCurrencyAmount } from '@/lib/utils/number-format';
+import { useDebounce } from '@/hooks/use-debounce';
 
-const METHOD_LOGOS: Record<string, { src: string; size: number }> = {
-  STRIPE_CONNECT: { src: '/logos/stripe-4.svg', size: 28 },
-  PAYPAL: { src: '/logos/paypal-4.svg', size: 18 },
-  WISE: { src: '/logos/wise-1.svg', size: 28 },
+// ─── Method helpers ─────────────────────────────────────────────────────────
+
+const METHOD_CONFIG: Record<
+  string,
+  { label: string; logo?: string; logoSize?: number; color: string; bg: string }
+> = {
+  STRIPE_CONNECT: {
+    label: 'Stripe Connect',
+    logo: '/logos/stripe-4.svg',
+    logoSize: 26,
+    color: 'text-[#635BFF]',
+    bg: 'bg-[#635BFF]/10',
+  },
+  PAYPAL: {
+    label: 'PayPal',
+    logo: '/logos/paypal-4.svg',
+    logoSize: 16,
+    color: 'text-[#003087]',
+    bg: 'bg-[#003087]/8',
+  },
+  WISE: {
+    label: 'Wise',
+    logo: '/logos/wise-1.svg',
+    logoSize: 26,
+    color: 'text-[#9FE870]',
+    bg: 'bg-[#9FE870]/20',
+  },
+  bank_transfer: {
+    label: 'Bank Transfer',
+    color: 'text-neutral-600',
+    bg: 'bg-neutral-100',
+  },
 };
 
 function MethodBadge({ method }: { method: string }) {
-  const logo = METHOD_LOGOS[method];
-  if (logo) {
-    return (
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-white border border-neutral-100 shadow-sm flex items-center justify-center">
-          <Image
-            src={logo.src}
-            alt={method}
-            width={logo.size}
-            height={logo.size}
-            className="object-contain"
-          />
-        </div>
-        <span className="text-sm font-medium text-neutral-700">
-          {method === 'STRIPE_CONNECT' ? 'Stripe Connect' : method === 'PAYPAL' ? 'PayPal' : 'Wise'}
-        </span>
-      </div>
-    );
-  }
+  const cfg = METHOD_CONFIG[method] ?? METHOD_CONFIG.bank_transfer;
   return (
     <div className="flex items-center gap-2">
-      <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center">
-        <Building2 className="w-4 h-4 text-neutral-500" />
+      <div
+        className={`w-7 h-7 rounded-lg ${cfg.bg} flex items-center justify-center flex-shrink-0`}
+      >
+        {cfg.logo ? (
+          <Image
+            src={cfg.logo}
+            alt={cfg.label}
+            width={cfg.logoSize}
+            height={cfg.logoSize}
+            className="object-contain"
+          />
+        ) : (
+          <Building2 className="w-3.5 h-3.5 text-neutral-500" />
+        )}
       </div>
-      <span className="text-sm font-medium text-neutral-700">Bank Transfer</span>
+      <span className="text-sm font-medium text-neutral-700">{cfg.label}</span>
     </div>
   );
 }
@@ -98,19 +127,104 @@ function StripeStatusBadge({ status }: { status?: string | null }) {
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${map[status] || 'bg-neutral-100 text-neutral-600'}`}
     >
-      {status}
+      {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
 }
 
+// ─── Integration detail cell ─────────────────────────────────────────────────
+
+function IntegrationDetail({
+  s,
+  syncingId,
+  onSync,
+  onDashboard,
+}: {
+  s: SellerPayoutSettings;
+  syncingId: string | null;
+  onSync: () => void;
+  onDashboard: () => void;
+}) {
+  if (s.paymentMethod === 'STRIPE_CONNECT') {
+    return (
+      <div className="flex items-center gap-2">
+        <StripeStatusBadge status={s.stripeAccountStatus} />
+        {s.stripeAccountId && (
+          <>
+            <button
+              onClick={onSync}
+              disabled={syncingId === s.id}
+              className="p-1 text-neutral-400 hover:text-neutral-700 transition-colors"
+              title="Sync Stripe status"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${syncingId === s.id ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={onDashboard}
+              className="p-1 text-neutral-400 hover:text-[#635BFF] transition-colors"
+              title="Open Stripe Dashboard"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
+        {!s.stripeAccountId && <span className="text-xs text-neutral-400">Not connected</span>}
+      </div>
+    );
+  }
+  if (s.paymentMethod === 'PAYPAL') {
+    return (
+      <div className="space-y-0.5">
+        <span
+          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+            s.paypalVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-500'
+          }`}
+        >
+          {s.paypalVerified ? 'Email verified' : 'Unverified'}
+        </span>
+        {s.paypalEmail && (
+          <p className="text-xs text-neutral-400 truncate max-w-[160px]">{s.paypalEmail}</p>
+        )}
+      </div>
+    );
+  }
+  if (s.paymentMethod === 'WISE') {
+    return (
+      <div className="space-y-0.5">
+        {s.wiseEmail && (
+          <p className="text-xs text-neutral-600 truncate max-w-[160px]">{s.wiseEmail}</p>
+        )}
+        {s.wiseRecipientId && <p className="text-xs text-neutral-400">ID: {s.wiseRecipientId}</p>}
+        {!s.wiseEmail && <span className="text-xs text-neutral-400">—</span>}
+      </div>
+    );
+  }
+  // Bank transfer
+  return (
+    <div className="space-y-0.5">
+      {s.bankName && <p className="text-xs text-neutral-600 font-medium">{s.bankName}</p>}
+      {s.bankCountry && <p className="text-xs text-neutral-400">{s.bankCountry}</p>}
+      {s.accountNumber && <p className="text-xs text-neutral-400 font-mono">{s.accountNumber}</p>}
+      {!s.bankName && !s.accountNumber && (
+        <span className="text-xs text-neutral-400">Details not provided</span>
+      )}
+    </div>
+  );
+}
+
+// ─── Verify / Revoke Modal ───────────────────────────────────────────────────
+
 interface VerifyModalProps {
   settings: SellerPayoutSettings;
+  mode: 'review' | 'revoke';
   onClose: () => void;
   onSaved: () => void;
 }
 
-function VerifyModal({ settings, onClose, onSaved }: VerifyModalProps) {
-  const [action, setAction] = useState<'verify' | 'reject'>('verify');
+function VerifyModal({ settings, mode, onClose, onSaved }: VerifyModalProps) {
+  const [action, setAction] = useState<'verify' | 'reject'>(
+    mode === 'revoke' ? 'reject' : 'verify'
+  );
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -121,6 +235,7 @@ function VerifyModal({ settings, onClose, onSaved }: VerifyModalProps) {
 
   const handleSubmit = async () => {
     if (!settings.id) return;
+    if (action === 'reject' && !notes.trim()) return;
     setSaving(true);
     try {
       const dto: VerifyPayoutSettingsDto = {
@@ -128,7 +243,7 @@ function VerifyModal({ settings, onClose, onSaved }: VerifyModalProps) {
         rejectionNotes: action === 'reject' ? notes : undefined,
       };
       await adminPayoutAPI.verify(settings.id, dto);
-      toast.success(action === 'verify' ? 'Settings verified successfully' : 'Settings rejected');
+      toast.success(action === 'verify' ? 'Settings verified' : 'Settings rejected');
       onSaved();
       onClose();
     } catch {
@@ -146,45 +261,70 @@ function VerifyModal({ settings, onClose, onSaved }: VerifyModalProps) {
         exit={{ opacity: 0, scale: 0.95 }}
         className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
       >
-        <h2 className="text-lg font-bold text-neutral-900 mb-1">Review Payout Settings</h2>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-lg font-bold text-neutral-900">
+            {mode === 'revoke' ? 'Revoke Verification' : 'Review Payout Settings'}
+          </h2>
+          <button onClick={onClose} className="p-1 text-neutral-400 hover:text-neutral-700">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
         <p className="text-sm text-neutral-500 mb-5">
           {sellerName} · {settings.store?.name}
         </p>
 
         {/* Settings summary */}
         <div className="bg-neutral-50 rounded-xl p-4 mb-5 space-y-2 text-sm">
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-neutral-500">Method</span>
             <MethodBadge method={settings.paymentMethod} />
           </div>
-          {settings.paymentMethod === 'bank_transfer' && (
-            <>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Bank</span>
-                <span className="font-medium text-neutral-800">{settings.bankName || '—'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Account</span>
-                <span className="font-medium text-neutral-800">
-                  {settings.accountNumber || '—'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Country</span>
-                <span className="font-medium text-neutral-800">{settings.bankCountry || '—'}</span>
-              </div>
-            </>
+          {settings.paymentMethod === 'bank_transfer' && settings.bankName && (
+            <div className="flex justify-between">
+              <span className="text-neutral-500">Bank</span>
+              <span className="font-medium text-neutral-800">{settings.bankName}</span>
+            </div>
+          )}
+          {settings.paymentMethod === 'bank_transfer' && settings.accountNumber && (
+            <div className="flex justify-between">
+              <span className="text-neutral-500">Account</span>
+              <span className="font-medium text-neutral-800 font-mono">
+                {settings.accountNumber}
+              </span>
+            </div>
+          )}
+          {settings.paymentMethod === 'bank_transfer' && settings.bankCountry && (
+            <div className="flex justify-between">
+              <span className="text-neutral-500">Country</span>
+              <span className="font-medium text-neutral-800">{settings.bankCountry}</span>
+            </div>
           )}
           {settings.paymentMethod === 'STRIPE_CONNECT' && (
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <span className="text-neutral-500">Stripe Status</span>
               <StripeStatusBadge status={settings.stripeAccountStatus} />
             </div>
           )}
           {settings.paymentMethod === 'PAYPAL' && (
+            <>
+              <div className="flex justify-between">
+                <span className="text-neutral-500">PayPal Email</span>
+                <span className="font-medium text-neutral-800">{settings.paypalEmail || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-500">Verified</span>
+                <span
+                  className={`font-medium ${settings.paypalVerified ? 'text-emerald-600' : 'text-red-500'}`}
+                >
+                  {settings.paypalVerified ? 'Yes' : 'No'}
+                </span>
+              </div>
+            </>
+          )}
+          {settings.paymentMethod === 'WISE' && (
             <div className="flex justify-between">
-              <span className="text-neutral-500">PayPal Email</span>
-              <span className="font-medium text-neutral-800">{settings.paypalEmail || '—'}</span>
+              <span className="text-neutral-500">Wise Email</span>
+              <span className="font-medium text-neutral-800">{settings.wiseEmail || '—'}</span>
             </div>
           )}
           <div className="flex justify-between">
@@ -199,42 +339,49 @@ function VerifyModal({ settings, onClose, onSaved }: VerifyModalProps) {
           )}
         </div>
 
-        {/* Action tabs */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setAction('verify')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              action === 'verify'
-                ? 'bg-emerald-600 text-white'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-            }`}
-          >
-            <CheckCircle className="w-4 h-4 inline mr-1.5" />
-            Verify
-          </button>
-          <button
-            onClick={() => setAction('reject')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              action === 'reject'
-                ? 'bg-red-600 text-white'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-            }`}
-          >
-            <XCircle className="w-4 h-4 inline mr-1.5" />
-            Reject
-          </button>
-        </div>
+        {/* Action tabs — only show for review mode; revoke always rejects */}
+        {mode === 'review' && (
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setAction('verify')}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                action === 'verify'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
+            >
+              <CheckCircle className="w-4 h-4 inline mr-1.5" />
+              Verify
+            </button>
+            <button
+              onClick={() => setAction('reject')}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                action === 'reject'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
+            >
+              <XCircle className="w-4 h-4 inline mr-1.5" />
+              Reject
+            </button>
+          </div>
+        )}
 
-        {action === 'reject' && (
+        {(action === 'reject' || mode === 'revoke') && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-              Rejection reason <span className="text-red-500">*</span>
+              {mode === 'revoke' ? 'Reason for revocation' : 'Rejection reason'}{' '}
+              <span className="text-red-500">*</span>
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="Explain why the payout settings are being rejected…"
+              placeholder={
+                mode === 'revoke'
+                  ? 'e.g. Bank account details changed, re-verification required…'
+                  : 'Explain why these payout settings are being rejected…'
+              }
               className="w-full px-4 py-3 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black resize-none"
             />
           </div>
@@ -249,15 +396,17 @@ function VerifyModal({ settings, onClose, onSaved }: VerifyModalProps) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={saving || (action === 'reject' && !notes.trim())}
+            disabled={saving || ((action === 'reject' || mode === 'revoke') && !notes.trim())}
             className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              action === 'verify'
+              action === 'verify' && mode !== 'revoke'
                 ? 'bg-emerald-600 hover:bg-emerald-700'
                 : 'bg-red-600 hover:bg-red-700'
             }`}
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+            ) : mode === 'revoke' ? (
+              'Revoke Verification'
             ) : action === 'verify' ? (
               'Confirm Verify'
             ) : (
@@ -269,6 +418,8 @@ function VerifyModal({ settings, onClose, onSaved }: VerifyModalProps) {
     </div>
   );
 }
+
+// ─── Manual Stripe Payout Modal ───────────────────────────────────────────────
 
 interface StripePayoutModalProps {
   settings: SellerPayoutSettings;
@@ -333,6 +484,9 @@ function StripePayoutModal({ settings, onClose }: StripePayoutModalProps) {
               {sellerName} · {settings.stripeAccountId}
             </p>
           </div>
+          <button onClick={onClose} className="ml-auto p-1 text-neutral-400 hover:text-neutral-700">
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -396,55 +550,147 @@ function StripePayoutModal({ settings, onClose }: StripePayoutModalProps) {
   );
 }
 
+// ─── Empty state with guidance ───────────────────────────────────────────────
+
+function EmptyStateGuide() {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
+        <ShieldCheck className="w-7 h-7 text-neutral-400" />
+      </div>
+      <h3 className="text-base font-semibold text-neutral-800 mb-1">No payout settings found</h3>
+      <p className="text-sm text-neutral-500 max-w-md mb-8">
+        Sellers configure their payout method from their seller dashboard. Once submitted, their
+        settings appear here for admin verification before payouts can be sent.
+      </p>
+
+      <div className="w-full max-w-xl bg-neutral-50 border border-neutral-200 rounded-2xl p-5 text-left">
+        <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-4">
+          How payout settings flow
+        </p>
+        <div className="space-y-3">
+          {[
+            {
+              step: '1',
+              title: 'Seller configures payout method',
+              desc: 'Via /seller/payout-settings — chooses Bank Transfer, Stripe Connect, PayPal, or Wise',
+              color: 'bg-neutral-900 text-white',
+            },
+            {
+              step: '2',
+              title: 'Admin reviews & verifies',
+              desc: 'Settings appear here. Click Review → Verify to approve or Reject with a reason',
+              color: 'bg-amber-500 text-white',
+            },
+            {
+              step: '3',
+              title: 'Payouts execute automatically',
+              desc: 'Once verified, the payout scheduler includes this seller in the next cycle',
+              color: 'bg-emerald-600 text-white',
+            },
+          ].map(({ step, title, desc, color }) => (
+            <div key={step} className="flex items-start gap-3">
+              <div
+                className={`w-6 h-6 rounded-full ${color} flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5`}
+              >
+                {step}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-neutral-800">{title}</p>
+                <p className="text-xs text-neutral-500 mt-0.5">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 pt-4 border-t border-neutral-200 flex items-center gap-2">
+          <Info className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+          <p className="text-xs text-neutral-500">
+            Bank Transfer and Wise payouts require manual wire transfers after creating payout
+            records. Stripe Connect and PayPal are executed automatically.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Row skeleton ────────────────────────────────────────────────────────────
+
+function RowSkeleton() {
+  const p = 'bg-neutral-200 rounded animate-pulse';
+  return (
+    <tr>
+      {[40, 32, 24, 20, 32, 16, 20].map((w, i) => (
+        <td key={i} className="px-5 py-4">
+          <div className={`h-4 w-${w} ${p}`} />
+        </td>
+      ))}
+      <td className="px-5 py-4">
+        <div className={`h-7 w-16 ${p}`} />
+      </td>
+    </tr>
+  );
+}
+
+// ─── Main page ───────────────────────────────────────────────────────────────
+
 function AdminPayoutSettingsContent() {
   const [settings, setSettings] = useState<SellerPayoutSettings[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
+  const [stats, setStats] = useState<AdminPayoutSettingsStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 400);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified' | 'rejected'>(
     'all'
   );
   const [filterMethod, setFilterMethod] = useState('');
-  const [verifyTarget, setVerifyTarget] = useState<SellerPayoutSettings | null>(null);
+  const [verifyTarget, setVerifyTarget] = useState<{
+    settings: SellerPayoutSettings;
+    mode: 'review' | 'revoke';
+  } | null>(null);
   const [stripePayoutTarget, setStripePayoutTarget] = useState<SellerPayoutSettings | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const currentPage = useRef(1);
 
   const fetchSettings = useCallback(
     async (page = 1) => {
       setIsLoading(true);
+      currentPage.current = page;
       try {
-        const filters: Record<string, unknown> = { page, limit: 20 };
+        const filters: Parameters<typeof adminPayoutAPI.getAll>[0] = {
+          page,
+          limit: 20,
+          search: debouncedSearch || undefined,
+        };
         if (filterStatus === 'verified') filters.verified = true;
-        if (filterStatus === 'pending' || filterStatus === 'rejected') filters.verified = false;
+        if (filterStatus === 'pending') filters.verified = false;
+        if (filterStatus === 'rejected') filters.verified = false;
         if (filterMethod) filters.paymentMethod = filterMethod;
-        const res = await adminPayoutAPI.getAll(
-          filters as Parameters<typeof adminPayoutAPI.getAll>[0]
-        );
-        let data = res.data || [];
-        // Client-side rejection filter (backend only has verified boolean)
+
+        const res = await adminPayoutAPI.getAll(filters);
+
+        // api.get unwraps { success, data: { data, pagination, stats } }
+        // so res = { data: [...], pagination: {...}, stats: {...} }
+        let data = res?.data || [];
+
+        // Client-side sub-filter for rejected vs pending (backend only has verified boolean)
         if (filterStatus === 'rejected')
-          data = data.filter((s) => !s.verified && !!s.rejectionNotes);
-        if (filterStatus === 'pending') data = data.filter((s) => !s.verified && !s.rejectionNotes);
-        // Search filter
-        if (search) {
-          const q = search.toLowerCase();
-          data = data.filter(
-            (s) =>
-              s.seller?.email?.toLowerCase().includes(q) ||
-              s.seller?.firstName?.toLowerCase().includes(q) ||
-              s.seller?.lastName?.toLowerCase().includes(q) ||
-              s.store?.name?.toLowerCase().includes(q)
-          );
-        }
+          data = data.filter((s: SellerPayoutSettings) => !s.verified && !!s.rejectionNotes);
+        if (filterStatus === 'pending')
+          data = data.filter((s: SellerPayoutSettings) => !s.verified && !s.rejectionNotes);
+
         setSettings(data);
-        setPagination(res.pagination || { page: 1, limit: 20, total: data.length, totalPages: 1 });
+        setPagination(res?.pagination || { page: 1, limit: 20, total: data.length, totalPages: 1 });
+        if (res?.stats) setStats(res.stats);
       } catch {
         toast.error('Failed to load payout settings');
       } finally {
         setIsLoading(false);
       }
     },
-    [filterStatus, filterMethod, search]
+    [filterStatus, filterMethod, debouncedSearch]
   );
 
   useEffect(() => {
@@ -457,7 +703,7 @@ function AdminPayoutSettingsContent() {
     try {
       await adminPayoutAPI.syncStripe(s.stripeAccountId);
       toast.success('Stripe status synced');
-      fetchSettings(pagination.page);
+      fetchSettings(currentPage.current);
     } catch {
       toast.error('Sync failed');
     } finally {
@@ -475,13 +721,7 @@ function AdminPayoutSettingsContent() {
     }
   };
 
-  // Stats
-  const total = settings.length;
-  const verified = settings.filter((s) => s.verified).length;
-  const pending = settings.filter((s) => !s.verified && !s.rejectionNotes).length;
-  const rejected = settings.filter((s) => !s.verified && !!s.rejectionNotes).length;
-  const byStripe = settings.filter((s) => s.paymentMethod === 'STRIPE_CONNECT').length;
-  const byPaypal = settings.filter((s) => s.paymentMethod === 'PAYPAL').length;
+  const pendingCount = stats?.pending ?? 0;
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -492,79 +732,129 @@ function AdminPayoutSettingsContent() {
           { label: 'Dashboard', href: '/admin/dashboard' },
           { label: 'Payout Settings' },
         ]}
+        actions={
+          <Link
+            href="/admin/payouts"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-xl text-sm font-semibold hover:bg-neutral-800 transition-colors"
+          >
+            Payout History <ArrowRight className="w-4 h-4" />
+          </Link>
+        }
       />
 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Pending attention banner */}
+        {pendingCount > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+            <p className="text-sm font-medium text-amber-800">
+              {pendingCount} seller payout setting{pendingCount !== 1 ? 's' : ''} awaiting your
+              review. Sellers cannot receive payouts until verified.
+            </p>
+            <button
+              onClick={() => setFilterStatus('pending')}
+              className="ml-auto px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 transition-colors flex-shrink-0"
+            >
+              Review Pending
+            </button>
+          </div>
+        )}
+
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-7 gap-3">
           {[
             {
-              label: 'Total',
-              value: total,
-              icon: <ShieldCheck className="w-5 h-5 text-neutral-500" />,
-              color: 'bg-neutral-100',
+              label: 'Total Sellers',
+              value: stats?.total ?? 0,
+              icon: <ShieldCheck className="w-4 h-4 text-neutral-500" />,
+              bg: 'bg-neutral-100',
+              onClick: () => setFilterStatus('all'),
+              active: filterStatus === 'all',
             },
             {
               label: 'Pending',
-              value: pending,
-              icon: <Clock className="w-5 h-5 text-amber-500" />,
-              color: 'bg-amber-50',
+              value: stats?.pending ?? 0,
+              icon: <Clock className="w-4 h-4 text-amber-500" />,
+              bg: 'bg-amber-50',
+              onClick: () => setFilterStatus('pending'),
+              active: filterStatus === 'pending',
             },
             {
               label: 'Verified',
-              value: verified,
-              icon: <BadgeCheck className="w-5 h-5 text-emerald-500" />,
-              color: 'bg-emerald-50',
+              value: stats?.verified ?? 0,
+              icon: <BadgeCheck className="w-4 h-4 text-emerald-500" />,
+              bg: 'bg-emerald-50',
+              onClick: () => setFilterStatus('verified'),
+              active: filterStatus === 'verified',
             },
             {
               label: 'Rejected',
-              value: rejected,
-              icon: <XCircle className="w-5 h-5 text-red-500" />,
-              color: 'bg-red-50',
+              value: stats?.rejected ?? 0,
+              icon: <XCircle className="w-4 h-4 text-red-500" />,
+              bg: 'bg-red-50',
+              onClick: () => setFilterStatus('rejected'),
+              active: filterStatus === 'rejected',
             },
             {
               label: 'Stripe Connect',
-              value: byStripe,
+              value: stats?.byMethod?.STRIPE_CONNECT ?? 0,
               icon: (
                 <Image
                   src="/logos/stripe-4.svg"
                   alt="Stripe"
-                  width={20}
-                  height={20}
+                  width={16}
+                  height={16}
                   className="object-contain"
                 />
               ),
-              color: 'bg-[#635BFF]/10',
+              bg: 'bg-[#635BFF]/10',
+              onClick: () =>
+                setFilterMethod(filterMethod === 'STRIPE_CONNECT' ? '' : 'STRIPE_CONNECT'),
+              active: filterMethod === 'STRIPE_CONNECT',
             },
             {
               label: 'PayPal',
-              value: byPaypal,
+              value: stats?.byMethod?.PAYPAL ?? 0,
               icon: (
                 <Image
                   src="/logos/paypal-4.svg"
                   alt="PayPal"
-                  width={14}
-                  height={14}
+                  width={12}
+                  height={12}
                   className="object-contain"
                 />
               ),
-              color: 'bg-[#003087]/10',
+              bg: 'bg-[#003087]/8',
+              onClick: () => setFilterMethod(filterMethod === 'PAYPAL' ? '' : 'PAYPAL'),
+              active: filterMethod === 'PAYPAL',
+            },
+            {
+              label: 'Bank Transfer',
+              value: stats?.byMethod?.bank_transfer ?? 0,
+              icon: <Building2 className="w-4 h-4 text-neutral-500" />,
+              bg: 'bg-neutral-100',
+              onClick: () =>
+                setFilterMethod(filterMethod === 'bank_transfer' ? '' : 'bank_transfer'),
+              active: filterMethod === 'bank_transfer',
             },
           ].map((stat) => (
-            <div
+            <button
               key={stat.label}
-              className="bg-white rounded-2xl border border-neutral-200 p-4 flex items-center gap-3"
+              onClick={stat.onClick}
+              className={`bg-white rounded-2xl border p-4 flex items-center gap-3 text-left transition-all hover:shadow-sm ${
+                stat.active ? 'border-black shadow-sm' : 'border-neutral-200'
+              }`}
             >
               <div
-                className={`w-10 h-10 rounded-xl ${stat.color} flex items-center justify-center flex-shrink-0`}
+                className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center flex-shrink-0`}
               >
                 {stat.icon}
               </div>
               <div>
-                <p className="text-2xl font-bold text-neutral-900">{stat.value}</p>
-                <p className="text-xs text-neutral-500">{stat.label}</p>
+                <p className="text-xl font-bold text-neutral-900 leading-none">{stat.value}</p>
+                <p className="text-xs text-neutral-500 mt-0.5">{stat.label}</p>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 
@@ -574,11 +864,19 @@ function AdminPayoutSettingsContent() {
             <Search className="w-4 h-4 text-neutral-400 flex-shrink-0" />
             <input
               type="text"
-              placeholder="Search seller or store…"
+              placeholder="Search by seller, store, email, bank…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="bg-transparent text-sm focus:outline-none w-full text-neutral-800 placeholder:text-neutral-400"
             />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="text-neutral-400 hover:text-neutral-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           <div className="flex gap-2 flex-wrap">
@@ -610,53 +908,113 @@ function AdminPayoutSettingsContent() {
           </select>
 
           <button
-            onClick={() => fetchSettings(pagination.page)}
+            onClick={() => fetchSettings(currentPage.current)}
             className="p-2.5 bg-neutral-100 rounded-xl text-neutral-600 hover:bg-neutral-200 transition-colors"
+            title="Refresh"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
 
+        {/* Active filter chips */}
+        {(filterStatus !== 'all' || filterMethod || search) && (
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-xs text-neutral-500">Filtering by:</span>
+            {filterStatus !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700">
+                Status: {filterStatus}
+                <button
+                  onClick={() => setFilterStatus('all')}
+                  className="hover:text-red-500 ml-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {filterMethod && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700">
+                Method: {METHOD_CONFIG[filterMethod]?.label ?? filterMethod}
+                <button onClick={() => setFilterMethod('')} className="hover:text-red-500 ml-0.5">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {search && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-700">
+                Search: {search}
+                <button onClick={() => setSearch('')} className="hover:text-red-500 ml-0.5">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            <button
+              onClick={() => {
+                setFilterStatus('all');
+                setFilterMethod('');
+                setSearch('');
+              }}
+              className="text-xs text-neutral-500 hover:text-neutral-800 underline"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+
         {/* Table */}
         <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 text-neutral-400 animate-spin" />
-            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-neutral-100 bg-neutral-50">
+                  {[
+                    'Seller',
+                    'Store',
+                    'Method',
+                    'Status',
+                    'Details',
+                    'Currency',
+                    'Updated',
+                    'Actions',
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider px-5 py-3.5"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <RowSkeleton key={i} />
+                ))}
+              </tbody>
+            </table>
           ) : settings.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-              <ShieldCheck className="w-10 h-10 mb-3 opacity-40" />
-              <p className="text-sm font-medium">No payout settings found</p>
-            </div>
+            <EmptyStateGuide />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-neutral-100 bg-neutral-50">
-                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider px-5 py-3.5">
-                      Seller
-                    </th>
-                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider px-5 py-3.5">
-                      Store
-                    </th>
-                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider px-5 py-3.5">
-                      Method
-                    </th>
-                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider px-5 py-3.5">
-                      Status
-                    </th>
-                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider px-5 py-3.5">
-                      Integration
-                    </th>
-                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider px-5 py-3.5">
-                      Currency
-                    </th>
-                    <th className="text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider px-5 py-3.5">
-                      Updated
-                    </th>
-                    <th className="text-right text-xs font-semibold text-neutral-500 uppercase tracking-wider px-5 py-3.5">
-                      Actions
-                    </th>
+                    {[
+                      'Seller',
+                      'Store',
+                      'Method',
+                      'Status',
+                      'Details',
+                      'Currency',
+                      'Updated',
+                      'Actions',
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider px-5 py-3.5"
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
@@ -668,55 +1026,36 @@ function AdminPayoutSettingsContent() {
                     return (
                       <tr
                         key={s.id || s.sellerId}
-                        className="hover:bg-neutral-50 transition-colors"
+                        className="hover:bg-neutral-50/70 transition-colors"
                       >
                         <td className="px-5 py-4">
-                          <div>
-                            <p className="font-medium text-neutral-900">{sellerName}</p>
-                            <p className="text-xs text-neutral-400">{s.seller?.email}</p>
-                          </div>
+                          <p className="font-medium text-neutral-900 leading-tight">{sellerName}</p>
+                          <p className="text-xs text-neutral-400 mt-0.5">{s.seller?.email}</p>
                         </td>
-                        <td className="px-5 py-4 text-neutral-600">{s.store?.name || '—'}</td>
+                        <td className="px-5 py-4 text-neutral-600 text-sm">
+                          {s.store?.name || '—'}
+                        </td>
                         <td className="px-5 py-4">
                           <MethodBadge method={s.paymentMethod} />
                         </td>
                         <td className="px-5 py-4">
                           <VerificationBadge settings={s} />
+                          {s.rejectionNotes && (
+                            <p
+                              className="text-xs text-red-500 mt-1 max-w-[140px] truncate"
+                              title={s.rejectionNotes}
+                            >
+                              {s.rejectionNotes}
+                            </p>
+                          )}
                         </td>
                         <td className="px-5 py-4">
-                          {s.paymentMethod === 'STRIPE_CONNECT' && (
-                            <div className="flex items-center gap-2">
-                              <StripeStatusBadge status={s.stripeAccountStatus} />
-                              {s.stripeAccountId && (
-                                <button
-                                  onClick={() => handleSyncStripe(s)}
-                                  disabled={syncingId === s.id}
-                                  className="p-1 text-neutral-400 hover:text-neutral-700 transition-colors"
-                                  title="Sync Stripe status"
-                                >
-                                  <RefreshCw
-                                    className={`w-3.5 h-3.5 ${syncingId === s.id ? 'animate-spin' : ''}`}
-                                  />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                          {s.paymentMethod === 'PAYPAL' && (
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${s.paypalVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-500'}`}
-                              >
-                                {s.paypalVerified ? 'Verified' : 'Unverified'}
-                              </span>
-                            </div>
-                          )}
-                          {(s.paymentMethod === 'bank_transfer' || s.paymentMethod === 'WISE') && (
-                            <span className="text-xs text-neutral-400">
-                              {s.paymentMethod === 'bank_transfer'
-                                ? s.bankName || '—'
-                                : s.wiseEmail || '—'}
-                            </span>
-                          )}
+                          <IntegrationDetail
+                            s={s}
+                            syncingId={syncingId}
+                            onSync={() => handleSyncStripe(s)}
+                            onDashboard={() => handleStripeDashboard(s)}
+                          />
                         </td>
                         <td className="px-5 py-4 text-neutral-600 text-xs font-medium">
                           {s.payoutCurrency}
@@ -728,7 +1067,7 @@ function AdminPayoutSettingsContent() {
                           <div className="flex items-center justify-end gap-2">
                             {!s.verified && s.id && (
                               <button
-                                onClick={() => setVerifyTarget(s)}
+                                onClick={() => setVerifyTarget({ settings: s, mode: 'review' })}
                                 className="px-3 py-1.5 bg-black text-white rounded-lg text-xs font-semibold hover:bg-neutral-800 transition-colors"
                               >
                                 Review
@@ -736,32 +1075,23 @@ function AdminPayoutSettingsContent() {
                             )}
                             {s.verified && s.id && (
                               <button
-                                onClick={() => setVerifyTarget(s)}
-                                className="px-3 py-1.5 bg-neutral-100 text-neutral-600 rounded-lg text-xs font-semibold hover:bg-neutral-200 transition-colors"
+                                onClick={() => setVerifyTarget({ settings: s, mode: 'revoke' })}
+                                className="px-3 py-1.5 bg-neutral-100 text-neutral-600 rounded-lg text-xs font-semibold hover:bg-red-50 hover:text-red-600 transition-colors"
                               >
                                 Revoke
                               </button>
                             )}
-                            {s.paymentMethod === 'STRIPE_CONNECT' && s.stripeAccountId && (
-                              <>
+                            {s.paymentMethod === 'STRIPE_CONNECT' &&
+                              s.verified &&
+                              s.stripeAccountStatus === 'active' && (
                                 <button
-                                  onClick={() => handleStripeDashboard(s)}
-                                  className="p-1.5 bg-neutral-100 text-neutral-600 rounded-lg hover:bg-neutral-200 transition-colors"
-                                  title="Open Stripe Dashboard"
+                                  onClick={() => setStripePayoutTarget(s)}
+                                  className="p-1.5 bg-[#635BFF]/10 text-[#635BFF] rounded-lg hover:bg-[#635BFF]/20 transition-colors"
+                                  title="Trigger manual Stripe payout"
                                 >
-                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  <Zap className="w-3.5 h-3.5" />
                                 </button>
-                                {s.verified && s.stripeAccountStatus === 'active' && (
-                                  <button
-                                    onClick={() => setStripePayoutTarget(s)}
-                                    className="p-1.5 bg-[#635BFF]/10 text-[#635BFF] rounded-lg hover:bg-[#635BFF]/20 transition-colors"
-                                    title="Trigger manual payout"
-                                  >
-                                    <Zap className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </>
-                            )}
+                              )}
                           </div>
                         </td>
                       </tr>
@@ -773,7 +1103,7 @@ function AdminPayoutSettingsContent() {
           )}
 
           {/* Pagination */}
-          {pagination.totalPages > 1 && (
+          {!isLoading && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between px-5 py-4 border-t border-neutral-100">
               <p className="text-xs text-neutral-500">
                 Showing {settings.length} of {pagination.total} results
@@ -806,9 +1136,10 @@ function AdminPayoutSettingsContent() {
       <AnimatePresence>
         {verifyTarget && (
           <VerifyModal
-            settings={verifyTarget}
+            settings={verifyTarget.settings}
+            mode={verifyTarget.mode}
             onClose={() => setVerifyTarget(null)}
-            onSaved={() => fetchSettings(pagination.page)}
+            onSaved={() => fetchSettings(currentPage.current)}
           />
         )}
         {stripePayoutTarget && (

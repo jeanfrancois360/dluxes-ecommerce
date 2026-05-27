@@ -170,23 +170,26 @@ export class AdminPayoutSettingsController {
   async getAllSettings(
     @Query('verified') verified?: string,
     @Query('paymentMethod') paymentMethod?: string,
+    @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string
   ) {
     try {
       const filters = {
         verified: verified !== undefined ? verified === 'true' : undefined,
-        paymentMethod,
+        paymentMethod: paymentMethod || undefined,
+        search: search || undefined,
         page: page ? parseInt(page, 10) : 1,
         limit: limit ? parseInt(limit, 10) : 20,
       };
 
-      const data = await this.payoutSettingsService.getAllSettings(filters);
+      const result = await this.payoutSettingsService.getAllSettings(filters);
 
+      // Nest data+pagination+stats inside the data key so api.get unwrapping
+      // returns { data, pagination, stats } intact on the frontend
       return {
         success: true,
-        data: data.data,
-        pagination: data.pagination,
+        data: result,
       };
     } catch (error) {
       return {
