@@ -6,11 +6,12 @@
 
 import React, { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Store, ChevronDown, Search } from 'lucide-react';
 import SellerProductForm from '@/components/seller/ProductForm';
 import { InventoryAdjustmentModal } from '@/components/admin/inventory-adjustment-modal';
 import { InventoryHistoryModal } from '@/components/admin/inventory-history-modal';
 import { useAdminProduct } from '@/hooks/use-admin';
-import { adminProductsApi, adminStoresApi, type AdminProduct } from '@/lib/api/admin';
+import { adminProductsApi, adminStoresApi, type AdminStore } from '@/lib/api/admin';
 import { toast } from '@/lib/utils/toast';
 import { Button } from '@nextpik/ui';
 import { Package, History, RefreshCw } from 'lucide-react';
@@ -21,23 +22,43 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
   const { product, loading, error, refetch } = useAdminProduct(resolvedParams.id);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [storeGelatoOk, setStoreGelatoOk] = useState(false);
 
-  // Once the product loads, check the store's Gelato status
+  // Store selector state
+  const [stores, setStores] = useState<AdminStore[]>([]);
+  const [selectedStore, setSelectedStore] = useState<AdminStore | null>(null);
+  const [storeSearch, setStoreSearch] = useState('');
+  const [storeDropdownOpen, setStoreDropdownOpen] = useState(false);
+
+  // Fetch all stores once, then pre-select the product's current store
   useEffect(() => {
-    const storeId = (product as any)?.storeId;
-    if (!storeId) return;
-    adminStoresApi.getAll().then((stores) => {
-      const store = stores.find((s) => s.id === storeId);
-      setStoreGelatoOk(!!(store?.gelatoSettings?.isEnabled && store?.gelatoSettings?.isVerified));
+    adminStoresApi.getAll().then((data) => {
+      setStores(data);
+      const storeId = (product as any)?.storeId;
+      if (storeId) {
+        const match = data.find((s) => s.id === storeId);
+        if (match) setSelectedStore(match);
+      }
     });
   }, [(product as any)?.storeId]);
+
+  const storeGelatoOk = !!(
+    selectedStore?.gelatoSettings?.isEnabled && selectedStore?.gelatoSettings?.isVerified
+  );
+
+  const filteredStores = stores.filter(
+    (s) =>
+      s.name.toLowerCase().includes(storeSearch.toLowerCase()) ||
+      s.user.email.toLowerCase().includes(storeSearch.toLowerCase())
+  );
 
   const handleSubmit = async (data: any) => {
     const images: string[] = data.images || [];
     const { images: _, ...productData } = data;
 
-    const saved = await adminProductsApi.update(resolvedParams.id, productData);
+    const saved = await adminProductsApi.update(resolvedParams.id, {
+      ...productData,
+      ...(selectedStore ? { storeId: selectedStore.id } : {}),
+    });
     toast.success('Product updated successfully');
 
     const productId = saved.id || resolvedParams.id;
@@ -183,6 +204,86 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Store Selector */}
+        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Store className="w-5 h-5 text-neutral-500" />
+            <h2 className="text-base font-semibold text-neutral-900">Seller&apos;s Store</h2>
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setStoreDropdownOpen((o) => !o)}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 border border-neutral-300 rounded-xl bg-white hover:border-neutral-400 transition-colors text-left"
+            >
+              {selectedStore ? (
+                <span className="text-neutral-900 font-medium">{selectedStore.name}</span>
+              ) : (
+                <span className="text-neutral-400">
+                  {stores.length === 0 ? 'Loading stores…' : 'Select a seller store'}
+                </span>
+              )}
+              <ChevronDown
+                className={`w-4 h-4 text-neutral-400 flex-shrink-0 transition-transform ${storeDropdownOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {storeDropdownOpen && (
+              <div className="absolute z-20 mt-1 w-full bg-white border border-neutral-200 rounded-xl shadow-lg overflow-hidden">
+                <div className="p-2 border-b border-neutral-100">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-neutral-50 rounded-lg">
+                    <Search className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="Search stores…"
+                      value={storeSearch}
+                      onChange={(e) => setStoreSearch(e.target.value)}
+                      className="flex-1 bg-transparent text-sm outline-none text-neutral-900 placeholder:text-neutral-400"
+                    />
+                  </div>
+                </div>
+                <ul className="max-h-56 overflow-y-auto py-1">
+                  {filteredStores.length === 0 ? (
+                    <li className="px-4 py-3 text-sm text-neutral-400 text-center">
+                      No stores found
+                    </li>
+                  ) : (
+                    filteredStores.map((store) => (
+                      <li key={store.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedStore(store);
+                            setStoreDropdownOpen(false);
+                            setStoreSearch('');
+                          }}
+                          className={`w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-neutral-50 transition-colors ${
+                            selectedStore?.id === store.id ? 'bg-[#fdf9f0]' : ''
+                          }`}
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-neutral-900">{store.name}</p>
+                            <p className="text-xs text-neutral-400">{store.user.email}</p>
+                          </div>
+                          <span className="text-xs text-neutral-400">
+                            {store._count.products} products
+                          </span>
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-neutral-500">
+            Assign this product to a specific seller&apos;s store (required for commissions and
+            payouts)
+          </p>
         </div>
 
         {/* Product Form */}
