@@ -117,16 +117,6 @@ export default function LoginPage() {
   const error = authError || localError;
   const isLoading = authLoading || submitting2FA;
 
-  // While auth is initialising (or redirect is in-flight), show nothing —
-  // prevents the login form from flashing for already-authenticated users.
-  if (!isInitialized || (isInitialized && isAuthenticated)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-neutral-900" />
-      </div>
-    );
-  }
-
   // Called automatically when all OTP boxes are filled
   const handleComplete2FA = async (code: string) => {
     if (isLoading) return;
