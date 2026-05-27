@@ -17,7 +17,7 @@ export function useSettings(category?: string) {
         ? await settingsApi.getSettingsByCategory(category)
         : await settingsApi.getAllSettings();
 
-      setSettings(data);
+      setSettings(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch settings';
