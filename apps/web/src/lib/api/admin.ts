@@ -266,7 +266,7 @@ export const dashboardApi = {
 
   async getRecentOrders(limit: number = 10): Promise<RecentOrder[]> {
     const response = await api.get(`/admin/dashboard/recent-orders?limit=${limit}`);
-    return response;
+    return response ?? [];
   },
 };
 
