@@ -82,7 +82,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Failed to fetch wishlist');
       }
 
-      const responseData = await response.json();
+      const text = await response.text();
+      const responseData = text ? JSON.parse(text) : {};
 
       // Handle API response format
       let wishlistItems: WishlistItem[] = [];
@@ -163,7 +164,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          const errText = await response.text();
+          const errorData = errText ? JSON.parse(errText) : {};
           throw new Error(errorData.message || 'Failed to add to wishlist');
         }
 
