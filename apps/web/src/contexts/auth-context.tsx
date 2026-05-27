@@ -181,8 +181,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
               errorMessage.includes('session') ||
               errorMessage.includes('revoked'));
 
-          // Always clear auth for revoked sessions — stored user data is no longer valid
-          if (isRevokedSession || !storedUser) {
+          // Clear auth for revoked sessions or genuine 401s (invalid/expired token).
+          // For transient network errors (non-401), preserve the stored user so the
+          // login-page redirect useEffect can still fire and send the user back to
+          // their intended destination once the backend recovers.
+          if (isRevokedSession || is401) {
             clearAllAuthData();
             setUser(null);
 
