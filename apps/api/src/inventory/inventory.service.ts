@@ -180,6 +180,7 @@ export class InventoryService {
         select: {
           inventory: true,
           status: true,
+          fulfillmentType: true,
         },
       });
 
@@ -187,10 +188,22 @@ export class InventoryService {
         throw new BadRequestException('Product not found');
       }
 
+      // Print-on-demand products have unlimited inventory — never block checkout
+      if (product.fulfillmentType === 'GELATO_POD') {
+        return {
+          quantity: 999999,
+          isLowStock: false,
+          isOutOfStock: false,
+          isUnlimited: true,
+          status: product.status,
+        };
+      }
+
       return {
         quantity: product.inventory,
         isLowStock: product.inventory <= this.LOW_STOCK_THRESHOLD,
         isOutOfStock: product.inventory === 0,
+        isUnlimited: false,
         status: product.status,
       };
     }
