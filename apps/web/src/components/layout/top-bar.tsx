@@ -91,7 +91,8 @@ export function TopBar() {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcements/active`);
         if (response.ok) {
-          const data = await response.json();
+          const text = await response.text();
+          const data = text ? JSON.parse(text) : [];
           setAnnouncements(data);
         }
       } catch (error) {
