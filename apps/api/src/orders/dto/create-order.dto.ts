@@ -73,4 +73,8 @@ export class CreateOrderDto {
   @IsOptional()
   @IsBoolean()
   useStoreCredit?: boolean; // Apply available store credit as a discount
+
+  @IsOptional()
+  @IsString()
+  couponCode?: string; // Apply a referral coupon code as a discount
 }

@@ -10,7 +10,13 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CalculateTotalsDto, OrderCalculationResponse } from './dto/calculate-totals.dto';
-import { OrderStatus, PaymentStatus, InventoryTransactionType, UserRole } from '@prisma/client';
+import {
+  OrderStatus,
+  PaymentStatus,
+  InventoryTransactionType,
+  UserRole,
+  ReferralCouponStatus,
+} from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { InventoryService } from '../inventory/inventory.service';
 import { ShippingTaxService, TaxCalculationWithBreakdown } from './shipping-tax.service';
@@ -784,6 +790,7 @@ export class OrdersService {
       idempotencyKey,
       servicePointId,
       useStoreCredit,
+      couponCode,
     } = createOrderDto;
 
     // 1. Check for duplicate order (idempotency protection)
@@ -1073,6 +1080,36 @@ export class OrdersService {
       .add(taxConverted)
       .add(gelatoConverted);
 
+    // Apply referral coupon discount
+    let appliedCouponDiscount = new Decimal(0);
+    let couponId: string | null = null;
+    if (couponCode) {
+      const normalizedCode = couponCode.trim().toUpperCase();
+      const coupon = await this.prisma.referralCoupon.findUnique({
+        where: { code: normalizedCode },
+      });
+      if (
+        coupon &&
+        coupon.referrerId === userId &&
+        coupon.status === ReferralCouponStatus.ACTIVE &&
+        (!coupon.expiresAt || coupon.expiresAt >= new Date())
+      ) {
+        const couponAmountConverted = new Decimal(Number(coupon.amount)).mul(exchangeRateNum);
+        appliedCouponDiscount = couponAmountConverted.gte(preCreditTotal)
+          ? preCreditTotal
+          : couponAmountConverted;
+        couponId = coupon.id;
+        this.logger.log(
+          `🎟️  Coupon '${normalizedCode}' applied: ${appliedCouponDiscount.toFixed(2)} ${currency}`
+        );
+      } else {
+        this.logger.warn(
+          `Coupon code '${normalizedCode}' is invalid or not applicable for user ${userId}`
+        );
+      }
+    }
+    const preCreditTotalAfterCoupon = preCreditTotal.sub(appliedCouponDiscount);
+
     // Fetch user referral data and apply store credit if requested
     const userReferralData = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -1087,14 +1124,16 @@ export class OrdersService {
     ) {
       const creditUsd = Number(userReferralData.storeCredit);
       const creditConverted = new Decimal(creditUsd).mul(exchangeRateNum);
-      appliedStoreCredit = creditConverted.gte(preCreditTotal) ? preCreditTotal : creditConverted;
+      appliedStoreCredit = creditConverted.gte(preCreditTotalAfterCoupon)
+        ? preCreditTotalAfterCoupon
+        : creditConverted;
     }
-    const total = preCreditTotal.sub(appliedStoreCredit);
+    const total = preCreditTotalAfterCoupon.sub(appliedStoreCredit);
 
     this.logger.log(
       `💰 Order totals (${currency}): subtotal=${subtotalConverted.toFixed(2)}, ` +
         `shipping=${shippingConverted.toFixed(2)}, tax=${taxConverted.toFixed(2)}, ` +
-        `storeCredit=-${appliedStoreCredit.toFixed(2)}, total=${total.toFixed(2)}`
+        `coupon=-${appliedCouponDiscount.toFixed(2)}, storeCredit=-${appliedStoreCredit.toFixed(2)}, total=${total.toFixed(2)}`
     );
 
     // Generate order number
@@ -1208,6 +1247,14 @@ export class OrdersService {
           icon: isPickup ? 'map-pin' : 'shopping-bag',
         },
       });
+
+      // Mark referral coupon as redeemed
+      if (couponId) {
+        await prisma.referralCoupon.update({
+          where: { id: couponId },
+          data: { status: ReferralCouponStatus.REDEEMED, redeemedAt: new Date() },
+        });
+      }
 
       return newOrder;
     });
@@ -2329,15 +2376,32 @@ export class OrdersService {
           subtotal
         );
 
-      // 6. Apply coupon discount (future feature - placeholder)
-      const discount = 0;
-      const couponDetails = null;
+      // 6. Apply referral coupon discount
+      let discount = 0;
+      let couponDetails: { code: string; discount: number; type: 'PERCENTAGE' | 'FIXED' } | null =
+        null;
 
       if (dto.couponCode) {
-        this.logger.log(
-          `Coupon code '${dto.couponCode}' provided but coupon system not yet implemented`
-        );
-        warnings.push('Coupon system not yet implemented. Coupon code will be ignored.');
+        const normalizedCode = dto.couponCode.trim().toUpperCase();
+        const coupon = await this.prisma.referralCoupon.findUnique({
+          where: { code: normalizedCode },
+        });
+
+        if (!coupon) {
+          warnings.push(`Coupon code '${normalizedCode}' not found.`);
+        } else if (coupon.referrerId !== userId) {
+          warnings.push(`Coupon code '${normalizedCode}' is not valid for your account.`);
+        } else if (coupon.status !== ReferralCouponStatus.ACTIVE) {
+          warnings.push(
+            `Coupon code '${normalizedCode}' has already been ${coupon.status === ReferralCouponStatus.REDEEMED ? 'redeemed' : 'expired'}.`
+          );
+        } else if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+          warnings.push(`Coupon code '${normalizedCode}' has expired.`);
+        } else {
+          discount = Number(coupon.amount); // in USD
+          couponDetails = { code: coupon.code, discount, type: 'FIXED' };
+          this.logger.log(`🎟️  Coupon '${normalizedCode}' applied: $${discount} discount`);
+        }
       }
 
       // 6.5 Fetch user store credit balance (referral rewards)
@@ -2414,6 +2478,14 @@ export class OrdersService {
       const taxAmount = taxCalc.amount;
       const taxAmountInTargetCurrency = convertPrice(taxAmount);
       const discountInTargetCurrency = convertPrice(discount);
+
+      // Convert coupon discount to target currency
+      if (couponDetails) {
+        couponDetails = {
+          ...couponDetails,
+          discount: Math.round(discountInTargetCurrency * 100) / 100,
+        };
+      }
 
       // Store credit: convert USD balance → target currency, cap at order pre-credit total
       const storeCreditInTargetCurrency = storeCreditUsd * exchangeRate;
