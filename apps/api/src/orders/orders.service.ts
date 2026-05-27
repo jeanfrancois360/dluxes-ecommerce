@@ -446,13 +446,19 @@ export class OrdersService {
     const subtotal = new Decimal(cartTotals.subtotal);
     const discount = new Decimal(cartTotals.discount);
 
-    // 5. Calculate shipping and tax in locked currency
-    const taxCalc = await this.shippingTaxService.calculateTax(
+    // 5. Calculate tax per seller (respects businessType: corporation/registered_business = PRICE_INCLUSIVE)
+    const taxCalc = await this.shippingTaxService.calculateTaxPerSeller(
       {
         country: shippingAddress.country,
         state: shippingAddress.province || undefined,
         postalCode: shippingAddress.postalCode || undefined,
       },
+      cart.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: Number(item.price),
+        storeId: item.product?.storeId || undefined,
+      })),
       Number(subtotal)
     );
 
@@ -899,13 +905,19 @@ export class OrdersService {
       }
     }
 
-    // Calculate shipping and tax using actual rates
-    const taxCalc = await this.shippingTaxService.calculateTax(
+    // Calculate tax per seller (respects businessType: corporation/registered_business = PRICE_INCLUSIVE)
+    const taxCalc = await this.shippingTaxService.calculateTaxPerSeller(
       {
         country: shippingAddress?.country || 'US',
         state: shippingAddress?.province || undefined,
         postalCode: shippingAddress?.postalCode || undefined,
       },
+      orderItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: Number(item.price),
+        storeId: item.storeId || undefined,
+      })),
       Number(subtotal)
     );
 
