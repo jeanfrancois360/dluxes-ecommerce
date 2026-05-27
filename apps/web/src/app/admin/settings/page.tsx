@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminRoute } from '@/components/admin-route';
@@ -50,9 +51,18 @@ import { SettingsOverviewDashboard } from '@/components/settings/settings-overvi
 
 function SettingsPageContent() {
   const t = useTranslations('adminSettings');
-  const [activeTab, setActiveTab] = useState('overview');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'overview');
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
 
   const tabsConfig = [
     {
@@ -148,7 +158,7 @@ function SettingsPageContent() {
   ];
 
   const handleNavigateToTab = (tab: string) => {
-    setActiveTab(tab);
+    handleTabChange(tab);
     setTimeout(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 100);
@@ -210,7 +220,7 @@ function SettingsPageContent() {
       <SettingsValidationAlert onNavigateToOverview={() => handleNavigateToTab('overview')} />
 
       {/* Enhanced Tabs Navigation */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <div className="overflow-x-auto scrollbar-thin">
           <TabsList className="inline-flex w-full lg:w-auto min-w-full lg:min-w-0 gap-2 bg-transparent p-0">
             {filteredTabs.map((tab) => {
@@ -356,7 +366,9 @@ export default function SettingsPage() {
   return (
     <AdminRoute>
       <AdminLayout>
-        <SettingsPageContent />
+        <React.Suspense fallback={null}>
+          <SettingsPageContent />
+        </React.Suspense>
       </AdminLayout>
     </AdminRoute>
   );
