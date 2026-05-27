@@ -177,7 +177,16 @@ export default function AdminNewProductPage() {
         </div>
 
         {/* Product Form — seller form with admin bypass */}
-        <ProductForm adminMode onSubmit={handleSubmit} onCancel={handleCancel} />
+        <ProductForm
+          adminMode
+          adminGelatoConfigured={
+            !!(
+              selectedStore?.gelatoSettings?.isEnabled && selectedStore?.gelatoSettings?.isVerified
+            )
+          }
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+        />
       </div>
     </div>
   );
