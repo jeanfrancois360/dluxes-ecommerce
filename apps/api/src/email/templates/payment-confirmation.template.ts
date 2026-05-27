@@ -70,11 +70,11 @@ export function paymentConfirmationTemplate(data: PaymentConfirmationData): stri
       We'll send you another email with tracking information once your order ships.
     </p>
 
-    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 28px 0;">
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 28px 0;">
       <tr>
-        <td style="background-color: #0A0A0A; padding: 13px 28px;">
-          <a href="${data.orderUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
-            View Order Details
+        <td align="center" style="background-color: #0A0A0A; padding: 16px 28px;">
+          <a href="${data.orderUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; display: block;">
+            View Order Details &rarr;
           </a>
         </td>
       </tr>

@@ -358,6 +358,7 @@ export class EmailService {
       tax: number;
       shipping: number;
       total: number;
+      discount?: number;
       currency: string;
       shippingAddress: {
         street: string;
@@ -388,6 +389,7 @@ export class EmailService {
       const html = orderConfirmationTemplate({
         ...orderData,
         orderUrl,
+        discount: orderData.discount,
       });
 
       const { data, error } = await this.resend.emails.send({
@@ -1210,7 +1212,7 @@ export class EmailService {
       const { data: emailData, error } = await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `Your Order #${data.orderNumber} Is Being Prepared`,
+        subject: `Your Order #${data.orderNumber} Is On Its Way`,
         html,
       });
 

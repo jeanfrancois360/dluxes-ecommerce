@@ -10,11 +10,11 @@ export const magicLinkTemplate = (name: string, magicLink: string, frontendUrl?:
       Hello ${name}, use the button below to sign in. This link expires in <strong style="color: #0A0A0A;">15 minutes</strong> and can only be used once.
     </p>
 
-    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 32px 0;">
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 32px 0;">
       <tr>
-        <td style="background-color: #0A0A0A; padding: 13px 28px;">
-          <a href="${magicLink}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
-            Sign In
+        <td align="center" style="background-color: #0A0A0A; padding: 16px 28px;">
+          <a href="${magicLink}" style="color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; display: block;">
+            Sign In to NextPik &rarr;
           </a>
         </td>
       </tr>

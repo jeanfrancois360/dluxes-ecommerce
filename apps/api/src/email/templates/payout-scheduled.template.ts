@@ -86,11 +86,11 @@ export function payoutScheduledTemplate(data: PayoutScheduledData): string {
       Funds are typically credited to your ${method} account within 1&ndash;3 business days. You'll receive a confirmation email once the transfer is complete.
     </p>
 
-    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 24px 0;">
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0;">
       <tr>
-        <td style="background-color: #0A0A0A; padding: 13px 28px;">
-          <a href="${data.dashboardUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
-            View Payout Details
+        <td align="center" style="background-color: #0A0A0A; padding: 16px 28px;">
+          <a href="${data.dashboardUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; display: block;">
+            View Payout Details &rarr;
           </a>
         </td>
       </tr>

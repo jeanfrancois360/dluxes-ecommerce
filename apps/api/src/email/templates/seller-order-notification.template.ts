@@ -159,22 +159,26 @@ export function sellerOrderNotificationTemplate(data: SellerOrderNotificationDat
       </tr>
     </table>
 
-    <!-- CTA -->
-    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 16px 0;">
+    <!-- CTA (full width) -->
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 12px 0;">
       <tr>
-        <td style="background-color: #0A0A0A; padding: 13px 28px;">
-          <a href="${data.orderUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
-            View Order
+        <td align="center" style="background-color: #0A0A0A; padding: 16px 28px;">
+          <a href="${data.orderUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; display: block;">
+            View &amp; Manage Order &rarr;
           </a>
         </td>
       </tr>
     </table>
 
-    <p style="margin: 0;">
-      <a href="${data.dashboardUrl}" style="color: #6B7280; text-decoration: underline; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-        Go to seller dashboard
-      </a>
-    </p>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 4px 0;">
+      <tr>
+        <td align="center" style="padding: 10px 0;">
+          <a href="${data.dashboardUrl}" style="color: #6B7280; text-decoration: underline; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Go to seller dashboard
+          </a>
+        </td>
+      </tr>
+    </table>
   `;
 
   return baseEmailTemplate(content, {

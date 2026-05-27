@@ -10,11 +10,11 @@ export const passwordResetTemplate = (name: string, resetLink: string, frontendU
       Hello ${name}, we received a request to reset the password for your account. Click the button below to choose a new password. This link expires in <strong style="color: #0A0A0A;">1 hour</strong>.
     </p>
 
-    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 32px 0;">
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 32px 0;">
       <tr>
-        <td style="background-color: #0A0A0A; padding: 13px 28px;">
-          <a href="${resetLink}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
-            Reset Password
+        <td align="center" style="background-color: #0A0A0A; padding: 16px 28px;">
+          <a href="${resetLink}" style="color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; display: block;">
+            Reset Password &rarr;
           </a>
         </td>
       </tr>

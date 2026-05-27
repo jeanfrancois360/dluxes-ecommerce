@@ -67,11 +67,11 @@ export function paymentFailedTemplate(data: PaymentFailedData): string {
       </tr>
     </table>
 
-    <table cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 24px 0;">
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 24px 0;">
       <tr>
-        <td style="background-color: #DC2626; padding: 13px 28px;">
-          <a href="${data.retryUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 14px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; white-space: nowrap;">
-            Try Again
+        <td align="center" style="background-color: #DC2626; padding: 16px 28px;">
+          <a href="${data.retryUrl}" style="color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; display: block;">
+            Retry Payment &rarr;
           </a>
         </td>
       </tr>

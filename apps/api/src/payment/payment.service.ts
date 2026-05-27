@@ -1650,9 +1650,18 @@ export class PaymentService {
                 const avgCommissionRate =
                   commissions.length > 0
                     ? commissions.reduce((sum, c) => sum + Number(c.ruleValue), 0) /
-                      commissions.length /
-                      100 // Convert percentage to decimal
-                    : 0;
+                      commissions.length
+                    : 10;
+
+                // Split the total Stripe/PayPal processing fee proportionally by seller's share
+                const grossOrderAmount = grossAmount.toNumber();
+                const sellerShare = grossOrderAmount > 0 ? sellerSubtotal / grossOrderAmount : 1;
+                const sellerTransactionFee = processingFees
+                  ? processingFees.feeAmount.toNumber() * sellerShare
+                  : 0;
+                const sellerTransactionFeeRatePct = processingFees
+                  ? processingFees.feePercent.mul(100).toNumber()
+                  : 0;
 
                 await emailService.sendSellerOrderNotification(seller.email, {
                   sellerName:
@@ -1672,7 +1681,10 @@ export class PaymentService {
                   subtotal: sellerSubtotal,
                   commission: totalCommission,
                   commissionRate: avgCommissionRate,
-                  netPayout: sellerSubtotal - totalCommission,
+                  transactionFee: sellerTransactionFee > 0 ? sellerTransactionFee : undefined,
+                  transactionFeeRate:
+                    sellerTransactionFeeRatePct > 0 ? sellerTransactionFeeRatePct : undefined,
+                  netPayout: sellerSubtotal - totalCommission - sellerTransactionFee,
                   currency: order.currency,
                   shippingAddress: {
                     street: order.shippingAddress?.address1 || '',

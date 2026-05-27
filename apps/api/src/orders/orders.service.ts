@@ -705,12 +705,13 @@ export class OrdersService {
               name: item.name,
               quantity: item.quantity,
               price: Number(item.price),
-              total: Number(item.total),
+              image: item.image || undefined,
             })),
             subtotal: Number(subtotal),
             shipping: Number(shipping),
             tax: Number(tax),
             total: Number(total),
+            discount: Number(discount) > 0 ? Number(discount) : undefined,
             currency: orderCurrency,
             shippingAddress: {
               street: order.shippingAddress.address1 || '',
@@ -1316,12 +1317,13 @@ export class OrdersService {
               name: item.name,
               quantity: item.quantity,
               price: Number(item.price),
-              image: item.image,
+              image: item.image || undefined,
             })),
-            subtotal: Number(subtotal),
-            tax: Number(tax),
-            shipping: Number(shipping),
+            subtotal: Number(subtotalConverted),
+            tax: Number(taxConverted),
+            shipping: Number(shippingConverted.add(gelatoConverted)),
             total: Number(total),
+            discount: appliedStoreCredit.greaterThan(0) ? appliedStoreCredit.toNumber() : undefined,
             currency,
             shippingAddress: {
               street: order.shippingAddress.address1,
@@ -1443,7 +1445,23 @@ export class OrdersService {
                 commissionAmount = sellerSubtotal * (commissionRate / 100);
               }
 
-              const netPayout = sellerSubtotal - commissionAmount;
+              // Estimate transaction fee proportionally (actual fee confirmed after payment)
+              let estimatedFeePercent = 2.9;
+              try {
+                const feePctSetting = await this.prisma.systemSetting.findUnique({
+                  where: { key: 'stripe_fee_percentage' },
+                });
+                if (feePctSetting?.value) estimatedFeePercent = Number(feePctSetting.value);
+              } catch {
+                /* use default */
+              }
+              const orderTotal = Number(fullOrder.total) || sellerSubtotal;
+              const sellerShare = orderTotal > 0 ? sellerSubtotal / orderTotal : 1;
+              // Fixed fee ($0.30 USD equiv) split proportionally; percentage applied to seller subtotal
+              const estimatedTransactionFee =
+                sellerSubtotal * (estimatedFeePercent / 100) + 0.3 * sellerShare;
+
+              const netPayout = sellerSubtotal - commissionAmount - estimatedTransactionFee;
 
               const sellerName =
                 `${seller.firstName || ''} ${seller.lastName || ''}`.trim() || 'Seller';
@@ -1463,6 +1481,8 @@ export class OrdersService {
                 subtotal: sellerSubtotal,
                 commission: commissionAmount,
                 commissionRate,
+                transactionFee: estimatedTransactionFee,
+                transactionFeeRate: estimatedFeePercent,
                 netPayout,
                 currency: fullOrder.currency,
                 shippingAddress: {
