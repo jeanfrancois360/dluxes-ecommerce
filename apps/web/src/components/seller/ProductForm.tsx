@@ -583,13 +583,18 @@ export default function ProductForm({
 }: ProductFormProps) {
   const product = initialData;
 
-  // Gelato settings — check if seller has configured their account
-  const { data: gelatoSettings } = useSWR('seller-gelato-settings', sellerGelatoAPI.getSettings, {
-    revalidateOnFocus: false,
-    shouldRetryOnError: false,
-  });
-  const isGelatoConfigured = gelatoSettings ? gelatoSettings.isVerified : undefined;
-  const isGelatoEnabled = gelatoSettings ? gelatoSettings.isEnabled : undefined;
+  // Gelato settings — skip in admin mode (admin has no seller Gelato credentials)
+  const { data: gelatoSettings } = useSWR(
+    adminMode ? null : 'seller-gelato-settings',
+    sellerGelatoAPI.getSettings,
+    { revalidateOnFocus: false, shouldRetryOnError: false }
+  );
+  const isGelatoConfigured = adminMode
+    ? false
+    : gelatoSettings
+      ? gelatoSettings.isVerified
+      : undefined;
+  const isGelatoEnabled = adminMode ? false : gelatoSettings ? gelatoSettings.isEnabled : undefined;
 
   // Categories state
   const [categories, setCategories] = useState<Category[]>([]);
