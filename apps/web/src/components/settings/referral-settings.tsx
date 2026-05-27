@@ -48,6 +48,7 @@ export function ReferralSettingsSection() {
       referral_max_usage_per_code: 0,
       referral_auto_generate_code: true,
       referral_show_leaderboard: true,
+      referral_allow_user_choice: false,
     },
   });
 
@@ -76,6 +77,7 @@ export function ReferralSettingsSection() {
           referral_max_usage_per_code: Number(raw['referral_max_usage_per_code'] ?? 0),
           referral_auto_generate_code: raw['referral_auto_generate_code'] ?? true,
           referral_show_leaderboard: raw['referral_show_leaderboard'] ?? true,
+          referral_allow_user_choice: raw['referral_allow_user_choice'] ?? false,
         };
         form.reset(resetData);
         justSavedRef.current = false;
@@ -178,6 +180,19 @@ export function ReferralSettingsSection() {
             <SettingsToggle
               label="Show Public Leaderboard"
               description="Display top referrers on the public leaderboard. Emails are anonymised."
+              checked={!!field.value}
+              onCheckedChange={field.onChange}
+              disabled={!enabled}
+            />
+          )}
+        />
+        <Controller
+          name="referral_allow_user_choice"
+          control={form.control}
+          render={({ field }) => (
+            <SettingsToggle
+              label="Allow Users to Choose Their Reward Type"
+              description="When enabled, users can pick Store Credit, Discount Coupon, or Flat Commission from their referrals page. Their choice overrides the platform default above."
               checked={!!field.value}
               onCheckedChange={field.onChange}
               disabled={!enabled}
@@ -533,8 +548,9 @@ export function ReferralSettingsSection() {
             { label: 'Status', value: enabled ? '✅ Active' : '⏸ Disabled' },
             {
               label: 'Reward Type',
-              value:
-                rewardType === 'store_credit'
+              value: form.watch('referral_allow_user_choice')
+                ? 'User Choice'
+                : rewardType === 'store_credit'
                   ? 'Store Credit'
                   : rewardType === 'coupon'
                     ? 'Coupon'

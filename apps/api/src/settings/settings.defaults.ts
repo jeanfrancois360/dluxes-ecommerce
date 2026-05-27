@@ -133,6 +133,7 @@ export const SETTING_DEFAULTS = {
     min_payout_amount: 5.0,
     auto_generate_code: true,
     show_leaderboard: true,
+    allow_user_choice: false,
   },
 
   // --------------------------------------------------------------------------
