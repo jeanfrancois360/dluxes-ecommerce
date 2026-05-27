@@ -17,7 +17,15 @@ import { useTranslations } from 'next-intl';
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isLoading: authLoading, error: authError, clearError } = useAuth();
+  const {
+    login,
+    isLoading: authLoading,
+    error: authError,
+    clearError,
+    isAuthenticated,
+    isInitialized,
+    user,
+  } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -74,6 +82,20 @@ export default function LoginPage() {
     }
   }, []);
 
+  // If auth has initialised and the user is already authenticated, redirect them
+  // away. This handles the case where the middleware bounced them here because
+  // the cookie was absent (expired / cleared) but localStorage held a valid JWT.
+  // initializeAuth() re-syncs the cookie, so we can safely forward them.
+  useEffect(() => {
+    if (!isInitialized || !isAuthenticated) return;
+    const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect');
+    if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+      router.replace(returnUrl);
+    } else {
+      router.replace(getAuthRedirectUrl(user));
+    }
+  }, [isInitialized, isAuthenticated, router, searchParams, user]);
+
   // Show error from OAuth redirect (e.g. ?error=Account+suspended)
   useEffect(() => {
     const oauthError = searchParams.get('error');
@@ -94,6 +116,16 @@ export default function LoginPage() {
 
   const error = authError || localError;
   const isLoading = authLoading || submitting2FA;
+
+  // While auth is initialising (or redirect is in-flight), show nothing —
+  // prevents the login form from flashing for already-authenticated users.
+  if (!isInitialized || (isInitialized && isAuthenticated)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-neutral-900" />
+      </div>
+    );
+  }
 
   // Called automatically when all OTP boxes are filled
   const handleComplete2FA = async (code: string) => {
