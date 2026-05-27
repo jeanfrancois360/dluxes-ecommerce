@@ -987,10 +987,16 @@ export default function CheckoutPage() {
                             <ShippingSummaryCard
                               shippingMethod={{
                                 name:
+                                  availableShippingOptions?.find(
+                                    (o) => o.id === selectedShippingMethod
+                                  )?.name ||
                                   getShippingMethodById(selectedShippingMethod)?.name ||
-                                  'Standard Shipping',
+                                  'Shipping',
                                 price: shippingCost,
                                 estimatedDays:
+                                  availableShippingOptions
+                                    ?.find((o) => o.id === selectedShippingMethod)
+                                    ?.estimatedDays?.toString() ||
                                   getShippingMethodById(selectedShippingMethod)?.estimatedDays ||
                                   '5-7 business days',
                               }}
@@ -1115,14 +1121,21 @@ export default function CheckoutPage() {
                 subtotal={totals.subtotal}
                 shipping={shippingCost}
                 tax={taxAmount}
-                total={totalWithShipping}
+                total={totals.subtotal + shippingForTotal + taxAmount}
                 discount={appliedStoreCredit}
                 cartCurrency={cartCurrency}
                 shippingMethod={{
-                  name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',
+                  name:
+                    availableShippingOptions?.find((o) => o.id === selectedShippingMethod)?.name ||
+                    getShippingMethodById(selectedShippingMethod)?.name ||
+                    'Shipping',
                   price: shippingCost,
+                  estimatedDays: availableShippingOptions?.find(
+                    (o) => o.id === selectedShippingMethod
+                  )?.estimatedDays,
                 }}
                 hasShippingAddress={!!shippingAddress}
+                isLoadingShipping={isLoadingShippingOptions}
                 taxBreakdown={backendCalculation?.taxBreakdown}
               />
             </div>
