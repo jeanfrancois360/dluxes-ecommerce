@@ -3937,15 +3937,16 @@ model DhlShipment {
 // ============================================================================
 
 model ReferralCode {
-  id         String    @id @default(cuid())
-  code       String    @unique // Unique referral code (e.g., "JOHN2024XYZ")
-  userId     String    @unique // One referral code per user
-  usageCount Int       @default(0) // How many times this code has been used
-  maxUsage   Int? // Optional: Maximum number of uses (null = unlimited)
-  expiresAt  DateTime? // Optional: Expiration date (null = no expiration)
-  isActive   Boolean   @default(true) // Can be deactivated by admin or user
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id                  String              @id @default(cuid())
+  code                String              @unique // Unique referral code (e.g., "JOHN2024XYZ")
+  userId              String              @unique // One referral code per user
+  usageCount          Int                 @default(0) // How many times this code has been used
+  maxUsage            Int? // Optional: Maximum number of uses (null = unlimited)
+  expiresAt           DateTime? // Optional: Expiration date (null = no expiration)
+  isActive            Boolean             @default(true) // Can be deactivated by admin or user
+  preferredRewardType ReferralRewardType? // User's preferred reward delivery method (null = use platform default)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

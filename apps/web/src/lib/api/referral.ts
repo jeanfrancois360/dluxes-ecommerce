@@ -27,8 +27,7 @@ function buildQueryString(params?: Record<string, any>): string {
  * Generate referral code for current user
  */
 export const generateReferralCode = async () => {
-  const { data } = await api.post('/referral/generate');
-  return data;
+  return api.post('/referral/generate');
 };
 
 /**
@@ -65,8 +64,16 @@ export const getReferralHistory = async (params?: {
  * Get referral settings (public info for frontend)
  */
 export const getReferralSettings = async () => {
-  const { data } = await api.get('/referral/settings');
-  return data;
+  return api.get('/referral/settings');
+};
+
+/**
+ * Save user's preferred reward type
+ */
+export const updatePreferredRewardType = async (
+  rewardType: 'STORE_CREDIT' | 'COUPON' | 'FLAT_COMMISSION'
+) => {
+  return api.patch('/referral/preferred-reward-type', { rewardType });
 };
 
 /**
@@ -179,6 +186,7 @@ export const referralApi = {
   getReferralSettings,
   getLeaderboard,
   redeemCoupon,
+  updatePreferredRewardType,
 
   // Admin endpoints
   getAllReferrals,

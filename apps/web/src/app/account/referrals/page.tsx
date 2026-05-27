@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/hooks/use-auth';
@@ -23,13 +23,20 @@ import {
   Link2,
   BadgeCheck,
   Zap,
+  Loader2,
+  AlertCircle,
+  Banknote,
+  Lock,
 } from 'lucide-react';
+
+type RewardType = 'STORE_CREDIT' | 'COUPON' | 'FLAT_COMMISSION';
 
 interface ReferralSummary {
   referralCode: string | null;
   codeActive: boolean;
   usageCount: number;
   maxUsage: number;
+  preferredRewardType: RewardType | null;
   storeCredit: number | string;
   totalReferrals: number;
   pending: { count: number; potentialEarnings: number | string };
@@ -37,6 +44,41 @@ interface ReferralSummary {
   paid: { count: number; amount: number | string };
   expired: { count: number };
 }
+
+interface ReferralSettings {
+  enabled: boolean;
+  rewardType: string;
+  allowUserChoice: boolean;
+  buyerReward: number;
+  sellerReward: number;
+  currency: string;
+}
+
+const REWARD_OPTIONS: {
+  value: RewardType;
+  label: string;
+  desc: string;
+  icon: React.ElementType;
+}[] = [
+  {
+    value: 'STORE_CREDIT',
+    label: 'Store Credit',
+    desc: 'Added directly to your wallet. Use at checkout anytime.',
+    icon: DollarSign,
+  },
+  {
+    value: 'COUPON',
+    label: 'Discount Coupon',
+    desc: 'A single-use coupon code for your reward amount.',
+    icon: Ticket,
+  },
+  {
+    value: 'FLAT_COMMISSION',
+    label: 'Cash Commission',
+    desc: 'Real cash queued for transfer (bank, Stripe, or PayPal).',
+    icon: Banknote,
+  },
+];
 
 interface ReferralRecord {
   id: string;
@@ -86,21 +128,26 @@ export default function ReferralsPage() {
   const { user, isLoading: authLoading } = useAuth();
 
   const [summary, setSummary] = useState<ReferralSummary | null>(null);
+  const [settings, setSettings] = useState<ReferralSettings | null>(null);
   const [history, setHistory] = useState<ReferralRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
   const [redeemingCoupon, setRedeemingCoupon] = useState<string | null>(null);
+  const [savingRewardType, setSavingRewardType] = useState<RewardType | null>(null);
 
   const load = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [summaryRes, historyRes] = await Promise.all([
+      const [summaryRes, historyRes, settingsRes] = await Promise.all([
         referralApi.getReferralSummary(),
         referralApi.getReferralHistory({ limit: 50 }),
+        referralApi.getReferralSettings(),
       ]);
       setSummary(summaryRes);
       setHistory(historyRes?.data || []);
+      setSettings(settingsRes as ReferralSettings);
     } catch {
       toast.error(t('toast.loadError'));
     } finally {
@@ -131,10 +178,15 @@ export default function ReferralsPage() {
   const handleGenerate = async () => {
     try {
       setIsGenerating(true);
-      await referralApi.generateReferralCode();
+      setGenerateError(null);
+      const result = await referralApi.generateReferralCode();
       await load();
-    } catch {
-      toast.error(t('toast.generateError'));
+      const code = result?.code;
+      toast.success(code ? `Referral code ${code} created!` : 'Referral code created!');
+    } catch (err: any) {
+      const msg = err?.message || t('toast.generateError');
+      setGenerateError(msg);
+      toast.error(msg);
     } finally {
       setIsGenerating(false);
     }
@@ -150,6 +202,21 @@ export default function ReferralsPage() {
       toast.error(err?.message || 'Failed to redeem coupon');
     } finally {
       setRedeemingCoupon(null);
+    }
+  };
+
+  const handleSelectRewardType = async (type: RewardType) => {
+    if (savingRewardType || summary?.preferredRewardType === type) return;
+    try {
+      setSavingRewardType(type);
+      await referralApi.updatePreferredRewardType(type);
+      setSummary((prev) => (prev ? { ...prev, preferredRewardType: type } : prev));
+      const label = REWARD_OPTIONS.find((o) => o.value === type)?.label ?? type;
+      toast.success(`Reward preference set to ${label}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save reward preference');
+    } finally {
+      setSavingRewardType(null);
     }
   };
 
@@ -301,13 +368,106 @@ export default function ReferralsPage() {
                   disabled={isGenerating}
                   className="flex items-center gap-2 bg-[#CBB57B] hover:bg-[#e8d49a] active:scale-95 text-black font-semibold px-7 py-3 rounded-xl transition-all disabled:opacity-60 text-sm"
                 >
-                  <Zap className="w-4 h-4" />
+                  {isGenerating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
                   {isGenerating ? t('generating') : t('generateCode')}
                 </button>
+                {generateError && (
+                  <div className="mt-4 flex items-start gap-2 bg-red-500/10 border border-red-500/20 text-red-300 text-xs rounded-xl px-4 py-3 max-w-xs text-left">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>{generateError}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </motion.div>
+
+        {/* ── Reward Type Picker (shown when user has a code) ──────────────── */}
+        {summary?.referralCode && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+            className="bg-white border border-neutral-100 rounded-2xl p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-neutral-900">Reward Preference</h3>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  {settings?.allowUserChoice
+                    ? 'Choose how you want to receive your referral rewards'
+                    : 'Your reward type is set by the platform'}
+                </p>
+              </div>
+              {!settings?.allowUserChoice && (
+                <span className="flex items-center gap-1.5 text-xs text-neutral-400 bg-neutral-100 px-3 py-1.5 rounded-full">
+                  <Lock className="w-3 h-3" />
+                  Platform default
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {REWARD_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                // Current effective preference: user's choice if set, else platform default
+                const platformDefault =
+                  settings?.rewardType?.toUpperCase().replace('-', '_') ?? 'STORE_CREDIT';
+                const effectiveType = summary.preferredRewardType ?? platformDefault;
+                const isSelected = effectiveType === opt.value;
+                const isSaving = savingRewardType === opt.value;
+                const disabled = !settings?.allowUserChoice || !!savingRewardType;
+
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => settings?.allowUserChoice && handleSelectRewardType(opt.value)}
+                    disabled={disabled}
+                    className={[
+                      'relative flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all',
+                      isSelected
+                        ? 'border-black bg-black/[0.03]'
+                        : 'border-neutral-100 bg-neutral-50',
+                      settings?.allowUserChoice && !savingRewardType
+                        ? 'hover:border-neutral-400 cursor-pointer'
+                        : 'cursor-default',
+                    ].join(' ')}
+                  >
+                    {/* Selected check */}
+                    {isSelected && (
+                      <span className="absolute top-3 right-3 w-4 h-4 rounded-full bg-black flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5 text-white" />
+                      </span>
+                    )}
+
+                    <div
+                      className={`p-2 rounded-lg flex-shrink-0 ${isSelected ? 'bg-black text-white' : 'bg-neutral-200 text-neutral-500'}`}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Icon className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p
+                        className={`text-sm font-semibold ${isSelected ? 'text-black' : 'text-neutral-600'}`}
+                      >
+                        {opt.label}
+                      </p>
+                      <p className="text-xs text-neutral-400 mt-0.5 leading-relaxed">{opt.desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
 
         {/* ── Stats Grid ───────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

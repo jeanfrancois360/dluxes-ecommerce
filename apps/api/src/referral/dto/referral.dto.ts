@@ -1,6 +1,6 @@
 import { IsOptional, IsEnum, IsString, IsInt, Min, Max } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { ReferralStatus, UserRole } from '@prisma/client';
+import { ReferralRewardType, ReferralStatus, UserRole } from '@prisma/client';
 
 /**
  * DTO for getting referral history
@@ -56,4 +56,12 @@ export class ApplyReferralCodeDto {
   @IsOptional()
   @IsString()
   referralCode?: string;
+}
+
+/**
+ * DTO for updating user's preferred reward type
+ */
+export class UpdatePreferredRewardTypeDto {
+  @IsEnum(ReferralRewardType)
+  rewardType!: ReferralRewardType;
 }

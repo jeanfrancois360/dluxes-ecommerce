@@ -342,6 +342,7 @@ export const referralSettingsSchema = z
       .min(0, 'Use 0 for unlimited, or a positive number'),
     referral_auto_generate_code: z.boolean(),
     referral_show_leaderboard: z.boolean(),
+    referral_allow_user_choice: z.boolean(),
   })
   .refine((d) => d.referral_buyer_reward > 0 || d.referral_seller_reward > 0, {
     message: 'At least one reward amount must be greater than 0',

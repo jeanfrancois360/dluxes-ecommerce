@@ -16,7 +16,11 @@ import { ReferralService } from './referral.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { GetReferralHistoryDto, GetAllReferralsDto } from './dto/referral.dto';
+import {
+  GetReferralHistoryDto,
+  GetAllReferralsDto,
+  UpdatePreferredRewardTypeDto,
+} from './dto/referral.dto';
 import { ReferralPayoutStatus } from '@prisma/client';
 
 /**
@@ -147,7 +151,24 @@ export class ReferralController {
         minOrderValue: settings.minOrderValue,
         currency: settings.rewardCurrency,
         showLeaderboard: settings.showLeaderboard,
+        allowUserChoice: settings.allowUserChoice,
       },
+    };
+  }
+
+  /**
+   * Save user's preferred reward type
+   * PATCH /api/v1/referral/preferred-reward-type
+   */
+  @Patch('preferred-reward-type')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async updatePreferredRewardType(@Request() req: any, @Body() body: UpdatePreferredRewardTypeDto) {
+    await this.referralService.updatePreferredRewardType(req.user.id, body.rewardType);
+    return {
+      success: true,
+      message: 'Reward preference saved',
+      rewardType: body.rewardType,
     };
   }
 

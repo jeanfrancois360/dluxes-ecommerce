@@ -214,12 +214,17 @@ export class ReferralService {
 
       const rewardCurrency = await this.getReferralRewardCurrency();
       const rewardTypeSetting = await this.getReferralRewardType();
+      const allowUserChoice = await this.isUserRewardChoiceAllowed();
+
+      // Use referrer's explicit preference when user choice is enabled; fall back to global setting
       const rewardType =
-        rewardTypeSetting === 'coupon'
-          ? ReferralRewardType.COUPON
-          : rewardTypeSetting === 'flat_commission'
-            ? ReferralRewardType.FLAT_COMMISSION
-            : ReferralRewardType.STORE_CREDIT;
+        allowUserChoice && referralCode.preferredRewardType
+          ? referralCode.preferredRewardType
+          : rewardTypeSetting === 'coupon'
+            ? ReferralRewardType.COUPON
+            : rewardTypeSetting === 'flat_commission'
+              ? ReferralRewardType.FLAT_COMMISSION
+              : ReferralRewardType.STORE_CREDIT;
 
       // Create referral record and update user/code in transaction
       await this.prisma.$transaction(async (prisma) => {
@@ -641,6 +646,26 @@ export class ReferralService {
   }
 
   // ============================================================================
+  // USER REWARD PREFERENCE
+  // ============================================================================
+
+  /**
+   * Save a user's preferred reward type on their referral code.
+   * Used when `referral_allow_user_choice` is enabled.
+   */
+  async updatePreferredRewardType(userId: string, rewardType: ReferralRewardType): Promise<void> {
+    const referralCode = await this.prisma.referralCode.findUnique({ where: { userId } });
+    if (!referralCode) {
+      throw new NotFoundException('You do not have a referral code yet. Generate one first.');
+    }
+    await this.prisma.referralCode.update({
+      where: { userId },
+      data: { preferredRewardType: rewardType },
+    });
+    this.logger.log(`User ${userId} set preferred reward type: ${rewardType}`);
+  }
+
+  // ============================================================================
   // REFERRAL DASHBOARD & HISTORY
   // ============================================================================
 
@@ -676,6 +701,7 @@ export class ReferralService {
       codeActive: referralCode?.isActive || false,
       usageCount: referralCode?.usageCount || 0,
       maxUsage: referralCode?.maxUsage || 0,
+      preferredRewardType: referralCode?.preferredRewardType || null,
       storeCredit: storeCredit?.storeCredit || new Decimal(0),
       totalReferrals: storeCredit?.totalReferrals || 0,
       pending: {
@@ -1056,6 +1082,10 @@ export class ReferralService {
           map['referral_show_leaderboard'] != null
             ? Boolean(map['referral_show_leaderboard'])
             : D.show_leaderboard,
+        allowUserChoice:
+          map['referral_allow_user_choice'] != null
+            ? Boolean(map['referral_allow_user_choice'])
+            : D.allow_user_choice,
       };
     } catch (error) {
       this.logger.warn('Failed to get referral settings, using fallback defaults');
@@ -1074,11 +1104,22 @@ export class ReferralService {
         autoGenerateCode: D.auto_generate_code,
         minPayoutAmount: D.min_payout_amount,
         showLeaderboard: D.show_leaderboard,
+        allowUserChoice: D.allow_user_choice,
       };
     }
   }
 
   // Individual setting getters (with fallbacks)
+  private async isUserRewardChoiceAllowed(): Promise<boolean> {
+    try {
+      const setting = await this.settingsService.getSetting('referral_allow_user_choice');
+      if (setting?.value != null) return Boolean(setting.value);
+    } catch {
+      // DB unavailable or setting missing
+    }
+    return SETTING_DEFAULTS.referral.allow_user_choice;
+  }
+
   private async isReferralEnabled(): Promise<boolean> {
     try {
       const setting = await this.settingsService.getSetting('referral_enabled');
