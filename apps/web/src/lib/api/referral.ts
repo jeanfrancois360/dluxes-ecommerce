@@ -34,16 +34,14 @@ export const generateReferralCode = async () => {
  * Validate a referral code
  */
 export const validateReferralCode = async (code: string) => {
-  const { data } = await api.get(`/referral/validate/${code}`);
-  return data;
+  return api.get(`/referral/validate/${code}`);
 };
 
 /**
  * Get referral summary for current user
  */
 export const getReferralSummary = async () => {
-  const { data } = await api.get('/referral/summary');
-  return data;
+  return api.get('/referral/summary');
 };
 
 /**
@@ -56,8 +54,7 @@ export const getReferralHistory = async (params?: {
   page?: number;
   limit?: number;
 }) => {
-  const { data } = await api.get(`/referral/history${buildQueryString(params)}`);
-  return data;
+  return api.get(`/referral/history${buildQueryString(params)}`);
 };
 
 /**
@@ -81,8 +78,7 @@ export const updatePreferredRewardType = async (
  */
 export const getLeaderboard = async (limit?: number) => {
   const params = limit ? { limit } : undefined;
-  const { data } = await api.get(`/referral/leaderboard${buildQueryString(params)}`);
-  return data;
+  return api.get(`/referral/leaderboard${buildQueryString(params)}`);
 };
 
 // ============================================================================
@@ -100,16 +96,14 @@ export const getAllReferrals = async (params?: {
   page?: number;
   limit?: number;
 }) => {
-  const { data } = await api.get(`/referral/admin/all${buildQueryString(params)}`);
-  return data;
+  return api.get(`/referral/admin/all${buildQueryString(params)}`);
 };
 
 /**
  * Get referral statistics (Admin only)
  */
 export const getReferralStatistics = async (params?: { startDate?: string; endDate?: string }) => {
-  const { data } = await api.get(`/referral/admin/statistics${buildQueryString(params)}`);
-  return data;
+  return api.get(`/referral/admin/statistics${buildQueryString(params)}`);
 };
 
 /**
@@ -117,32 +111,28 @@ export const getReferralStatistics = async (params?: { startDate?: string; endDa
  */
 export const getTopReferrersAdmin = async (limit?: number) => {
   const params = limit ? { limit } : undefined;
-  const { data } = await api.get(`/referral/admin/top-referrers${buildQueryString(params)}`);
-  return data;
+  return api.get(`/referral/admin/top-referrers${buildQueryString(params)}`);
 };
 
 /**
  * Get all referral settings (Admin only)
  */
 export const getReferralSettingsAdmin = async () => {
-  const { data } = await api.get('/referral/admin/settings');
-  return data;
+  return api.get('/referral/admin/settings');
 };
 
 /**
  * Redeem a referral coupon for store credit
  */
 export const redeemCoupon = async (code: string) => {
-  const { data } = await api.post('/referral/redeem-coupon', { code });
-  return data;
+  return api.post('/referral/redeem-coupon', { code });
 };
 
 /**
  * Manually grant referral reward (Admin only)
  */
 export const grantRewardAdmin = async (referralId: string) => {
-  const { data } = await api.post(`/referral/admin/grant-reward/${referralId}`);
-  return data;
+  return api.post(`/referral/admin/grant-reward/${referralId}`);
 };
 
 /**
@@ -157,8 +147,7 @@ export const getReferralPayouts = async (params?: {
   if (params?.status) query.set('status', params.status);
   if (params?.page) query.set('page', String(params.page));
   if (params?.limit) query.set('limit', String(params.limit));
-  const { data } = await api.get(`/referral/admin/payouts?${query.toString()}`);
-  return data;
+  return api.get(`/referral/admin/payouts?${query.toString()}`);
 };
 
 /**
@@ -173,8 +162,7 @@ export const updateReferralPayout = async (
     notes?: string;
   }
 ) => {
-  const { data } = await api.patch(`/referral/admin/payouts/${payoutId}`, body);
-  return data;
+  return api.patch(`/referral/admin/payouts/${payoutId}`, body);
 };
 
 export const referralApi = {
