@@ -32,7 +32,12 @@ import {
   DialogHeader,
   DialogTitle,
   Textarea,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from '@nextpik/ui';
+import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { toast } from 'sonner';
 import {
   DollarSign,
@@ -50,7 +55,51 @@ import {
   ChevronUp,
   RefreshCw,
   FileText,
+  MoreHorizontal,
+  Zap,
 } from 'lucide-react';
+
+// ─── Lightweight DropdownMenu wrappers (not yet in @nextpik/ui) ─────────────
+const DropdownMenu = DropdownMenuPrimitive.Root;
+const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+const DropdownMenuContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+>(({ className = '', sideOffset = 4, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      className={`z-50 min-w-[160px] overflow-hidden rounded-md border bg-white p-1 shadow-md animate-in fade-in-0 zoom-in-95 ${className}`}
+      {...props}
+    />
+  </DropdownMenuPrimitive.Portal>
+));
+DropdownMenuContent.displayName = 'DropdownMenuContent';
+
+const DropdownMenuItem = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Item>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & { destructive?: boolean }
+>(({ className = '', destructive, ...props }, ref) => (
+  <DropdownMenuPrimitive.Item
+    ref={ref}
+    className={`relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-neutral-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 ${destructive ? 'text-red-600 focus:bg-red-50' : 'text-neutral-700'} ${className}`}
+    {...props}
+  />
+));
+DropdownMenuItem.displayName = 'DropdownMenuItem';
+
+const DropdownMenuSeparator = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+>(({ className = '', ...props }, ref) => (
+  <DropdownMenuPrimitive.Separator
+    ref={ref}
+    className={`-mx-1 my-1 h-px bg-neutral-100 ${className}`}
+    {...props}
+  />
+));
+DropdownMenuSeparator.displayName = 'DropdownMenuSeparator';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useTranslations } from 'next-intl';
@@ -279,16 +328,39 @@ function PayoutDetailFlyout({ payout, onClose }: { payout: Payout; onClose: () =
 
 // ─── Status Badge (extracted for reuse) ────────────────────────────────────
 function StatusBadge({ status }: { status: PayoutStatus }) {
-  const config: Record<PayoutStatus, { variant: any; icon: React.ElementType; label: string }> = {
-    PENDING: { variant: 'secondary', icon: Clock, label: 'Pending' },
-    PROCESSING: { variant: 'default', icon: TrendingUp, label: 'Processing' },
-    COMPLETED: { variant: 'default', icon: CheckCircle, label: 'Completed' },
-    FAILED: { variant: 'destructive', icon: XCircle, label: 'Failed' },
-    CANCELLED: { variant: 'destructive', icon: XCircle, label: 'Cancelled' },
+  const config: Record<
+    PayoutStatus,
+    { className: string; icon: React.ElementType; label: string }
+  > = {
+    PENDING: {
+      className: 'bg-amber-50 text-amber-700 border-amber-200',
+      icon: Clock,
+      label: 'Pending',
+    },
+    PROCESSING: {
+      className: 'bg-blue-50 text-blue-700 border-blue-200',
+      icon: TrendingUp,
+      label: 'Processing',
+    },
+    COMPLETED: {
+      className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      icon: CheckCircle,
+      label: 'Completed',
+    },
+    FAILED: {
+      className: 'bg-red-50 text-red-700 border-red-200',
+      icon: XCircle,
+      label: 'Failed',
+    },
+    CANCELLED: {
+      className: 'bg-neutral-100 text-neutral-500 border-neutral-200',
+      icon: XCircle,
+      label: 'Cancelled',
+    },
   };
-  const { variant, icon: Icon, label } = config[status] ?? config.PENDING;
+  const { className, icon: Icon, label } = config[status] ?? config.PENDING;
   return (
-    <Badge variant={variant} className="gap-1">
+    <Badge variant="outline" className={`gap-1 font-medium ${className}`}>
       <Icon className="h-3 w-3" />
       {label}
     </Badge>
@@ -793,54 +865,84 @@ function PayoutsContent() {
       <PageHeader title={t('pageTitle')} description={t('pageDescription')} />
 
       <div className="px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        <div className="flex justify-end items-center gap-3">
-          {lastUpdated && (
-            <span className="text-xs text-muted-foreground hidden sm:block">
-              Updated {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="gap-2"
-            title="Refresh"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
-          <Link href="/admin/payout-settings">
-            <Button variant="outline" className="gap-2">
-              <Settings className="h-4 w-4" />
-              {t('buttons.payoutSettings')}
+        <TooltipProvider>
+          <div className="flex justify-end items-center gap-2">
+            {lastUpdated && (
+              <span className="text-xs text-muted-foreground hidden sm:block">
+                Updated {lastUpdated.toLocaleTimeString()}
+              </span>
+            )}
+
+            {/* Refresh */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="h-8 w-8 p-0"
+                >
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh</TooltipContent>
+            </Tooltip>
+
+            {/* Payout Settings */}
+            <Link href="/admin/payout-settings">
+              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                <Settings className="h-3.5 w-3.5" />
+                {t('buttons.payoutSettings')}
+              </Button>
+            </Link>
+
+            {/* Sync Statuses */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSyncDialog(true)}
+                  disabled={syncingStatuses}
+                  className="gap-1.5 h-8 text-xs"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${syncingStatuses ? 'animate-spin' : ''}`} />
+                  {syncingStatuses ? 'Syncing…' : 'Sync'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Poll Stripe & PayPal for PROCESSING payout updates</TooltipContent>
+            </Tooltip>
+
+            {/* Execute Transfers */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setExecuteDialog(true)}
+                  disabled={executingTransfers}
+                  className="gap-1.5 h-8 text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
+                >
+                  <Zap className={`h-3.5 w-3.5 ${executingTransfers ? 'animate-pulse' : ''}`} />
+                  {executingTransfers ? 'Executing…' : 'Execute'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Send funds for all PENDING payouts</TooltipContent>
+            </Tooltip>
+
+            {/* Process All */}
+            <Button
+              size="sm"
+              onClick={() => setProcessAllDialog(true)}
+              disabled={processing}
+              className="h-8 text-xs gap-1.5"
+            >
+              <DollarSign className="h-3.5 w-3.5" />
+              {processing ? t('buttons.processing') : t('buttons.processAll')}
             </Button>
-          </Link>
-          <Button
-            variant="outline"
-            onClick={() => setSyncDialog(true)}
-            disabled={syncingStatuses}
-            className="gap-2"
-            title="Poll PayPal and Stripe for status updates on PROCESSING payouts"
-          >
-            <RefreshCw className={`h-4 w-4 ${syncingStatuses ? 'animate-spin' : ''}`} />
-            {syncingStatuses ? 'Syncing…' : 'Sync Statuses'}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setExecuteDialog(true)}
-            disabled={executingTransfers}
-            className="gap-2 border-blue-300 text-blue-700 hover:bg-blue-50"
-            title="Send funds for all PENDING payouts via Stripe Connect / PayPal"
-          >
-            <TrendingUp className={`h-4 w-4 ${executingTransfers ? 'animate-pulse' : ''}`} />
-            {executingTransfers ? 'Executing…' : 'Execute Transfers'}
-          </Button>
-          <Button onClick={() => setProcessAllDialog(true)} disabled={processing}>
-            <DollarSign className="h-4 w-4 mr-2" />
-            {processing ? t('buttons.processing') : t('buttons.processAll')}
-          </Button>
-        </div>
+          </div>
+        </TooltipProvider>
 
         {/* Statistics */}
         <div className="grid gap-4 md:grid-cols-5">
@@ -977,23 +1079,23 @@ function PayoutsContent() {
         )}
 
         {/* Filter Bar */}
-        <div className="rounded-lg border p-4 bg-white space-y-4">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[250px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder={t('filters.searchPlaceholder')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+        <div className="rounded-lg border bg-white">
+          <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder={t('filters.searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 text-sm"
+              />
             </div>
 
+            {/* Status */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder={t('filters.statusLabel')} />
+              <SelectTrigger className="w-[130px] h-8 text-sm">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
@@ -1005,9 +1107,10 @@ function PayoutsContent() {
               </SelectContent>
             </Select>
 
+            {/* Method */}
             <Select value={methodFilter} onValueChange={setMethodFilter}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder={t('filters.paymentMethod')} />
+              <SelectTrigger className="w-[130px] h-8 text-sm">
+                <SelectValue placeholder="Method" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('filters.allMethods')}</SelectItem>
@@ -1019,9 +1122,10 @@ function PayoutsContent() {
               </SelectContent>
             </Select>
 
+            {/* Sort */}
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder={t('filters.sortBy')} />
+              <SelectTrigger className="w-[130px] h-8 text-sm">
+                <SelectValue placeholder="Sort" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="newest">{t('filters.newestFirst')}</SelectItem>
@@ -1031,81 +1135,91 @@ function PayoutsContent() {
               </SelectContent>
             </Select>
 
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            {/* Date range */}
+            <div className="flex items-center gap-1.5">
               <Input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="w-[150px]"
+                className="w-[130px] h-8 text-sm"
                 title="From date"
               />
-              <span className="text-muted-foreground text-sm">–</span>
+              <span className="text-muted-foreground text-xs">–</span>
               <Input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="w-[150px]"
+                className="w-[130px] h-8 text-sm"
                 title="To date"
               />
             </div>
+
+            {/* Clear all */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="h-8 text-xs text-muted-foreground gap-1"
+              >
+                <X className="h-3 w-3" />
+                Clear
+              </Button>
+            )}
           </div>
 
+          {/* Active filter chips */}
           {hasActiveFilters && (
-            <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-sm text-muted-foreground">{t('filters.activeFilters')}</span>
+            <div className="flex flex-wrap gap-1.5 px-3 pb-2.5 border-t pt-2">
               {debouncedSearch && (
-                <Badge variant="secondary" className="gap-1">
-                  {t('filters.search')}: {debouncedSearch}
+                <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                  &ldquo;{debouncedSearch}&rdquo;
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="ml-1 hover:text-destructive"
+                    className="ml-0.5 hover:text-destructive"
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-2.5 w-2.5" />
                   </button>
                 </Badge>
               )}
               {statusFilter !== 'all' && (
-                <Badge variant="secondary" className="gap-1">
-                  {t('filters.status')}: {statusFilter}
+                <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                  {statusFilter}
                   <button
                     onClick={() => setStatusFilter('all')}
-                    className="ml-1 hover:text-destructive"
+                    className="ml-0.5 hover:text-destructive"
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-2.5 w-2.5" />
                   </button>
                 </Badge>
               )}
               {methodFilter !== 'all' && (
-                <Badge variant="secondary" className="gap-1">
-                  {t('filters.method')}: {methodFilter}
+                <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                  {formatPaymentMethod(methodFilter)}
                   <button
                     onClick={() => setMethodFilter('all')}
-                    className="ml-1 hover:text-destructive"
+                    className="ml-0.5 hover:text-destructive"
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-2.5 w-2.5" />
                   </button>
                 </Badge>
               )}
               {dateFrom && (
-                <Badge variant="secondary" className="gap-1">
-                  From: {dateFrom}
-                  <button onClick={() => setDateFrom('')} className="ml-1 hover:text-destructive">
-                    <X className="h-3 w-3" />
+                <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                  From {dateFrom}
+                  <button onClick={() => setDateFrom('')} className="ml-0.5 hover:text-destructive">
+                    <X className="h-2.5 w-2.5" />
                   </button>
                 </Badge>
               )}
               {dateTo && (
-                <Badge variant="secondary" className="gap-1">
-                  To: {dateTo}
-                  <button onClick={() => setDateTo('')} className="ml-1 hover:text-destructive">
-                    <X className="h-3 w-3" />
+                <Badge variant="secondary" className="gap-1 text-xs font-normal">
+                  To {dateTo}
+                  <button onClick={() => setDateTo('')} className="ml-0.5 hover:text-destructive">
+                    <X className="h-2.5 w-2.5" />
                   </button>
                 </Badge>
               )}
-              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                {t('filters.clearAll')}
-              </Button>
             </div>
           )}
         </div>
@@ -1124,8 +1238,8 @@ function PayoutsContent() {
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-10 py-2.5">
                       <input
                         type="checkbox"
                         checked={
@@ -1135,14 +1249,28 @@ function PayoutsContent() {
                         className="w-4 h-4 rounded border-neutral-300"
                       />
                     </TableHead>
-                    <TableHead>{t('table.headers.sellerStore')}</TableHead>
-                    <TableHead>{t('table.headers.amount')}</TableHead>
-                    <TableHead>{t('table.headers.period')}</TableHead>
-                    <TableHead>{t('table.headers.commissions')}</TableHead>
-                    <TableHead>{t('table.headers.method')}</TableHead>
-                    <TableHead>{t('table.headers.status')}</TableHead>
-                    <TableHead>{t('table.headers.scheduled')}</TableHead>
-                    <TableHead>{t('table.headers.actions')}</TableHead>
+                    <TableHead className="py-2.5 text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                      {t('table.headers.sellerStore')}
+                    </TableHead>
+                    <TableHead className="py-2.5 text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                      {t('table.headers.amount')}
+                    </TableHead>
+                    <TableHead className="py-2.5 text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                      {t('table.headers.period')}
+                    </TableHead>
+                    <TableHead className="py-2.5 text-xs font-semibold text-neutral-500 uppercase tracking-wide w-10 text-center">
+                      {t('table.headers.commissions')}
+                    </TableHead>
+                    <TableHead className="py-2.5 text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                      {t('table.headers.method')}
+                    </TableHead>
+                    <TableHead className="py-2.5 text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                      {t('table.headers.status')}
+                    </TableHead>
+                    <TableHead className="py-2.5 text-xs font-semibold text-neutral-500 uppercase tracking-wide">
+                      {t('table.headers.scheduled')}
+                    </TableHead>
+                    <TableHead className="py-2.5 w-24" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1172,8 +1300,10 @@ function PayoutsContent() {
                   ) : (
                     filteredPayouts.map((payout) => (
                       <React.Fragment key={payout.id}>
-                        <TableRow className={selectedIds.has(payout.id) ? 'bg-muted/50' : ''}>
-                          <TableCell>
+                        <TableRow
+                          className={`${selectedIds.has(payout.id) ? 'bg-blue-50/50' : ''} group`}
+                        >
+                          <TableCell className="py-2.5 w-10">
                             <input
                               type="checkbox"
                               checked={selectedIds.has(payout.id)}
@@ -1181,113 +1311,168 @@ function PayoutsContent() {
                               className="w-4 h-4 rounded border-neutral-300"
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-2.5">
                             <Link
                               href={`/admin/sellers/${payout.sellerId}`}
                               className="hover:underline"
                             >
-                              <div className="font-medium">{payout.store.name}</div>
-                              <div className="text-sm text-muted-foreground">
+                              <div className="text-sm font-medium text-neutral-900">
+                                {payout.store.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
                                 {payout.seller.email}
                               </div>
                             </Link>
                           </TableCell>
-                          <TableCell className="font-medium">
-                            {formatCurrencyAmount(payout.amount)} {payout.currency}
+                          <TableCell className="py-2.5 font-semibold text-sm tabular-nums">
+                            {formatCurrencyAmount(payout.amount)}{' '}
+                            <span className="text-xs font-normal text-muted-foreground">
+                              {payout.currency}
+                            </span>
                           </TableCell>
-                          <TableCell className="text-sm">
+                          <TableCell className="py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                             {new Date(payout.periodStart).toLocaleDateString()} –{' '}
                             {new Date(payout.periodEnd).toLocaleDateString()}
                           </TableCell>
-                          <TableCell>{payout.commissionCount}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {formatPaymentMethod(payout.paymentMethod)}
-                            </Badge>
-                            {payout.paymentMethod === 'bank_transfer' &&
-                              payout.status === 'PROCESSING' && (
-                                <div className="text-xs text-amber-600 mt-0.5">
-                                  Manual transfer needed
-                                </div>
-                              )}
+                          <TableCell className="py-2.5 text-center text-sm">
+                            {payout.commissionCount}
                           </TableCell>
                           <TableCell>
+                            <TooltipProvider>
+                              <div className="flex items-center gap-1.5">
+                                <Badge variant="outline" className="text-xs font-normal">
+                                  {formatPaymentMethod(payout.paymentMethod)}
+                                </Badge>
+                                {payout.paymentMethod === 'bank_transfer' &&
+                                  payout.status === 'PROCESSING' && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="h-2 w-2 rounded-full bg-amber-400 flex-shrink-0 cursor-default" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>Manual bank transfer required</TooltipContent>
+                                    </Tooltip>
+                                  )}
+                              </div>
+                            </TooltipProvider>
+                          </TableCell>
+                          <TableCell className="py-2.5">
                             <StatusBadge status={payout.status} />
                             {payout.paymentReference && (
-                              <div
-                                className="text-xs text-muted-foreground mt-1 font-mono truncate max-w-[120px]"
-                                title={payout.paymentReference}
-                              >
-                                {payout.paymentReference}
-                              </div>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="text-xs text-muted-foreground mt-1 font-mono truncate max-w-[100px] cursor-default">
+                                      {payout.paymentReference}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{payout.paymentReference}</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                           </TableCell>
-                          <TableCell>{new Date(payout.scheduledAt).toLocaleDateString()}</TableCell>
+                          <TableCell className="py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(payout.scheduledAt).toLocaleDateString()}
+                          </TableCell>
                           <TableCell>
-                            <div className="flex gap-1.5 flex-wrap">
-                              {/* Detail button — always visible */}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setDetailPayout(payout)}
-                                title="View details"
-                              >
-                                <FileText className="h-4 w-4" />
-                              </Button>
+                            <TooltipProvider>
+                              <div className="flex items-center gap-0.5">
+                                {/* View details — always visible */}
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => setDetailPayout(payout)}
+                                    >
+                                      <FileText className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>View details</TooltipContent>
+                                </Tooltip>
 
-                              {/* Notes toggle — only when notes exist */}
-                              {payout.notes && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => toggleNotes(payout.id)}
-                                  title={expandedNotes.has(payout.id) ? 'Hide notes' : 'Show notes'}
-                                >
-                                  {expandedNotes.has(payout.id) ? (
-                                    <ChevronUp className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4 text-amber-500" />
-                                  )}
-                                </Button>
-                              )}
+                                {/* Notes toggle */}
+                                {payout.notes && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 w-7 p-0"
+                                        onClick={() => toggleNotes(payout.id)}
+                                      >
+                                        {expandedNotes.has(payout.id) ? (
+                                          <ChevronUp className="h-3.5 w-3.5" />
+                                        ) : (
+                                          <ChevronDown className="h-3.5 w-3.5 text-amber-500" />
+                                        )}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {expandedNotes.has(payout.id) ? 'Hide notes' : 'Show notes'}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
 
-                              {(payout.status === 'PENDING' || payout.status === 'PROCESSING') && (
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() =>
-                                    setCompleteDialog({
-                                      open: true,
-                                      payout,
-                                      reference: '',
-                                      proof: '',
-                                    })
-                                  }
-                                >
-                                  {t('actions.complete')}
-                                </Button>
-                              )}
-                              {(payout.status === 'PENDING' || payout.status === 'PROCESSING') && (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => openFailDialog(payout.id)}
-                                >
-                                  {t('actions.fail')}
-                                </Button>
-                              )}
-                              {(payout.status === 'FAILED' || payout.status === 'PROCESSING') && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleTriggerSeller(payout.sellerId)}
-                                  className="gap-1"
-                                >
-                                  <RefreshCw className="h-3 w-3" />
-                                  {t('actions.retry')}
-                                </Button>
-                              )}
-                            </div>
+                                {/* Action dropdown — only for actionable statuses */}
+                                {(payout.status === 'PENDING' ||
+                                  payout.status === 'PROCESSING' ||
+                                  payout.status === 'FAILED') && (
+                                  <DropdownMenu>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                                            <MoreHorizontal className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Actions</TooltipContent>
+                                    </Tooltip>
+                                    <DropdownMenuContent align="end">
+                                      {(payout.status === 'PENDING' ||
+                                        payout.status === 'PROCESSING') && (
+                                        <DropdownMenuItem
+                                          onSelect={() =>
+                                            setCompleteDialog({
+                                              open: true,
+                                              payout,
+                                              reference: '',
+                                              proof: '',
+                                            })
+                                          }
+                                        >
+                                          <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                                          {t('actions.complete')}
+                                        </DropdownMenuItem>
+                                      )}
+                                      {(payout.status === 'FAILED' ||
+                                        payout.status === 'PROCESSING') && (
+                                        <DropdownMenuItem
+                                          onSelect={() => handleTriggerSeller(payout.sellerId)}
+                                        >
+                                          <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
+                                          {t('actions.retry')}
+                                        </DropdownMenuItem>
+                                      )}
+                                      {(payout.status === 'PENDING' ||
+                                        payout.status === 'PROCESSING') && (
+                                        <>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem
+                                            destructive
+                                            onSelect={() => openFailDialog(payout.id)}
+                                          >
+                                            <XCircle className="h-3.5 w-3.5" />
+                                            {t('actions.fail')}
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                              </div>
+                            </TooltipProvider>
                           </TableCell>
                         </TableRow>
 
