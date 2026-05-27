@@ -50,7 +50,7 @@ export function useNotifications(options?: { unreadOnly?: boolean; pollInterval?
 
       const response = await api.get<NotificationResponse>(`/notifications?${params}`);
       // API client already unwraps the response
-      setNotifications(response.notifications);
+      setNotifications(response?.notifications ?? []);
       setError(null);
     } catch (err: any) {
       console.error('Failed to fetch notifications:', err);
@@ -69,7 +69,7 @@ export function useNotifications(options?: { unreadOnly?: boolean; pollInterval?
     try {
       const response = await api.get<{ count: number }>('/notifications/unread/count');
       // API client already unwraps the response
-      setUnreadCount(response.count);
+      setUnreadCount(response?.count ?? 0);
     } catch (err) {
       console.error('Failed to fetch unread count:', err);
     }

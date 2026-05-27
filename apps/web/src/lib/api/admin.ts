@@ -246,22 +246,22 @@ export const dashboardApi = {
 
   async getRevenueData(days: number = 30): Promise<RevenueData[]> {
     const response = await api.get(`/admin/dashboard/revenue?days=${days}`);
-    return response;
+    return response ?? [];
   },
 
   async getOrdersByStatus(): Promise<OrdersByStatus[]> {
     const response = await api.get('/admin/dashboard/orders-by-status');
-    return response;
+    return response ?? [];
   },
 
   async getTopProducts(limit: number = 5): Promise<TopProduct[]> {
     const response = await api.get(`/admin/dashboard/top-products?limit=${limit}`);
-    return response;
+    return response ?? [];
   },
 
   async getCustomerGrowth(days: number = 30): Promise<CustomerGrowth[]> {
     const response = await api.get(`/admin/dashboard/customer-growth?days=${days}`);
-    return response;
+    return response ?? [];
   },
 
   async getRecentOrders(limit: number = 10): Promise<RecentOrder[]> {
