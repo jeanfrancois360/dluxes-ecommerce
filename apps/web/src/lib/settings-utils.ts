@@ -17,7 +17,10 @@ export interface Setting {
  * Transform array of settings into key-value object for forms
  * Properly parses values based on their valueType to match form validation schemas
  */
-export function transformSettingsToForm(settings: Setting[]): Record<string, any> {
+export function transformSettingsToForm(
+  settings: Setting[] | null | undefined
+): Record<string, any> {
+  if (!Array.isArray(settings)) return {};
   const form: Record<string, any> = {};
   settings.forEach((setting) => {
     let parsedValue = setting.value;
@@ -25,12 +28,14 @@ export function transformSettingsToForm(settings: Setting[]): Record<string, any
     // Parse value based on valueType to ensure correct type for form validation
     switch (setting.valueType) {
       case 'NUMBER':
-        parsedValue = typeof setting.value === 'string'
-          ? parseFloat(setting.value)
-          : Number(setting.value);
+        parsedValue =
+          typeof setting.value === 'string' ? parseFloat(setting.value) : Number(setting.value);
         // Handle NaN
         if (isNaN(parsedValue)) {
-          console.warn(`[transformSettingsToForm] Invalid NUMBER for ${setting.key}:`, setting.value);
+          console.warn(
+            `[transformSettingsToForm] Invalid NUMBER for ${setting.key}:`,
+            setting.value
+          );
           parsedValue = 0;
         }
         break;
@@ -49,13 +54,19 @@ export function transformSettingsToForm(settings: Setting[]): Record<string, any
           try {
             parsedValue = JSON.parse(setting.value);
           } catch (error) {
-            console.error(`[transformSettingsToForm] Failed to parse JSON for ${setting.key}:`, error);
+            console.error(
+              `[transformSettingsToForm] Failed to parse JSON for ${setting.key}:`,
+              error
+            );
             parsedValue = setting.valueType === 'ARRAY' ? [] : {};
           }
         }
         // Ensure arrays are actually arrays
         if (setting.valueType === 'ARRAY' && !Array.isArray(parsedValue)) {
-          console.warn(`[transformSettingsToForm] Expected ARRAY for ${setting.key}, got:`, parsedValue);
+          console.warn(
+            `[transformSettingsToForm] Expected ARRAY for ${setting.key}, got:`,
+            parsedValue
+          );
           parsedValue = parsedValue ? [parsedValue] : [];
         }
         break;
@@ -122,9 +133,10 @@ export function getChangedSettings(
 /**
  * Validate setting dependencies
  */
-export function validateSettingDependencies(
-  settings: Record<string, any>
-): { valid: boolean; errors: string[] } {
+export function validateSettingDependencies(settings: Record<string, any>): {
+  valid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
 
   // Validate default currency is in supported currencies
@@ -133,9 +145,10 @@ export function validateSettingDependencies(
       ? settings.supported_currencies
       : JSON.parse(settings.supported_currencies || '[]');
 
-    const defaultCurrency = typeof settings.default_currency === 'string'
-      ? settings.default_currency.replace(/"/g, '')
-      : settings.default_currency;
+    const defaultCurrency =
+      typeof settings.default_currency === 'string'
+        ? settings.default_currency.replace(/"/g, '')
+        : settings.default_currency;
 
     if (!supportedCurrencies.includes(defaultCurrency)) {
       errors.push('Default currency must be in supported currencies list');
