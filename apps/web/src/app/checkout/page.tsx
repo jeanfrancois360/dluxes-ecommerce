@@ -1117,12 +1117,13 @@ export default function CheckoutPage() {
                 tax={taxAmount}
                 total={totalWithShipping}
                 discount={appliedStoreCredit}
-                cartCurrency={cartCurrency} // Pass locked currency to prevent double conversion
+                cartCurrency={cartCurrency}
                 shippingMethod={{
                   name: getShippingMethodById(selectedShippingMethod)?.name || 'Standard Shipping',
                   price: shippingCost,
                 }}
-                hasShippingAddress={!!shippingAddress} // Show "Calculated at next step" before address entered
+                hasShippingAddress={!!shippingAddress}
+                taxBreakdown={backendCalculation?.taxBreakdown}
               />
             </div>
           </div>

@@ -111,6 +111,20 @@ export interface OrderCalculationResponse {
     available: number;
     applied: number;
   };
+  taxBreakdown?: {
+    sellerBreakdown: Array<{
+      storeId: string;
+      storeName: string;
+      businessType: string | null;
+      taxHandling: 'NEXTPIK_COLLECTS' | 'PRICE_INCLUSIVE';
+      subtotal: number;
+      taxRate: number;
+      taxAmount: number;
+      jurisdiction: string;
+    }>;
+    hasTaxInclusiveItems: boolean;
+    hasTaxableItems: boolean;
+  };
   total: number;
   currency: string;
   breakdown: {

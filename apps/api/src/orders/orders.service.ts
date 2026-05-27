@@ -13,7 +13,7 @@ import { CalculateTotalsDto, OrderCalculationResponse } from './dto/calculate-to
 import { OrderStatus, PaymentStatus, InventoryTransactionType, UserRole } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { InventoryService } from '../inventory/inventory.service';
-import { ShippingTaxService } from './shipping-tax.service';
+import { ShippingTaxService, TaxCalculationWithBreakdown } from './shipping-tax.service';
 import { CurrencyService } from '../currency/currency.service';
 import { EmailService } from '../email/email.service';
 import { CartService } from '../cart/cart.service';
@@ -2285,15 +2285,17 @@ export class OrdersService {
         }
       }
 
-      // 5. Calculate tax
-      const taxCalc = await this.shippingTaxService.calculateTax(
-        {
-          country: address.country,
-          state: address.province || undefined,
-          postalCode: address.postalCode,
-        },
-        subtotal
-      );
+      // 5. Calculate tax per seller (respects businessType: corporation/registered_business = price-inclusive)
+      const taxCalc: TaxCalculationWithBreakdown =
+        await this.shippingTaxService.calculateTaxPerSeller(
+          {
+            country: address.country,
+            state: address.province || undefined,
+            postalCode: address.postalCode,
+          },
+          verifiedItems,
+          subtotal
+        );
 
       // 6. Apply coupon discount (future feature - placeholder)
       const discount = 0;
@@ -2423,6 +2425,15 @@ export class OrdersService {
           rate: taxCalc.rate,
           jurisdiction: taxCalc.jurisdiction || 'N/A',
           breakdown: taxCalc.breakdown,
+        },
+        taxBreakdown: {
+          sellerBreakdown: taxCalc.sellerBreakdown.map((s) => ({
+            ...s,
+            subtotal: Math.round(s.subtotal * exchangeRate * 100) / 100,
+            taxAmount: Math.round(s.taxAmount * exchangeRate * 100) / 100,
+          })),
+          hasTaxInclusiveItems: taxCalc.hasTaxInclusiveItems,
+          hasTaxableItems: taxCalc.hasTaxableItems,
         },
         discount: Math.round(discountInTargetCurrency * 100) / 100,
         coupon: couponDetails,
