@@ -35,6 +35,12 @@ interface OrderSummaryProps {
   };
   promoCode?: string;
   discount?: number;
+  couponDiscount?: number;
+  appliedCouponCode?: string;
+  onApplyCoupon?: (
+    code: string
+  ) => Promise<{ success: boolean; discount?: number; message?: string }>;
+  onRemoveCoupon?: () => void;
   className?: string;
   hasShippingAddress?: boolean;
   isLoadingShipping?: boolean;
@@ -55,6 +61,10 @@ export function OrderSummary({
   shippingMethod,
   promoCode,
   discount = 0,
+  couponDiscount = 0,
+  appliedCouponCode,
+  onApplyCoupon,
+  onRemoveCoupon,
   className,
   hasShippingAddress = false,
   isLoadingShipping = false,
@@ -64,8 +74,9 @@ export function OrderSummary({
   const [isSticky, setIsSticky] = useState(false);
   const [showPromo, setShowPromo] = useState(false);
   const [promoInput, setPromoInput] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState(promoCode || '');
+  const [appliedPromo, setAppliedPromo] = useState(appliedCouponCode || promoCode || '');
   const [promoError, setPromoError] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [showAllItems, setShowAllItems] = useState(false);
   const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
 
@@ -83,25 +94,38 @@ export function OrderSummary({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     if (!promoInput.trim()) {
       setPromoError(t('pleaseEnterPromoCode'));
       return;
     }
 
-    // Here you would validate the promo code with your API
-    // For now, we'll just simulate success
-    setAppliedPromo(promoInput.toUpperCase());
-    setPromoError('');
-    setShowPromo(false);
+    if (onApplyCoupon) {
+      setIsApplyingCoupon(true);
+      setPromoError('');
+      const result = await onApplyCoupon(promoInput.trim().toUpperCase());
+      setIsApplyingCoupon(false);
+      if (result.success) {
+        setAppliedPromo(promoInput.trim().toUpperCase());
+        setShowPromo(false);
+      } else {
+        setPromoError(result.message || 'Invalid coupon code.');
+      }
+    } else {
+      // Fallback: local-only (no API)
+      setAppliedPromo(promoInput.toUpperCase());
+      setPromoError('');
+      setShowPromo(false);
+    }
   };
 
   const handleRemovePromo = () => {
     setAppliedPromo('');
     setPromoInput('');
+    onRemoveCoupon?.();
   };
 
-  const finalTotal = total - discount;
+  const finalTotal = total - discount - couponDiscount;
 
   // Helper function to format prices with cart's locked currency
   // 🔒 UPDATED: Uses cartCurrency to prevent double conversion of locked totals
@@ -295,9 +319,10 @@ export function OrderSummary({
                     />
                     <button
                       onClick={handleApplyPromo}
-                      className="flex-shrink-0 px-6 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors whitespace-nowrap"
+                      disabled={isApplyingCoupon}
+                      className="flex-shrink-0 px-6 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors whitespace-nowrap disabled:opacity-60"
                     >
-                      {t('apply')}
+                      {isApplyingCoupon ? '...' : t('apply')}
                     </button>
                   </div>
                   {promoError && <p className="text-xs text-red-500 mt-1 px-1">{promoError}</p>}
@@ -526,6 +551,30 @@ export function OrderSummary({
           </motion.div>
         )}
 
+        {/* Coupon discount */}
+        {couponDiscount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-between text-sm"
+          >
+            <span className="text-emerald-600 flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                />
+              </svg>
+              Coupon
+            </span>
+            <span className="font-semibold text-emerald-600">
+              −{formatWithCurrency(couponDiscount, false)}
+            </span>
+          </motion.div>
+        )}
+
         {/* Total */}
         <div className="pt-4 mt-1 border-t-2 border-neutral-200">
           <div className="flex justify-between items-center">
@@ -536,7 +585,7 @@ export function OrderSummary({
               </p>
             </div>
             <div className="text-right">
-              {discount > 0 && (
+              {(discount > 0 || couponDiscount > 0) && (
                 <p className="text-xs text-neutral-400 line-through mb-0.5">
                   {formatWithCurrency(total, false)}
                 </p>

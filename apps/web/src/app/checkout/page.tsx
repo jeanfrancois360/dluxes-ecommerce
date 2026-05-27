@@ -228,6 +228,7 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [shippingMethodConfirmed, setShippingMethodConfirmed] = useState(false);
   const [useStoreCredit, setUseStoreCredit] = useState(false);
+  const [couponCode, setCouponCode] = useState<string>('');
 
   // Payment method selection (Stripe or PayPal)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethodType>('stripe');
@@ -262,8 +263,12 @@ export default function CheckoutPage() {
 
   // Fetch shipping options and tax from backend after address is entered
   const fetchShippingOptionsAndTax = useCallback(
-    async (addressId: string, applyStoreCredit?: boolean) => {
-      if (!addressId || items.length === 0) return;
+    async (
+      addressId: string,
+      applyStoreCredit?: boolean,
+      applyCouponCode?: string
+    ): Promise<OrderCalculationResponse | null> => {
+      if (!addressId || items.length === 0) return null;
 
       setIsLoadingShippingOptions(true);
       try {
@@ -278,6 +283,7 @@ export default function CheckoutPage() {
           shippingMethod: selectedShippingMethod,
           currency: cartCurrency,
           useStoreCredit: applyStoreCredit,
+          ...(applyCouponCode ? { couponCode: applyCouponCode } : {}),
         });
 
         // API client auto-unwraps { success, data } responses
@@ -305,17 +311,43 @@ export default function CheckoutPage() {
         if (!calculation.tax) {
           console.warn('[Checkout] Tax calculation missing from backend response');
         }
+
+        return calculation;
       } catch (error: any) {
         console.error('Failed to fetch shipping options:', error);
         toast.error(t('couldNotLoadShipping'));
         // Reset to undefined so the hardcoded fallback methods are shown
         setAvailableShippingOptions(undefined);
+        return null;
       } finally {
         setIsLoadingShippingOptions(false);
       }
     },
     [items, selectedShippingMethod, cartCurrency, useStoreCredit, t]
   );
+
+  const handleApplyCoupon = useCallback(
+    async (code: string): Promise<{ success: boolean; discount?: number; message?: string }> => {
+      if (!savedShippingAddressId) {
+        return { success: false, message: 'Please enter your shipping address first.' };
+      }
+      const calc = await fetchShippingOptionsAndTax(savedShippingAddressId, useStoreCredit, code);
+      if (calc?.coupon) {
+        setCouponCode(code);
+        return { success: true, discount: calc.coupon.discount };
+      }
+      const warningMsg = calc?.warnings?.find((w) => w.toLowerCase().includes('coupon'));
+      return { success: false, message: warningMsg || 'Invalid or expired coupon code.' };
+    },
+    [savedShippingAddressId, useStoreCredit, fetchShippingOptionsAndTax]
+  );
+
+  const handleRemoveCoupon = useCallback(async () => {
+    setCouponCode('');
+    if (savedShippingAddressId) {
+      await fetchShippingOptionsAndTax(savedShippingAddressId, useStoreCredit, undefined);
+    }
+  }, [savedShippingAddressId, useStoreCredit, fetchShippingOptionsAndTax]);
 
   // Fetch available pickup stores (v2.10.0)
   const fetchAvailablePickupStores = useCallback(async () => {
@@ -406,15 +438,19 @@ export default function CheckoutPage() {
       };
 
       // Pass cart's locked currency to ensure payment uses same currency
-      createOrderAndPaymentIntent(items, checkoutTotals, cartCurrency, useStoreCredit).catch(
-        (err) => {
-          // Use longer duration for stock errors (they may contain multiple items)
-          const duration = err.message?.includes('Insufficient stock') ? 8000 : 5000;
-          toast.error(err.message || t('failedInitCheckout'), { duration });
-          setShippingMethodConfirmed(false);
-          goToStep('shipping');
-        }
-      );
+      createOrderAndPaymentIntent(
+        items,
+        checkoutTotals,
+        cartCurrency,
+        useStoreCredit,
+        couponCode || undefined
+      ).catch((err) => {
+        // Use longer duration for stock errors (they may contain multiple items)
+        const duration = err.message?.includes('Insufficient stock') ? 8000 : 5000;
+        toast.error(err.message || t('failedInitCheckout'), { duration });
+        setShippingMethodConfirmed(false);
+        goToStep('shipping');
+      });
     }
   }, [
     step,
@@ -431,6 +467,7 @@ export default function CheckoutPage() {
     user,
     cartCurrency,
     useStoreCredit,
+    couponCode,
     t,
   ]);
 
@@ -485,7 +522,7 @@ export default function CheckoutPage() {
       const addressId = savedAddress?.id || selectedSavedAddressId;
       if (addressId) {
         console.log('Fetching shipping options for address:', addressId);
-        await fetchShippingOptionsAndTax(addressId, useStoreCredit);
+        await fetchShippingOptionsAndTax(addressId, useStoreCredit, couponCode || undefined);
       }
     } catch (error: any) {
       console.error('Error saving shipping address:', error);
@@ -605,9 +642,10 @@ export default function CheckoutPage() {
     useStoreCredit && backendCalculation?.storeCredit?.applied
       ? Number(backendCalculation.storeCredit.applied)
       : 0;
+  const appliedCouponDiscount = backendCalculation?.coupon?.discount ?? 0;
   const totalWithShipping = Math.max(
     0,
-    totals.subtotal + shippingForTotal + taxAmount - appliedStoreCredit
+    totals.subtotal + shippingForTotal + taxAmount - appliedStoreCredit - appliedCouponDiscount
   );
 
   if (items.length === 0) {
@@ -1092,7 +1130,11 @@ export default function CheckoutPage() {
                         const checked = e.target.checked;
                         setUseStoreCredit(checked);
                         if (savedShippingAddressId) {
-                          await fetchShippingOptionsAndTax(savedShippingAddressId, checked);
+                          await fetchShippingOptionsAndTax(
+                            savedShippingAddressId,
+                            checked,
+                            couponCode || undefined
+                          );
                         }
                       }}
                       className="mt-0.5 w-4 h-4 text-black rounded border-neutral-300 focus:ring-black"
@@ -1123,6 +1165,10 @@ export default function CheckoutPage() {
                 tax={taxAmount}
                 total={totals.subtotal + shippingForTotal + taxAmount}
                 discount={appliedStoreCredit}
+                couponDiscount={appliedCouponDiscount}
+                appliedCouponCode={couponCode || undefined}
+                onApplyCoupon={handleApplyCoupon}
+                onRemoveCoupon={handleRemoveCoupon}
                 cartCurrency={cartCurrency}
                 shippingMethod={{
                   name:
