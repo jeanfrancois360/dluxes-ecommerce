@@ -126,7 +126,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="dns-prefetch" href="https://js.stripe.com" />
         <link rel="dns-prefetch" href="https://m.stripe.com" />
       </head>
-      <body className="font-sans antialiased bg-white text-black overflow-x-hidden">
+      <body
+        className="font-sans antialiased bg-white text-black overflow-x-hidden"
+        suppressHydrationWarning
+      >
         <NextIntlClientProvider locale={locale} messages={messages}>
           <RouteLoadingProvider>
             <LocaleProvider>
