@@ -486,7 +486,7 @@ function CommissionOverridesContent() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories`);
       if (response.ok) {
         const result = await safeJson(response);
         // Backend wraps data in {success: true, data: [...]}
