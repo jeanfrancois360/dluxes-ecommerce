@@ -308,16 +308,42 @@ function CommissionOverridesContent() {
 
   const handleBulkActivate = async () => {
     if (!confirm(t('bulkActions.confirmActivate', { count: selectedIds.size }))) return;
-    // Implement bulk activate
-    toast.success(t('bulkActions.activateSuccess', { count: selectedIds.size }));
+    let success = 0;
+    for (const id of selectedIds) {
+      try {
+        const res = await fetch(`/api/admin/commission/overrides/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+          body: JSON.stringify({ isActive: true }),
+        });
+        if (res.ok) success++;
+      } catch {}
+    }
+    toast.success(t('bulkActions.activateSuccess', { count: success }));
     setSelectedIds(new Set());
     fetchOverrides();
   };
 
   const handleBulkDeactivate = async () => {
     if (!confirm(t('bulkActions.confirmDeactivate', { count: selectedIds.size }))) return;
-    // Implement bulk deactivate
-    toast.success(t('bulkActions.deactivateSuccess', { count: selectedIds.size }));
+    let success = 0;
+    for (const id of selectedIds) {
+      try {
+        const res = await fetch(`/api/admin/commission/overrides/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+          body: JSON.stringify({ isActive: false }),
+        });
+        if (res.ok) success++;
+      } catch {}
+    }
+    toast.success(t('bulkActions.deactivateSuccess', { count: success }));
     setSelectedIds(new Set());
     fetchOverrides();
   };

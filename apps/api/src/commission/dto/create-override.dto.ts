@@ -1,4 +1,13 @@
-import { IsString, IsEnum, IsNumber, IsOptional, Min, Max, IsDate } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  Min,
+  Max,
+  IsDate,
+  IsBoolean,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { CommissionRuleType } from '@prisma/client';
 
@@ -64,4 +73,7 @@ export class UpdateOverrideDto {
   @Type(() => Date)
   @IsDate()
   validUntil?: Date;
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
