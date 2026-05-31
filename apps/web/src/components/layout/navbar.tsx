@@ -37,7 +37,7 @@ export function Navbar({ className }: NavbarProps) {
     { label: t('nav.home'), href: '/' },
     { label: t('nav.shop'), href: '/products', hasMegaMenu: true, megaMenuType: 'shop' },
     { label: t('nav.stores'), href: '/stores' },
-    { label: t('nav.hotDeals'), href: '/hot-deals' },
+    { label: t('nav.hotDeals'), href: '/hot-deals', isHotDeals: true },
     { label: t('nav.blog'), href: '/blog' },
   ];
 
@@ -103,39 +103,88 @@ export function Navbar({ className }: NavbarProps) {
                         }
                       }}
                     >
-                      <Link
-                        href={link.href}
-                        className="group relative px-4 py-3 text-sm font-medium text-gray-700 hover:text-[#CBB57B] transition-all duration-300"
-                      >
-                        <span className="relative z-10 tracking-wide whitespace-nowrap">
-                          {link.label}
-                        </span>
+                      {link.isHotDeals ? (
+                        <Link
+                          href={link.href}
+                          className="group relative px-4 py-3 flex items-center gap-2"
+                        >
+                          {/* Pulsing amber dot */}
+                          <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                            <motion.span
+                              className="absolute inline-flex h-full w-full rounded-full bg-amber-500"
+                              animate={{ scale: [1, 2.2, 1], opacity: [0.7, 0, 0.7] }}
+                              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeOut' }}
+                            />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          </span>
 
-                        {/* Hover background */}
-                        <span className="absolute inset-0 bg-gradient-to-r from-[#CBB57B]/5 via-[#CBB57B]/10 to-[#CBB57B]/5 scale-0 group-hover:scale-100 rounded-xl transition-transform duration-300" />
-
-                        {/* Underline animation */}
-                        <motion.span
-                          className="absolute bottom-1 left-1/2 -translate-x-1/2 h-px bg-[#CBB57B]"
-                          initial={{ width: 0 }}
-                          whileHover={{ width: '70%' }}
-                          transition={{ duration: 0.3 }}
-                        />
-
-                        {/* Dot for mega menu */}
-                        {link.hasMegaMenu && (
+                          {/* Text — narrow gold shimmer sweeps across, then rests */}
                           <motion.span
-                            className="absolute -right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-black/20 group-hover:bg-[#CBB57B]"
+                            className="relative z-10 text-sm font-medium tracking-wide whitespace-nowrap"
                             animate={{
-                              scale: activeMegaMenu === link.megaMenuType ? [1, 1.5, 1] : 1,
+                              backgroundPosition: ['250% center', '-50% center', '-50% center'],
                             }}
                             transition={{
-                              duration: 0.5,
-                              repeat: activeMegaMenu === link.megaMenuType ? Infinity : 0,
+                              duration: 5,
+                              repeat: Infinity,
+                              ease: 'easeInOut',
+                              times: [0, 0.3, 1],
                             }}
+                            style={{
+                              background:
+                                'linear-gradient(90deg, #4B5563 0%, #4B5563 40%, #C9963E 49%, #F0D080 52%, #C9963E 55%, #4B5563 64%, #4B5563 100%)',
+                              backgroundSize: '300% 100%',
+                              WebkitBackgroundClip: 'text',
+                              WebkitTextFillColor: 'transparent',
+                              backgroundClip: 'text',
+                            }}
+                          >
+                            {link.label}
+                          </motion.span>
+
+                          {/* Underline */}
+                          <motion.span
+                            className="absolute bottom-1 left-1/2 -translate-x-1/2 h-px bg-amber-600"
+                            initial={{ width: 0 }}
+                            whileHover={{ width: '70%' }}
+                            transition={{ duration: 0.3 }}
                           />
-                        )}
-                      </Link>
+                        </Link>
+                      ) : (
+                        <Link
+                          href={link.href}
+                          className="group relative px-4 py-3 text-sm font-medium text-gray-700 hover:text-[#CBB57B] transition-all duration-300"
+                        >
+                          <span className="relative z-10 tracking-wide whitespace-nowrap">
+                            {link.label}
+                          </span>
+
+                          {/* Hover background */}
+                          <span className="absolute inset-0 bg-gradient-to-r from-[#CBB57B]/5 via-[#CBB57B]/10 to-[#CBB57B]/5 scale-0 group-hover:scale-100 rounded-xl transition-transform duration-300" />
+
+                          {/* Underline animation */}
+                          <motion.span
+                            className="absolute bottom-1 left-1/2 -translate-x-1/2 h-px bg-[#CBB57B]"
+                            initial={{ width: 0 }}
+                            whileHover={{ width: '70%' }}
+                            transition={{ duration: 0.3 }}
+                          />
+
+                          {/* Dot for mega menu */}
+                          {link.hasMegaMenu && (
+                            <motion.span
+                              className="absolute -right-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-black/20 group-hover:bg-[#CBB57B]"
+                              animate={{
+                                scale: activeMegaMenu === link.megaMenuType ? [1, 1.5, 1] : 1,
+                              }}
+                              transition={{
+                                duration: 0.5,
+                                repeat: activeMegaMenu === link.megaMenuType ? Infinity : 0,
+                              }}
+                            />
+                          )}
+                        </Link>
+                      )}
                     </motion.div>
                   ))}
                 </nav>
