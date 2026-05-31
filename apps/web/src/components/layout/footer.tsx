@@ -45,7 +45,6 @@ export function Footer() {
       { label: t('footer.inquiries'), href: '/account/inquiries' },
     ],
     company: [
-      { label: t('footer.aboutUs'), href: '/about' },
       { label: t('footer.sellerPortal'), href: '/seller/products' },
       { label: t('footer.adminPortal'), href: '/admin/dashboard' },
       { label: t('footer.advertisementPlans'), href: '/seller/advertisement-plans' },
@@ -54,6 +53,7 @@ export function Footer() {
       { label: t('footer.privacyPolicy'), href: '/privacy' },
       { label: t('footer.termsOfService'), href: '/terms' },
       { label: t('footer.sellerAgreement'), href: '/seller-agreement' },
+      { label: t('footer.cookiePolicy'), href: '/cookie-policy' },
     ],
   };
 
