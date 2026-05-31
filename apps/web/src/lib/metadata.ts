@@ -272,14 +272,6 @@ export const sellerDashboardMetadata: Metadata = generateSeoMetadata({
 });
 
 // Static Pages Metadata
-export const aboutMetadata: Metadata = generateSeoMetadata({
-  title: 'About Us',
-  description:
-    'Learn about NextPik, our mission, and commitment to providing the finest curated products from verified sellers worldwide.',
-  keywords: ['about nextpik', 'company', 'multi-vendor marketplace', 'luxury shopping platform'],
-  url: '/about',
-});
-
 export const contactMetadata: Metadata = generateSeoMetadata({
   title: 'Contact Us',
   description:
@@ -414,4 +406,12 @@ export const affiliateMetadata: Metadata = generateSeoMetadata({
   title: 'Affiliate Products',
   description: 'Browse our curated selection of affiliate products from top brands.',
   url: '/affiliate',
+});
+
+export const cookiePolicyMetadata: Metadata = generateSeoMetadata({
+  title: 'Cookie Policy',
+  description:
+    'Learn how NextPik uses cookies and similar technologies to enhance your browsing experience and comply with GDPR.',
+  keywords: ['cookie policy', 'GDPR', 'cookies', 'privacy', 'tracking'],
+  url: '/cookie-policy',
 });

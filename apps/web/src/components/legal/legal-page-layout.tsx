@@ -41,6 +41,7 @@ export function LegalPageLayout({
     { label: t('privacyPolicy'), href: '/privacy' },
     { label: t('termsOfService'), href: '/terms' },
     { label: t('sellerAgreement'), href: '/seller-agreement' },
+    { label: t('cookiePolicy'), href: '/cookie-policy' },
   ];
   const links = relatedLinks || defaultRelatedLinks;
 
