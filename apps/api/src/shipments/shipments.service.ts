@@ -56,13 +56,15 @@ export class ShipmentsService {
   /**
    * Create a new shipment for seller's order items
    */
-  async createShipment(dto: CreateShipmentDto, sellerId: string): Promise<SellerShipment> {
+  async createShipment(
+    dto: CreateShipmentDto,
+    sellerId: string,
+    userRole?: string
+  ): Promise<SellerShipment> {
     // Verify seller owns the store
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
     const store = await this.prisma.store.findFirst({
-      where: {
-        id: dto.storeId,
-        userId: sellerId,
-      },
+      where: isAdmin ? { id: dto.storeId } : { id: dto.storeId, userId: sellerId },
     });
 
     if (!store) {
