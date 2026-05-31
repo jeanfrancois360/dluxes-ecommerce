@@ -234,6 +234,7 @@
       "and": "y",
       "enterBothFields": "Por favor ingresa tu correo y contraseña",
       "invalidEmail": "Por favor ingresa un correo electrónico válido",
+      "enterYourEmail": "Por favor ingresa tu dirección de correo electrónico",
       "enter2FACode": "Por favor ingresa tu código 2FA para continuar",
       "welcomeBackRedirect": "¡Bienvenido/a de nuevo! Redirigiendo a tu panel...",
       "verifySignIn": "Verificar e Iniciar Sesión"

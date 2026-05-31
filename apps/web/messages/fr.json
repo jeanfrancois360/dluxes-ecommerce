@@ -234,6 +234,7 @@
       "and": "et",
       "enterBothFields": "Veuillez entrer votre e-mail et mot de passe",
       "invalidEmail": "Veuillez entrer une adresse e-mail valide",
+      "enterYourEmail": "Veuillez entrer votre adresse e-mail",
       "enter2FACode": "Veuillez entrer votre code 2FA pour continuer",
       "welcomeBackRedirect": "Bon retour ! Redirection vers votre tableau de bord...",
       "verifySignIn": "Vérifier et Se Connecter"
