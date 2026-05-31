@@ -172,6 +172,14 @@ export const forgotPasswordMetadata: Metadata = generateSeoMetadata({
   noFollow: true,
 });
 
+export const resetPasswordMetadata: Metadata = generateSeoMetadata({
+  title: 'Set New Password',
+  description: 'Set a new password for your NextPik account.',
+  url: '/auth/reset-password',
+  noIndex: true,
+  noFollow: true,
+});
+
 // Account Pages Metadata
 export const accountMetadata: Metadata = generateSeoMetadata({
   title: 'My Account',
