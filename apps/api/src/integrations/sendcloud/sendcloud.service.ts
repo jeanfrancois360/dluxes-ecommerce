@@ -301,11 +301,17 @@ export class SendcloudService {
           `Sendcloud parcel creation failed: ${status} - ${JSON.stringify(error.response?.data)}`
         );
 
-        // 412 = carrier account not configured for label generation.
+        // 412 = "User not allowed to announce" — two root causes:
+        //   1. Unpaid invoice in the SendCloud account (most common — SEPA bank verification €0.02)
+        //      Fix: panel.sendcloud.sc → Settings → Billing → pay the outstanding invoice
+        //   2. Missing carrier contracts on the account
+        //      Fix: panel.sendcloud.sc → Settings → Carriers → activate a carrier
         // Try again without request_label to at least register the parcel.
         if (status === 412) {
           this.logger.warn(
-            'Sendcloud label generation not available (412) — creating parcel without label.'
+            'Sendcloud label generation blocked (412 — User not allowed to announce). ' +
+              'Possible causes: (1) unpaid invoice in SendCloud billing settings, ' +
+              '(2) missing carrier contracts. Creating parcel without label as fallback.'
           );
           try {
             const fallbackResponse = await this.client.post('/parcels', {
@@ -315,7 +321,9 @@ export class SendcloudService {
             if (!parcel) throw new Error('empty');
           } catch (fallbackErr) {
             throw new Error(
-              `Sendcloud label creation failed: ${errMsg}. Label generation requires carrier contracts in your SendCloud account.`
+              `Sendcloud label creation failed (412). This is a billing or carrier contract issue — ` +
+                `check panel.sendcloud.sc → Settings → Billing for unpaid invoices, ` +
+                `or Settings → Carriers to ensure carrier contracts are active.`
             );
           }
         } else {
@@ -395,6 +403,8 @@ export class SendcloudService {
     enabled: boolean;
     configured: boolean;
     credentialsValid: boolean;
+    billingBlocked: boolean;
+    unpaidInvoice: string | null;
     publicKey: string;
     connectionError: string | null;
     message: string;
@@ -414,6 +424,8 @@ export class SendcloudService {
         enabled: isEnabled,
         configured: false,
         credentialsValid: false,
+        billingBlocked: false,
+        unpaidInvoice: null,
         publicKey: 'Not Configured',
         connectionError: 'SENDCLOUD_PUBLIC_KEY and SENDCLOUD_SECRET_KEY not set',
         message: 'SendCloud not configured',
@@ -422,17 +434,30 @@ export class SendcloudService {
     }
 
     try {
-      // GET /user to validate credentials
+      // GET /user to validate credentials and check billing
       const response = await this.client.get('/user');
       const user = response.data?.user;
+
+      // Detect unpaid invoices — SendCloud blocks label generation (412) when any invoice is unpaid.
+      // The most common case is an "initial_payment" for SEPA bank account verification (€0.02).
+      const unpaidInvoices: any[] = (user?.invoices || []).filter((inv: any) => !inv.isPayed);
+      const unpaidRef: string | null = unpaidInvoices.length > 0 ? unpaidInvoices[0].ref : null;
+      const billingBlocked = unpaidInvoices.length > 0;
 
       return {
         enabled: isEnabled,
         configured: true,
         credentialsValid: true,
+        billingBlocked,
+        unpaidInvoice: unpaidRef,
         publicKey: maskedKey,
-        connectionError: null,
-        message: `SendCloud connected (${user?.company_name || user?.email || 'Account'})`,
+        connectionError: billingBlocked
+          ? `Billing issue: unpaid invoice ${unpaidRef} — label printing is blocked. ` +
+            `Go to panel.sendcloud.sc → Settings → Billing to resolve.`
+          : null,
+        message: billingBlocked
+          ? `SendCloud connected but BILLING BLOCKED (invoice ${unpaidRef} unpaid). Labels cannot be printed until resolved.`
+          : `SendCloud connected (${user?.company_name || user?.email || 'Account'})`,
         supportedCountries: SENDCLOUD_SUPPORTED_COUNTRIES,
       };
     } catch (error) {
@@ -441,6 +466,8 @@ export class SendcloudService {
           enabled: isEnabled,
           configured: true,
           credentialsValid: false,
+          billingBlocked: false,
+          unpaidInvoice: null,
           publicKey: maskedKey,
           connectionError: `API error: ${error.response?.status} - ${error.response?.data?.message || error.message}`,
           message: 'SendCloud credentials invalid',
@@ -451,6 +478,8 @@ export class SendcloudService {
         enabled: isEnabled,
         configured: true,
         credentialsValid: false,
+        billingBlocked: false,
+        unpaidInvoice: null,
         publicKey: maskedKey,
         connectionError: error instanceof Error ? error.message : 'Unknown error',
         message: 'SendCloud connection error',
