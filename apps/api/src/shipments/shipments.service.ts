@@ -554,7 +554,8 @@ export class ShipmentsService {
   async updateShipment(
     shipmentId: string,
     dto: UpdateShipmentDto,
-    sellerId: string
+    sellerId: string,
+    userRole?: string
   ): Promise<SellerShipment> {
     // Verify seller owns this shipment
     const shipment = await this.prisma.sellerShipment.findUnique({
@@ -568,7 +569,8 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
-    if (shipment.store.userId !== sellerId) {
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+    if (!isAdmin && shipment.store.userId !== sellerId) {
       throw new ForbiddenException('You do not own this shipment');
     }
 
