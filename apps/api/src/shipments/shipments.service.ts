@@ -227,10 +227,13 @@ export class ShipmentsService {
           },
           fromAddress: {
             name: store.name || 'NextPik',
-            street: '',
-            city: '',
-            postalCode: '',
-            country: 'US',
+            company: store.name,
+            street: store.address1 || '',
+            city: store.city || '',
+            postalCode: store.postalCode || '',
+            country: store.country || 'US',
+            phone: store.phone || undefined,
+            email: store.email || undefined,
           },
           items: order.items.map((item: any) => ({
             description: item.product?.name || 'Item',
