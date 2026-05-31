@@ -379,3 +379,39 @@ export const trackOrderMetadata: Metadata = generateSeoMetadata({
   url: '/track-order',
   noIndex: true,
 });
+
+export const magicLinkMetadata: Metadata = generateSeoMetadata({
+  title: 'Magic Link Sign In',
+  description: 'Sign in to your NextPik account using a magic link.',
+  url: '/auth/magic-link',
+  noIndex: true,
+  noFollow: true,
+});
+
+export const verifyEmailMetadata: Metadata = generateSeoMetadata({
+  title: 'Verify Email',
+  description: 'Verify your NextPik account email address.',
+  url: '/auth/verify-email',
+  noIndex: true,
+  noFollow: true,
+});
+
+export const callbackMetadata: Metadata = generateSeoMetadata({
+  title: 'Signing In',
+  description: 'Completing your sign in to NextPik.',
+  url: '/auth/callback',
+  noIndex: true,
+  noFollow: true,
+});
+
+export const blogMetadata: Metadata = generateSeoMetadata({
+  title: 'Blog',
+  description: 'Latest news, tips, and insights from the NextPik team.',
+  url: '/blog',
+});
+
+export const affiliateMetadata: Metadata = generateSeoMetadata({
+  title: 'Affiliate Products',
+  description: 'Browse our curated selection of affiliate products from top brands.',
+  url: '/affiliate',
+});

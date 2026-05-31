@@ -250,6 +250,7 @@
       "and": "and",
       "enterBothFields": "Please enter both email and password",
       "invalidEmail": "Please enter a valid email address",
+      "enterYourEmail": "Please enter your email address",
       "enter2FACode": "Please enter your 2FA code to continue",
       "welcomeBackRedirect": "Welcome back! Redirecting to your dashboard...",
       "verifySignIn": "Verify & Sign In"

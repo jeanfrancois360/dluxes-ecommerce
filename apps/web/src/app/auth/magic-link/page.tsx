@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast, getUserFriendlyError } from '@/lib/utils/toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -11,10 +11,15 @@ import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, Button } from '@nextpik/ui';
 
 export default function MagicLinkPage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get('token');
-  const { requestMagicLink, verifyMagicLink, isLoading: authLoading, error: authError, clearError } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+  const {
+    requestMagicLink,
+    verifyMagicLink,
+    isLoading: authLoading,
+    error: authError,
+    clearError,
+  } = useAuth();
 
   const t = useTranslations('auth.magicLink');
   const tc = useTranslations('common');
@@ -29,26 +34,34 @@ export default function MagicLinkPage() {
   const isLoading = authLoading;
   const hasVerified = useRef(false);
 
-  const handleVerifyMagicLink = useCallback(async (magicToken: string) => {
-    setIsVerifying(true);
-    clearError();
+  const handleVerifyMagicLink = useCallback(
+    async (magicToken: string) => {
+      setIsVerifying(true);
+      clearError();
 
-    try {
-      await verifyMagicLink(magicToken);
-      setIsSuccess(true);
-      toast.success(t('successfullySignedIn'));
-      // Auth context handles redirect
-    } catch (err: any) {
-      const friendlyMessage = getUserFriendlyError(
-        err,
-        t('invalidOrExpired'),
-        t('magicLinkVerification')
-      );
-      toast.error(friendlyMessage);
-    } finally {
-      setIsVerifying(false);
-    }
-  }, [verifyMagicLink, clearError, t]);
+      try {
+        await verifyMagicLink(magicToken);
+        setIsSuccess(true);
+        toast.success(t('successfullySignedIn'));
+        // Auth context handles redirect
+      } catch (err: any) {
+        const friendlyMessage = getUserFriendlyError(
+          err,
+          t('invalidOrExpired'),
+          t('magicLinkVerification')
+        );
+        toast.error(friendlyMessage);
+      } finally {
+        setIsVerifying(false);
+      }
+    },
+    [verifyMagicLink, clearError, t]
+  );
+
+  // Read token from URL on mount (avoids useSearchParams Suspense issues)
+  useEffect(() => {
+    setToken(new URLSearchParams(window.location.search).get('token'));
+  }, []);
 
   // Auto-verify if token is present in URL (ref guards against HMR / StrictMode double-fire)
   useEffect(() => {
@@ -90,18 +103,25 @@ export default function MagicLinkPage() {
   // Verifying state
   if (isVerifying) {
     return (
-      <AuthLayout
-        title={t('verifying')}
-        subtitle={t('pleaseWait')}
-      >
+      <AuthLayout title={t('verifying')} subtitle={t('pleaseWait')}>
         <div className="text-center space-y-6">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
             className="inline-flex items-center justify-center w-20 h-20 bg-accent-50 rounded-full"
           >
-            <svg className="w-10 h-10 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            <svg
+              className="w-10 h-10 text-gold"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+              />
             </svg>
           </motion.div>
           <p className="text-neutral-600">{t('authenticating')}</p>
@@ -113,10 +133,7 @@ export default function MagicLinkPage() {
   // Success state
   if (isSuccess) {
     return (
-      <AuthLayout
-        title={t('welcomeBack')}
-        subtitle={t('successfullySignedInSubtitle')}
-      >
+      <AuthLayout title={t('welcomeBack')} subtitle={t('successfullySignedInSubtitle')}>
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -138,14 +155,17 @@ export default function MagicLinkPage() {
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </motion.svg>
           </motion.div>
 
           <div className="space-y-2">
-            <p className="text-neutral-600 text-base">
-              {t('redirectingToDashboard')}
-            </p>
+            <p className="text-neutral-600 text-base">{t('redirectingToDashboard')}</p>
           </div>
 
           <Button
@@ -162,10 +182,7 @@ export default function MagicLinkPage() {
   // Email sent state
   if (isSent) {
     return (
-      <AuthLayout
-        title={t('checkYourEmail')}
-        subtitle={t('sentMagicLink')}
-      >
+      <AuthLayout title={t('checkYourEmail')} subtitle={t('sentMagicLink')}>
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -173,8 +190,18 @@ export default function MagicLinkPage() {
         >
           {/* Email Icon */}
           <div className="inline-flex items-center justify-center w-20 h-20 bg-accent-50 rounded-full">
-            <svg className="w-10 h-10 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            <svg
+              className="w-10 h-10 text-gold"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
             </svg>
           </div>
 
@@ -182,9 +209,7 @@ export default function MagicLinkPage() {
             <p className="text-neutral-600 text-base">
               {t('sentMagicLinkTo')} <strong className="text-black">{email}</strong>
             </p>
-            <p className="text-sm text-neutral-500">
-              {t('clickLinkToSignIn')}
-            </p>
+            <p className="text-sm text-neutral-500">{t('clickLinkToSignIn')}</p>
           </div>
 
           {/* Info Box */}
@@ -225,21 +250,26 @@ export default function MagicLinkPage() {
 
   // Request magic link form
   return (
-    <AuthLayout
-      title={t('title')}
-      subtitle={t('subtitle')}
-    >
+    <AuthLayout title={t('title')} subtitle={t('subtitle')}>
       <form onSubmit={handleRequestMagicLink} className="space-y-6">
         {/* Info Message */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-accent-50 rounded-full mb-4">
-            <svg className="w-8 h-8 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            <svg
+              className="w-8 h-8 text-gold"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+              />
             </svg>
           </div>
-          <p className="text-sm text-neutral-600">
-            {t('description')}
-          </p>
+          <p className="text-sm text-neutral-600">{t('description')}</p>
         </div>
 
         {/* Email Input */}
@@ -266,20 +296,50 @@ export default function MagicLinkPage() {
           <p className="text-xs font-medium text-black mb-2">{t('whyMagicLinks')}</p>
           <ul className="text-xs text-neutral-600 space-y-1.5">
             <li className="flex items-start gap-2">
-              <svg className="w-4 h-4 text-success-DEFAULT mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-4 h-4 text-success-DEFAULT mt-0.5 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               <span>{t('noPasswords')}</span>
             </li>
             <li className="flex items-start gap-2">
-              <svg className="w-4 h-4 text-success-DEFAULT mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-4 h-4 text-success-DEFAULT mt-0.5 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               <span>{t('moreSecure')}</span>
             </li>
             <li className="flex items-start gap-2">
-              <svg className="w-4 h-4 text-success-DEFAULT mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-4 h-4 text-success-DEFAULT mt-0.5 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               <span>{t('oneClick')}</span>
             </li>
@@ -295,8 +355,20 @@ export default function MagicLinkPage() {
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
               <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
               </svg>
               {t('sendingMagicLink')}
             </span>
@@ -312,7 +384,12 @@ export default function MagicLinkPage() {
             className="text-sm text-neutral-600 hover:text-gold transition-colors inline-flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
             </svg>
             {t('signInWithPassword')}
           </Link>
