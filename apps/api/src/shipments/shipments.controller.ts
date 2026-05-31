@@ -432,7 +432,8 @@ export class ShipmentsController {
         weight: dto.packages.reduce((sum, pkg) => sum + pkg.weight, 0),
         notes: `DHL ${this.dhlShipmentService.getProductDescription(dto.productCode)}`,
       },
-      req.user.id
+      req.user.id,
+      req.user.role
     );
 
     // Update shipment with tracking URL
@@ -442,7 +443,8 @@ export class ShipmentsController {
         trackingUrl: dhlResult.trackingUrl,
         status: ShipmentStatus.LABEL_CREATED,
       },
-      req.user.id
+      req.user.id,
+      req.user.role
     );
 
     return {
