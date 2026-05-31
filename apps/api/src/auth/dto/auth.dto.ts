@@ -76,6 +76,12 @@ export class RegisterDto {
   @Transform(({ value }) => sanitizeString(value))
   @IsString()
   storeDescription?: string;
+
+  // Referral System (v2.11.0)
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.toUpperCase().trim())
+  referralCode?: string;
 }
 
 export class LoginDto {
@@ -105,6 +111,10 @@ export class LoginDto {
   @IsOptional()
   @IsString()
   sessionId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  trustDevice?: boolean; // Trust this device for N days (skips 2FA on future logins)
 }
 
 export class MagicLinkDto {

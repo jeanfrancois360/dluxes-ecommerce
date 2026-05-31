@@ -13,13 +13,38 @@
  * - Professional UX/UI matching admin design
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { AlertTriangle, Lock, ArrowRight, Crown } from 'lucide-react';
+import {
+  AlertTriangle,
+  Lock,
+  ArrowRight,
+  Crown,
+  Package,
+  Download,
+  Briefcase,
+  Key,
+  Car,
+  Home,
+  Camera,
+  DollarSign,
+  Search,
+  Layers,
+  Zap,
+  CheckCircle2,
+  FileText,
+  Tag,
+  Info,
+  ChevronDown,
+  X as XIcon,
+  MessageSquare,
+} from 'lucide-react';
+import useSWR from 'swr';
 import { toast } from '@/lib/utils/toast';
 import { categoriesAPI, type Category } from '@/lib/api/categories';
 import { gelatoApi } from '@/lib/api/gelato';
+import { sellerGelatoAPI } from '@/lib/api/seller-gelato';
 import { VariantManager } from '../admin/variant-manager';
 import { StockLevelIndicator } from '../admin/stock-status-badge';
 import {
@@ -36,6 +61,52 @@ import { useCanListProductType } from '@/hooks/use-subscription';
 
 // Product types that require a subscription
 const SUBSCRIPTION_REQUIRED_TYPES = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
+
+// Product type config with icons
+const PRODUCT_TYPE_CONFIG = [
+  {
+    value: 'PHYSICAL',
+    label: 'Physical',
+    desc: 'Tangible goods',
+    icon: Package,
+    requiresSub: false,
+  },
+  {
+    value: 'DIGITAL',
+    label: 'Digital',
+    desc: 'Files & downloads',
+    icon: Download,
+    requiresSub: false,
+  },
+  {
+    value: 'SERVICE',
+    label: 'Service',
+    desc: 'Professional services',
+    icon: Briefcase,
+    requiresSub: true,
+  },
+  {
+    value: 'RENTAL',
+    label: 'Rental',
+    desc: 'Rentals & hire',
+    icon: Key,
+    requiresSub: true,
+  },
+  {
+    value: 'VEHICLE',
+    label: 'Vehicle',
+    desc: 'Cars & transport',
+    icon: Car,
+    requiresSub: true,
+  },
+  {
+    value: 'REAL_ESTATE',
+    label: 'Real Estate',
+    desc: 'Properties',
+    icon: Home,
+    requiresSub: true,
+  },
+] as const;
 
 // Human-readable labels for product types
 const PRODUCT_TYPE_LABELS: Record<string, string> = {
@@ -83,19 +154,26 @@ interface ProductData {
 interface ProductFormProps {
   initialData?: any;
   isEdit?: boolean;
+  adminMode?: boolean;
+  /** When adminMode=true, reflects the selected store's Gelato verified+enabled status */
+  adminGelatoConfigured?: boolean;
+  /** When adminMode=true, the internal store ID for Gelato credential lookup */
+  adminStoreId?: string;
   onSubmit: (data: Partial<ProductData>) => Promise<void>;
   onCancel: () => void;
 }
 
-// Product Type Selector with subscription check
+// Product Type Selector with visual icon cards and subscription check
 function ProductTypeSelector({
   value,
   onChange,
+  adminMode = false,
 }: {
   value: string;
   onChange: (value: string) => void;
+  adminMode?: boolean;
 }) {
-  const { canList, reasons, isLoading } = useCanListProductType(value);
+  const { canList, reasons, isLoading } = useCanListProductType(adminMode ? null : value);
   const requiresSubscription = SUBSCRIPTION_REQUIRED_TYPES.includes(value);
   const typeLabel = PRODUCT_TYPE_LABELS[value] || value;
 
@@ -147,44 +225,63 @@ function ProductTypeSelector({
 
   return (
     <div>
-      <label htmlFor="productType" className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="block text-sm font-medium text-gray-700 mb-3">
         Product Type <span className="text-red-500">*</span>
       </label>
-      <select
-        id="productType"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
-          restriction ? 'border-amber-300 bg-amber-50' : 'border-gray-300'
-        }`}
-      >
-        <option value="PHYSICAL">Physical Product</option>
-        <option value="DIGITAL">Digital Product</option>
-        <option value="SERVICE">Service (Subscription Required)</option>
-        <option value="REAL_ESTATE">Real Estate (Subscription Required)</option>
-        <option value="VEHICLE">Vehicle (Subscription Required)</option>
-        <option value="RENTAL">Rental (Subscription Required)</option>
-      </select>
 
-      {/* Show loading state while checking */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {PRODUCT_TYPE_CONFIG.map(({ value: typeValue, label, desc, icon: Icon, requiresSub }) => {
+          const isSelected = value === typeValue;
+          return (
+            <button
+              key={typeValue}
+              type="button"
+              onClick={() => onChange(typeValue)}
+              className={`relative flex flex-col items-center gap-1.5 p-4 rounded-xl border-2 transition-all text-center cursor-pointer ${
+                isSelected
+                  ? 'border-[#CBB57B] bg-[#fdf9f0] shadow-sm'
+                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <Icon className={`w-6 h-6 ${isSelected ? 'text-[#CBB57B]' : 'text-gray-400'}`} />
+              <span
+                className={`text-sm font-semibold ${isSelected ? 'text-gray-900' : 'text-gray-700'}`}
+              >
+                {label}
+              </span>
+              <span className="text-xs text-gray-400 leading-tight">{desc}</span>
+              {requiresSub && (
+                <span className="absolute top-1.5 right-1.5 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
+                  Pro
+                </span>
+              )}
+              {isSelected && (
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#CBB57B] rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Loading state */}
       {requiresSubscription && isLoading && (
-        <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+        <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
           <div className="w-4 h-4 border-2 border-gray-300 border-t-[#CBB57B] rounded-full animate-spin" />
           Checking subscription status...
         </div>
       )}
 
-      {/* Show restriction warning */}
+      {/* Restriction warning */}
       {restriction && (
         <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <Lock className="w-5 h-5 text-amber-600" />
+            <div className="w-9 h-9 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <Lock className="w-4 h-4 text-amber-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-semibold text-amber-900 flex items-center gap-2">
-                {restriction.title}
-              </h4>
+              <h4 className="font-semibold text-amber-900">{restriction.title}</h4>
               <p className="text-sm text-amber-700 mt-1">{restriction.message}</p>
               <Link
                 href={restriction.actionUrl}
@@ -199,18 +296,283 @@ function ProductTypeSelector({
         </div>
       )}
 
-      {/* Show success state for allowed subscription types */}
+      {/* Success state */}
       {requiresSubscription && !isLoading && canList && (
         <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          Your subscription includes {typeLabel} listings
+          <CheckCircle2 className="w-4 h-4" />
+          Your subscription includes {PRODUCT_TYPE_LABELS[value]} listings
         </div>
       )}
+    </div>
+  );
+}
 
-      {!requiresSubscription && (
-        <p className="mt-1 text-sm text-gray-500">Select the type of product you're selling</p>
+// Reusable chip component for tags, colors, sizes, etc.
+function Chip({
+  label,
+  onRemove,
+  color = 'gray',
+}: {
+  label: string;
+  onRemove: () => void;
+  color?: 'gray' | 'gold';
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+        color === 'gold' ? 'bg-[#f5f0e8] text-[#8b7a5e]' : 'bg-gray-100 text-gray-700'
+      }`}
+    >
+      {label}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="ml-0.5 text-current opacity-50 hover:opacity-100 hover:text-red-500 transition-colors leading-none"
+        aria-label={`Remove ${label}`}
+      >
+        ×
+      </button>
+    </span>
+  );
+}
+
+// Reusable array field (chip input)
+function ChipField({
+  label,
+  items,
+  placeholder,
+  onAdd,
+  onRemove,
+  chipColor = 'gray',
+}: {
+  label: string;
+  items: string[];
+  placeholder: string;
+  onAdd: (value: string) => void;
+  onRemove: (value: string) => void;
+  chipColor?: 'gray' | 'gold';
+}) {
+  const [inputValue, setInputValue] = useState('');
+
+  const handleAdd = () => {
+    if (inputValue.trim()) {
+      onAdd(inputValue.trim());
+      setInputValue('');
+    }
+  };
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <div className="flex gap-2 mb-2">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
+          placeholder={placeholder}
+          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+        />
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="px-4 py-2 bg-[#CBB57B] text-black text-sm font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+        >
+          Add
+        </button>
+      </div>
+      {items.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {items.map((item) => (
+            <Chip key={item} label={item} onRemove={() => onRemove(item)} color={chipColor} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Searchable category combobox
+function CategoryCombobox({
+  categories,
+  value,
+  onChange,
+  hasError,
+  isLoading,
+}: {
+  categories: Category[];
+  value: string;
+  onChange: (slug: string) => void;
+  hasError?: boolean;
+  isLoading?: boolean;
+}) {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const [highlighted, setHighlighted] = useState(0);
+
+  const selected = categories.find((c) => c.slug === value);
+
+  const filtered = query.trim()
+    ? categories.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))
+    : categories;
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Reset highlighted when filtered list changes
+  useEffect(() => {
+    setHighlighted(0);
+  }, [query]);
+
+  const handleSelect = (slug: string) => {
+    onChange(slug);
+    setIsOpen(false);
+    setQuery('');
+  };
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange('');
+    setQuery('');
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen) {
+      if (e.key === 'Enter' || e.key === 'ArrowDown') {
+        setIsOpen(true);
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlighted((h) => Math.min(h + 1, filtered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlighted((h) => Math.max(h - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filtered[highlighted]) handleSelect(filtered[highlighted].slug);
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      setQuery('');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="px-4 py-2.5 text-gray-400 text-sm border border-gray-200 rounded-lg animate-pulse">
+        Loading categories...
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Trigger input */}
+      <div
+        className={`flex items-center gap-2 w-full px-4 py-2.5 border rounded-lg cursor-text transition-colors ${
+          isOpen
+            ? 'border-[#CBB57B] ring-2 ring-[#CBB57B]/20'
+            : hasError
+              ? 'border-red-400 bg-red-50'
+              : 'border-gray-300'
+        } bg-white`}
+        onClick={() => {
+          setIsOpen(true);
+          inputRef.current?.focus();
+        }}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={isOpen ? query : (selected?.name ?? '')}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={handleKeyDown}
+          placeholder={selected ? '' : 'Search or select a category…'}
+          className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400 min-w-0"
+          autoComplete="off"
+        />
+        {selected && !isOpen && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="flex-none text-gray-400 hover:text-gray-600 transition-colors"
+            tabIndex={-1}
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        )}
+        <ChevronDown
+          className={`flex-none w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </div>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          {/* Count */}
+          <div className="px-3 py-2 border-b border-gray-100 text-xs text-gray-400">
+            {filtered.length === 0
+              ? 'No categories found'
+              : `${filtered.length} categor${filtered.length === 1 ? 'y' : 'ies'}`}
+          </div>
+          <ul ref={listRef} className="max-h-56 overflow-y-auto py-1" role="listbox">
+            {filtered.length === 0 ? (
+              <li className="px-4 py-3 text-sm text-gray-400 text-center">
+                No results for &ldquo;{query}&rdquo;
+              </li>
+            ) : (
+              filtered.map((cat, idx) => (
+                <li
+                  key={cat.id}
+                  role="option"
+                  aria-selected={cat.slug === value}
+                  onMouseDown={() => handleSelect(cat.slug)}
+                  onMouseEnter={() => setHighlighted(idx)}
+                  className={`flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors ${
+                    idx === highlighted ? 'bg-[#fdf9f0]' : 'hover:bg-gray-50'
+                  } ${cat.slug === value ? 'font-semibold text-gray-900' : 'text-gray-700'}`}
+                >
+                  <span>{cat.name}</span>
+                  {cat.slug === value && (
+                    <span className="w-4 h-4 rounded-full bg-[#CBB57B] flex items-center justify-center flex-shrink-0">
+                      <svg
+                        className="w-2.5 h-2.5 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </span>
+                  )}
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
       )}
     </div>
   );
@@ -219,10 +581,30 @@ function ProductTypeSelector({
 export default function ProductForm({
   initialData,
   isEdit = false,
+  adminMode = false,
+  adminGelatoConfigured = false,
+  adminStoreId,
   onSubmit,
   onCancel,
 }: ProductFormProps) {
   const product = initialData;
+
+  // Gelato settings — skip in admin mode (admin has no seller Gelato credentials)
+  const { data: gelatoSettings } = useSWR(
+    adminMode ? null : 'seller-gelato-settings',
+    sellerGelatoAPI.getSettings,
+    { revalidateOnFocus: false, shouldRetryOnError: false }
+  );
+  const isGelatoConfigured = adminMode
+    ? adminGelatoConfigured
+    : gelatoSettings
+      ? gelatoSettings.isVerified
+      : undefined;
+  const isGelatoEnabled = adminMode
+    ? adminGelatoConfigured
+    : gelatoSettings
+      ? gelatoSettings.isEnabled
+      : undefined;
 
   // Categories state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -233,9 +615,9 @@ export default function ProductForm({
     // Transform backend image format to frontend format on initial load
     let initialImages: string[] = [];
     if (product) {
-      // Priority 1: ProductImage relation (array of image objects)
+      // Priority 1: ProductImage relation (objects) OR plain string URLs
       if (Array.isArray(product.images) && product.images.length > 0) {
-        initialImages = product.images.map((img: any) => img.url);
+        initialImages = product.images.map((img: any) => (typeof img === 'string' ? img : img.url));
       }
       // Priority 2: heroImage field (simple string)
       else if ((product as any).heroImage) {
@@ -290,6 +672,8 @@ export default function ProductForm({
         ? (product as any).materials.filter(Boolean)
         : [],
       weight: (product as any)?.weight || undefined,
+      hsCode: (product as any)?.hsCode || '',
+      countryOfOrigin: (product as any)?.countryOfOrigin || '',
       // Real Estate Fields
       propertyType: (product as any)?.propertyType || '',
       bedrooms: (product as any)?.bedrooms || undefined,
@@ -425,9 +809,9 @@ export default function ProductForm({
       // Transform backend image format to frontend format (images array)
       let imageArray: string[] = [];
 
-      // Priority 1: ProductImage relation (array of image objects)
+      // Priority 1: ProductImage relation (objects) OR plain string URLs
       if (Array.isArray(product.images) && product.images.length > 0) {
-        imageArray = product.images.map((img: any) => img.url);
+        imageArray = product.images.map((img: any) => (typeof img === 'string' ? img : img.url));
       }
       // Priority 2: heroImage field (simple string)
       else if ((product as any).heroImage) {
@@ -469,6 +853,8 @@ export default function ProductForm({
         sizes: (product as any)?.sizes || [],
         materials: (product as any)?.materials || [],
         weight: (product as any)?.weight || undefined,
+        hsCode: (product as any)?.hsCode || '',
+        countryOfOrigin: (product as any)?.countryOfOrigin || '',
         // Product-type specific fields...
         propertyType: (product as any)?.propertyType || '',
         bedrooms: (product as any)?.bedrooms || undefined,
@@ -568,6 +954,7 @@ export default function ProductForm({
         designFileUrl: (product as any)?.designFileUrl || '',
         printAreas: (product as any)?.printAreas || null,
         baseCost: (product as any)?.baseCost || undefined,
+        markupPercentage: (product as any)?.markupPercentage || undefined,
       });
     }
   }, [product]);
@@ -619,10 +1006,8 @@ export default function ProductForm({
   // Utility function to strip HTML tags and convert to plain text
   const stripHtmlTags = (html: string): string => {
     if (!html) return '';
-    // Create a temporary div element to parse HTML
     const tmp = document.createElement('div');
     tmp.innerHTML = html;
-    // Get text content and clean up whitespace
     return tmp.textContent || tmp.innerText || '';
   };
 
@@ -630,7 +1015,7 @@ export default function ProductForm({
     console.log('[DEBUG] Product details received:', productDetails);
 
     // Auto-populate product details from Gelato
-    const markup = formData.markupPercentage !== undefined ? formData.markupPercentage : 50; // Default 50% markup
+    const markup = formData.markupPercentage !== undefined ? formData.markupPercentage : 50;
 
     // Get product UID - check multiple possible field names
     const productUid = productDetails?.uid || productDetails?.productUid || productDetails?.id;
@@ -658,6 +1043,28 @@ export default function ProductForm({
     const newDescription = autoDescription.trim();
     const newImage = productDetails.previewUrl || '';
 
+    // Auto-populate base cost from variant data (fast path)
+    let variantBaseCost: number | undefined = productDetails?.variants?.[0]?.baseCost?.amount
+      ? parseFloat(productDetails.variants[0].baseCost.amount)
+      : undefined;
+
+    // If variant data has no baseCost, fetch via quote API
+    if (!variantBaseCost) {
+      try {
+        const priceData = await gelatoApi.getProductPrice(productUid, {
+          quantity: 1,
+          country: 'US',
+        });
+        variantBaseCost = priceData?.baseCost;
+      } catch {
+        // Seller will need to enter manually
+      }
+    }
+
+    const calculatedPrice = variantBaseCost
+      ? parseFloat((variantBaseCost * (1 + markup / 100)).toFixed(2))
+      : 0;
+
     // Store pending data and open preview modal
     setPendingGelatoData({
       productTitle: productDetails.title,
@@ -665,9 +1072,9 @@ export default function ProductForm({
         name: newName,
         slug: newSlug,
         description: newDescription,
-        price: 0, // Will be calculated from baseCost + markup
+        price: calculatedPrice,
         image: newImage,
-        baseCost: undefined, // User must enter manually
+        baseCost: variantBaseCost,
         markupPercentage: markup,
       },
     });
@@ -709,7 +1116,6 @@ export default function ProductForm({
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
 
-    // Required field validation
     if (!formData.name?.trim()) {
       newErrors.name = 'Product name is required';
     } else if (formData.name.length < 3) {
@@ -734,7 +1140,6 @@ export default function ProductForm({
       newErrors.categoryId = 'Please select a category';
     }
 
-    // Purchase type specific validation
     if (formData.purchaseType === 'INSTANT' || !formData.purchaseType) {
       if (formData.price === undefined || formData.price === null || formData.price === '') {
         newErrors.price = 'Price is required';
@@ -765,7 +1170,6 @@ export default function ProductForm({
     e.preventDefault();
 
     if (!validateForm()) {
-      // Scroll to first error
       const firstErrorField = Object.keys(errors)[0];
       const errorElement = document.getElementById(firstErrorField);
       if (errorElement) {
@@ -776,15 +1180,11 @@ export default function ProductForm({
 
     setLoading(true);
     try {
-      // Prepare data for API - clean up fields that don't exist in backend schema
       const dataToSubmit = { ...formData };
 
-      // Remove fields that don't exist in backend or are handled separately
-      delete dataToSubmit.tags; // Tags not supported in current schema
-      delete dataToSubmit.sku; // SKU is auto-generated by backend, ignore frontend value
-      delete dataToSubmit.markupPercentage; // Used only for price calculation, not stored directly
+      delete dataToSubmit.tags;
+      delete dataToSubmit.sku;
 
-      // Convert seoKeywords from comma-separated string to array
       if (typeof dataToSubmit.seoKeywords === 'string') {
         dataToSubmit.seoKeywords = dataToSubmit.seoKeywords
           .split(',')
@@ -792,7 +1192,6 @@ export default function ProductForm({
           .filter((k: string) => k.length > 0);
       }
 
-      // Pass the full data including images array - parent component will handle images separately
       await onSubmit(dataToSubmit);
     } catch (error) {
       console.error('Form submission error:', error);
@@ -840,883 +1239,1067 @@ export default function ProductForm({
     }));
   };
 
+  // Section card header helper
+  const SectionHeader = ({
+    icon: Icon,
+    title,
+    subtitle,
+  }: {
+    icon: React.ElementType;
+    title: string;
+    subtitle?: string;
+  }) => (
+    <div className="mb-5">
+      <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+        <span className="w-7 h-7 rounded-lg bg-[#fdf9f0] flex items-center justify-center flex-shrink-0">
+          <Icon className="w-4 h-4 text-[#CBB57B]" />
+        </span>
+        {title}
+      </h3>
+      {subtitle && <p className="mt-1 text-sm text-gray-500 ml-9">{subtitle}</p>}
+    </div>
+  );
+
+  const hasDiscount =
+    formData.compareAtPrice && formData.price && formData.compareAtPrice > formData.price;
+  const discountPct = hasDiscount
+    ? Math.round(((formData.compareAtPrice - formData.price) / formData.compareAtPrice) * 100)
+    : 0;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Fulfillment Type Selection */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Fulfillment Method</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Choose how you'll fulfill orders for this product
-        </p>
-
-        <PodConfigurationSection
-          fulfillmentType={formData.fulfillmentType}
-          gelatoProductUid={formData.gelatoProductUid}
-          designFileUrl={formData.designFileUrl}
-          gelatoMarkupPercent={formData.markupPercentage}
-          productImages={formData.images || []}
-          onChange={(field, value) => setFormData({ ...formData, [field]: value })}
-          onGelatoProductSelect={handleGelatoProductSelect}
-          disabled={loading}
-        />
-      </div>
-
-      {/* Basic Information */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Basic Information</h3>
-
-        <div className="space-y-4">
-          {/* Product Name */}
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-              Product Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={formData.name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="Enter product name"
+    <form onSubmit={handleSubmit}>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* ─── LEFT COLUMN: Main content ─── */}
+        <div className="xl:col-span-2 space-y-6 pb-24 xl:pb-0">
+          {/* Fulfillment Method */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <SectionHeader
+              icon={Package}
+              title="Fulfillment Method"
+              subtitle="Choose how you'll fulfill orders for this product"
             />
-            {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+            <PodConfigurationSection
+              fulfillmentType={formData.fulfillmentType}
+              gelatoProductUid={formData.gelatoProductUid}
+              designFileUrl={formData.designFileUrl}
+              gelatoMarkupPercent={formData.markupPercentage}
+              productImages={formData.images || []}
+              onChange={(field, value) => {
+                // PodConfigurationSection fires 'gelatoMarkupPercent' but state key is 'markupPercentage'
+                const normalizedField =
+                  field === 'gelatoMarkupPercent' ? 'markupPercentage' : field;
+                setFormData({ ...formData, [normalizedField]: value });
+              }}
+              onGelatoProductSelect={handleGelatoProductSelect}
+              disabled={loading}
+              isGelatoConfigured={isGelatoConfigured}
+              isGelatoEnabled={isGelatoEnabled}
+              gelatoAccountName={gelatoSettings?.gelatoAccountName ?? null}
+              storeId={adminMode ? adminStoreId : undefined}
+            />
           </div>
 
-          {/* Product Slug */}
-          <div>
-            <label htmlFor="slug" className="block text-sm font-medium text-gray-700 mb-2">
-              Product Slug <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="slug"
-              type="text"
-              value={formData.slug}
-              onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
-                errors.slug ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="product-slug"
-            />
-            {errors.slug && <p className="mt-1 text-sm text-red-500">{errors.slug}</p>}
-            <p className="mt-1 text-sm text-gray-500">
-              URL-friendly version of the name. Auto-generated from product name.
-            </p>
-          </div>
+          {/* Basic Information */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <SectionHeader icon={FileText} title="Basic Information" />
 
-          {/* SKU - Auto-generated (Read-only info) */}
-          <div>
-            <label htmlFor="sku" className="block text-sm font-medium text-gray-700 mb-2">
-              SKU (Stock Keeping Unit)
-            </label>
-            <div className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            <div className="space-y-5">
+              {/* Product Name */}
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Product Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent transition-colors ${
+                    errors.name ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                  }`}
+                  placeholder="e.g. Premium Leather Wallet"
+                  maxLength={200}
                 />
-              </svg>
-              <span className="font-medium">Auto-generated upon creation</span>
-            </div>
-            <p className="mt-1 text-sm text-gray-500">
-              SKU will be automatically generated in format: NEXTPIK-MM-DD-XXXX (e.g.,
-              NEXTPIK-02-09-0001)
-            </p>
-          </div>
-
-          {/* Product Type */}
-          <ProductTypeSelector
-            value={formData.productType}
-            onChange={(value) => setFormData({ ...formData, productType: value })}
-          />
-
-          {/* Purchase Type */}
-          <div>
-            <label htmlFor="purchaseType" className="block text-sm font-medium text-gray-700 mb-2">
-              Purchase Type <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="purchaseType"
-              value={formData.purchaseType}
-              onChange={(e) => setFormData({ ...formData, purchaseType: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-            >
-              <option value="INSTANT">Instant Purchase</option>
-              <option value="INQUIRY">Inquiry Only</option>
-              <option value="AUCTION">Auction</option>
-            </select>
-          </div>
-
-          {/* Category */}
-          <div>
-            <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700 mb-2">
-              Category <span className="text-red-500">*</span>
-            </label>
-            {loadingCategories ? (
-              <div className="px-4 py-2 text-gray-500">Loading categories...</div>
-            ) : (
-              <select
-                id="categoryId"
-                value={formData.categoryId}
-                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
-                  errors.categoryId ? 'border-red-500' : 'border-gray-300'
-                }`}
-              >
-                <option value="">Select a category</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.slug}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            {errors.categoryId && <p className="mt-1 text-sm text-red-500">{errors.categoryId}</p>}
-          </div>
-
-          {/* Description */}
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-              Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={6}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
-                errors.description ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="Detailed product description..."
-            />
-            {errors.description && (
-              <p className="mt-1 text-sm text-red-500">{errors.description}</p>
-            )}
-          </div>
-
-          {/* Short Description */}
-          <div>
-            <label
-              htmlFor="shortDescription"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Short Description
-            </label>
-            <textarea
-              id="shortDescription"
-              value={formData.shortDescription}
-              onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
-              rows={2}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-              placeholder="Brief summary for search results and listings..."
-              maxLength={160}
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              {formData.shortDescription.length}/160 characters
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Pricing & Inventory */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Pricing & Inventory</h3>
-
-        {/* POD Pricing Section - Show FIRST for Gelato POD products */}
-        {formData.fulfillmentType === 'GELATO_POD' && (
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
-            <div>
-              <h4 className="text-sm font-semibold text-blue-900 mb-3">Print-on-Demand Pricing</h4>
-
-              {/* Instructions for finding base cost */}
-              <div className="mb-4 p-3 bg-white border border-blue-300 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <svg
-                    className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <div className="text-xs text-blue-900">
-                    <p className="font-semibold mb-1">📋 How to find your production cost:</p>
-                    <ol className="list-decimal list-inside space-y-1 text-blue-800">
-                      <li>
-                        Log in to your{' '}
-                        <a
-                          href="https://dashboard.gelato.com"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline hover:text-blue-600"
-                        >
-                          Gelato Dashboard
-                        </a>
-                      </li>
-                      <li>
-                        Go to <strong>Products</strong> → Select your product
-                      </li>
-                      <li>
-                        View the <strong>"Production Cost"</strong> or <strong>"Base Price"</strong>
-                      </li>
-                      <li>Enter that amount below</li>
-                    </ol>
-                  </div>
+                <div className="mt-1 flex items-center justify-between">
+                  {errors.name ? (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {errors.name}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <span className="text-xs text-gray-400">{formData.name.length}/200</span>
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Gelato Base Cost (Manual Input) */}
+              {/* Product Slug */}
               <div>
-                <label htmlFor="baseCost" className="block text-sm font-medium text-gray-700 mb-2">
-                  Gelato Base Cost <span className="text-red-500">*</span>
+                <label htmlFor="slug" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  URL Slug <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    id="baseCost"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.baseCost != null ? formData.baseCost : ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        baseCost: e.target.value ? parseFloat(e.target.value) : undefined,
-                      })
-                    }
-                    className="w-full pl-8 pr-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent bg-blue-50"
-                    placeholder="0.00"
-                    required={formData.fulfillmentType === 'GELATO_POD'}
-                  />
-                </div>
-                <p className="mt-1 text-xs text-blue-700 flex items-center gap-1">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  Find this in your Gelato product dashboard
-                </p>
+                <input
+                  id="slug"
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent font-mono text-sm ${
+                    errors.slug ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                  }`}
+                  placeholder="product-slug"
+                />
+                {errors.slug ? (
+                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    {errors.slug}
+                  </p>
+                ) : formData.slug ? (
+                  <p className="mt-1 text-xs text-gray-400 font-mono truncate">
+                    nextpik.com/products/
+                    <span className="text-[#CBB57B] font-semibold">{formData.slug}</span>
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-400">Auto-generated from product name</p>
+                )}
               </div>
 
-              {/* Markup Percentage */}
+              {/* SKU */}
               <div>
-                <label
-                  htmlFor="markupPercentage"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Markup Percentage
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  SKU (Stock Keeping Unit)
                 </label>
-                <div className="relative">
-                  <input
-                    id="markupPercentage"
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={formData.markupPercentage || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        markupPercentage: parseFloat(e.target.value) || undefined,
-                      })
-                    }
-                    className="w-full pl-4 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                    placeholder="50"
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                <div className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 flex items-center gap-2 text-sm">
+                  <Info className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <span>Auto-generated upon creation (format: NEXTPIK-MM-DD-XXXX)</span>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">e.g., 50% = 1.5x base cost</p>
               </div>
 
-              {/* Calculated Price (Auto-filled) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Calculated Price
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                  <input
-                    type="text"
-                    value={formData.price != null ? Number(formData.price).toFixed(2) : '0.00'}
-                    readOnly
-                    className="w-full pl-8 pr-4 py-2 border border-green-300 rounded-lg bg-green-50 text-green-700 font-medium cursor-not-allowed"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Auto-calculated from base cost + markup
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Regular Pricing - Show below POD section or at top if not POD */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Price */}
-          <div>
-            <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-              Price <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-              <input
-                id="price"
-                type="number"
-                step="0.01"
-                value={formData.price || ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, price: parseFloat(e.target.value) || undefined })
-                }
-                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
-                  errors.price ? 'border-red-500' : 'border-gray-300'
-                } ${formData.fulfillmentType === 'GELATO_POD' ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-                placeholder="0.00"
-                readOnly={formData.fulfillmentType === 'GELATO_POD'}
-                title={
-                  formData.fulfillmentType === 'GELATO_POD'
-                    ? 'Auto-calculated from POD pricing above'
-                    : ''
-                }
-              />
-            </div>
-            {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
-            {formData.fulfillmentType === 'GELATO_POD' && (
-              <p className="mt-1 text-xs text-gray-500">Auto-calculated from base cost + markup</p>
-            )}
-          </div>
-
-          {/* Compare At Price */}
-          <div>
-            <label
-              htmlFor="compareAtPrice"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Compare At Price
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-              <input
-                id="compareAtPrice"
-                type="number"
-                step="0.01"
-                value={formData.compareAtPrice || ''}
-                onChange={(e) =>
+              {/* Product Type */}
+              <ProductTypeSelector
+                value={formData.productType}
+                adminMode={adminMode}
+                onChange={(value) => {
+                  // Auto-set purchase type when product type changes
+                  const forcedPurchaseType =
+                    value === 'DIGITAL'
+                      ? 'INSTANT'
+                      : ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(value)
+                        ? 'INQUIRY'
+                        : formData.purchaseType; // PHYSICAL — keep current selection
                   setFormData({
                     ...formData,
-                    compareAtPrice: parseFloat(e.target.value) || undefined,
-                  })
-                }
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                placeholder="0.00"
+                    productType: value,
+                    purchaseType: forcedPurchaseType,
+                  });
+                }}
               />
-            </div>
-            <p className="mt-1 text-sm text-gray-500">Original price to show savings</p>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          {/* Stock/Inventory */}
+              {/* Purchase Type */}
+              {(() => {
+                const lockedInstant = formData.productType === 'DIGITAL';
+                const lockedInquiry = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'].includes(
+                  formData.productType
+                );
+                const lockReason = lockedInstant
+                  ? 'Digital products are purchased directly — no inquiry needed'
+                  : lockedInquiry
+                    ? {
+                        SERVICE: 'Services require contact to arrange',
+                        RENTAL: 'Rentals require contact to arrange',
+                        VEHICLE: 'Vehicles require a test-drive inquiry',
+                        REAL_ESTATE: 'Properties require a viewing inquiry',
+                      }[formData.productType as 'SERVICE' | 'RENTAL' | 'VEHICLE' | 'REAL_ESTATE'] ||
+                      'This type requires contact first'
+                    : null;
+
+                return (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Purchase Type <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        {
+                          value: 'INSTANT',
+                          label: 'Instant Purchase',
+                          desc: 'Buyer pays immediately',
+                          icon: Zap,
+                          disabled: lockedInquiry,
+                        },
+                        {
+                          value: 'INQUIRY',
+                          label: 'Inquiry Only',
+                          desc: 'Buyer contacts you first',
+                          icon: MessageSquare,
+                          disabled: lockedInstant,
+                        },
+                      ].map(({ value, label, desc, icon: Icon, disabled }) => {
+                        const isSelected = formData.purchaseType === value;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() =>
+                              !disabled && setFormData({ ...formData, purchaseType: value })
+                            }
+                            className={`relative flex flex-col items-center gap-1.5 px-3 py-3.5 rounded-xl border-2 transition-all text-center ${
+                              disabled
+                                ? 'border-gray-100 bg-gray-50 opacity-40 cursor-not-allowed'
+                                : isSelected
+                                  ? 'border-[#CBB57B] bg-[#CBB57B]/8'
+                                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {isSelected && !disabled && (
+                              <CheckCircle2 className="absolute top-2 right-2 w-3.5 h-3.5 text-[#CBB57B]" />
+                            )}
+                            <div
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                isSelected && !disabled ? 'bg-[#CBB57B]/15' : 'bg-gray-100'
+                              }`}
+                            >
+                              <Icon
+                                className={`w-4 h-4 ${isSelected && !disabled ? 'text-[#CBB57B]' : 'text-gray-500'}`}
+                              />
+                            </div>
+                            <span
+                              className={`text-xs font-semibold leading-tight ${isSelected && !disabled ? 'text-[#CBB57B]' : 'text-gray-700'}`}
+                            >
+                              {label}
+                            </span>
+                            <span className="text-[10px] text-gray-400 leading-tight">{desc}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {lockReason && (
+                      <p className="mt-2 flex items-center gap-1.5 text-xs text-[#6B5840]">
+                        <Info className="w-3.5 h-3.5 flex-shrink-0" />
+                        {lockReason}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <CategoryCombobox
+                  categories={categories}
+                  value={formData.categoryId}
+                  onChange={(slug) => setFormData({ ...formData, categoryId: slug })}
+                  hasError={!!errors.categoryId}
+                  isLoading={loadingCategories}
+                />
+                {errors.categoryId && (
+                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    {errors.categoryId}
+                  </p>
+                )}
+              </div>
+
+              {/* Description */}
+              <div>
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={6}
+                  className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent resize-none ${
+                    errors.description ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                  }`}
+                  placeholder="Detailed product description — highlight key features, benefits, and what makes this product special..."
+                />
+                <div className="mt-1 flex items-center justify-between">
+                  {errors.description ? (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {errors.description}
+                    </p>
+                  ) : (
+                    <span className="text-xs text-gray-400">
+                      {formData.description.length < 10
+                        ? `${10 - formData.description.length} more characters needed`
+                        : 'Looks good'}
+                    </span>
+                  )}
+                  <span
+                    className={`text-xs ${formData.description.length > 0 ? 'text-gray-400' : 'text-gray-300'}`}
+                  >
+                    {formData.description.length} chars
+                  </span>
+                </div>
+              </div>
+
+              {/* Short Description */}
+              <div>
+                <label
+                  htmlFor="shortDescription"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
+                  Short Description
+                  <span className="ml-2 text-xs font-normal text-gray-400">
+                    (shown in search results)
+                  </span>
+                </label>
+                <textarea
+                  id="shortDescription"
+                  value={formData.shortDescription}
+                  onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
+                  rows={2}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent resize-none"
+                  placeholder="Brief summary for search results and listings..."
+                  maxLength={160}
+                />
+                <div className="mt-1 flex justify-end">
+                  <span
+                    className={`text-xs ${formData.shortDescription.length > 140 ? 'text-amber-500' : 'text-gray-400'}`}
+                  >
+                    {formData.shortDescription.length}/160
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Product Images — placed early for prominence */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <SectionHeader
+              icon={Camera}
+              title="Product Images"
+              subtitle="High-quality images significantly increase conversion rates"
+            />
+            <EnhancedImageUpload
+              onImagesChange={handleImagesChange}
+              initialImages={formData.images}
+              maxImages={10}
+              folder="products"
+            />
+          </div>
+
+          {/* Pricing & Inventory */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <SectionHeader icon={DollarSign} title="Pricing & Inventory" />
+
+            {/* POD Pricing Section */}
+            {formData.fulfillmentType === 'GELATO_POD' && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-4">
+                <h4 className="text-sm font-semibold text-blue-900">Print-on-Demand Pricing</h4>
+
+                <div className="p-3 bg-white border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-blue-900">
+                      <p className="font-semibold mb-1">How to find your production cost:</p>
+                      <ol className="list-decimal list-inside space-y-0.5 text-blue-800">
+                        <li>Log in to your Gelato Dashboard</li>
+                        <li>Go to Products → Select your product</li>
+                        <li>View the "Production Cost" or "Base Price"</li>
+                        <li>Enter that amount below</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label
+                      htmlFor="baseCost"
+                      className="block text-sm font-medium text-gray-700 mb-1.5"
+                    >
+                      Gelato Base Cost <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                        $
+                      </span>
+                      <input
+                        id="baseCost"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.baseCost != null ? formData.baseCost : ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            baseCost: e.target.value ? parseFloat(e.target.value) : undefined,
+                          })
+                        }
+                        className="w-full pl-7 pr-4 py-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent bg-blue-50"
+                        placeholder="0.00"
+                        required={formData.fulfillmentType === 'GELATO_POD'}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-blue-600">From your Gelato dashboard</p>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="markupPercentage"
+                      className="block text-sm font-medium text-gray-700 mb-1.5"
+                    >
+                      Markup Percentage
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="markupPercentage"
+                        type="number"
+                        step="1"
+                        min="0"
+                        value={formData.markupPercentage || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            markupPercentage: parseFloat(e.target.value) || undefined,
+                          })
+                        }
+                        className="w-full pl-4 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                        placeholder="50"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                        %
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">e.g., 50% = 1.5x base cost</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Calculated Price
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 text-sm">
+                        $
+                      </span>
+                      <input
+                        type="text"
+                        value={formData.price != null ? Number(formData.price).toFixed(2) : '0.00'}
+                        readOnly
+                        className="w-full pl-7 pr-4 py-2.5 border border-green-300 rounded-lg bg-green-50 text-green-700 font-semibold cursor-not-allowed"
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">Auto-calculated</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Price */}
+              <div>
+                <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Price <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                    $
+                  </span>
+                  <input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    value={formData.price || ''}
+                    onChange={(e) =>
+                      setFormData({ ...formData, price: parseFloat(e.target.value) || undefined })
+                    }
+                    className={`w-full pl-7 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
+                      errors.price ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                    } ${formData.fulfillmentType === 'GELATO_POD' ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    placeholder="0.00"
+                    readOnly={formData.fulfillmentType === 'GELATO_POD'}
+                  />
+                </div>
+                {errors.price ? (
+                  <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    {errors.price}
+                  </p>
+                ) : formData.fulfillmentType === 'GELATO_POD' ? (
+                  <p className="mt-1 text-xs text-gray-400">
+                    Auto-calculated from base cost + markup
+                  </p>
+                ) : null}
+              </div>
+
+              {/* Compare At Price */}
+              <div>
+                <label
+                  htmlFor="compareAtPrice"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
+                  Compare At Price
+                  <span className="ml-1 text-xs font-normal text-gray-400">(original price)</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                    $
+                  </span>
+                  <input
+                    id="compareAtPrice"
+                    type="number"
+                    step="0.01"
+                    value={formData.compareAtPrice || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        compareAtPrice: parseFloat(e.target.value) || undefined,
+                      })
+                    }
+                    className="w-full pl-7 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                    placeholder="0.00"
+                  />
+                </div>
+                {hasDiscount && (
+                  <p className="mt-1 text-xs text-green-600 font-medium">
+                    {discountPct}% discount badge will appear
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {formData.productType === 'PHYSICAL' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                {/* Stock/Inventory */}
+                <div>
+                  <label
+                    htmlFor="inventory"
+                    className="block text-sm font-medium text-gray-700 mb-1.5"
+                  >
+                    Stock/Inventory <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="inventory"
+                    type="number"
+                    value={formData.inventory || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        inventory: parseInt(e.target.value) || undefined,
+                      })
+                    }
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
+                      errors.inventory ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                    }`}
+                    placeholder="0"
+                  />
+                  {errors.inventory && (
+                    <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {errors.inventory}
+                    </p>
+                  )}
+                  {formData.inventory !== undefined &&
+                    formData.inventory !== null &&
+                    formData.inventory !== '' && (
+                      <div className="mt-2">
+                        <StockLevelIndicator
+                          stock={formData.inventory}
+                          lowStockThreshold={INVENTORY_DEFAULTS.LOW_STOCK_THRESHOLD}
+                        />
+                      </div>
+                    )}
+                </div>
+
+                {/* Weight */}
+                <div>
+                  <label
+                    htmlFor="weight"
+                    className="block text-sm font-medium text-gray-700 mb-1.5"
+                  >
+                    Weight (kg)
+                  </label>
+                  <input
+                    id="weight"
+                    type="number"
+                    step="0.01"
+                    value={formData.weight || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        weight: parseFloat(e.target.value) || undefined,
+                      })
+                    }
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {/* HS Code — customs tariff code for international shipping */}
+                <div>
+                  <label
+                    htmlFor="hsCode"
+                    className="block text-sm font-medium text-gray-700 mb-1.5"
+                  >
+                    HS Code <span className="text-xs font-normal text-gray-400">(customs)</span>
+                  </label>
+                  <input
+                    id="hsCode"
+                    type="text"
+                    value={formData.hsCode || ''}
+                    onChange={(e) => setFormData({ ...formData, hsCode: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                    placeholder="e.g. 6109.10"
+                    maxLength={20}
+                  />
+                  <p className="mt-1 text-xs text-gray-400">
+                    Harmonized System tariff code — required for international shipments
+                  </p>
+                </div>
+
+                {/* Country of Origin — required by customs for international shipments */}
+                <div>
+                  <label
+                    htmlFor="countryOfOrigin"
+                    className="block text-sm font-medium text-gray-700 mb-1.5"
+                  >
+                    Country of Origin{' '}
+                    <span className="text-xs font-normal text-gray-400">(customs)</span>
+                  </label>
+                  <input
+                    id="countryOfOrigin"
+                    type="text"
+                    value={formData.countryOfOrigin || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        countryOfOrigin: e.target.value.toUpperCase().slice(0, 2),
+                      })
+                    }
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent uppercase"
+                    placeholder="e.g. CN"
+                    maxLength={2}
+                  />
+                  <p className="mt-1 text-xs text-gray-400">
+                    ISO 2-letter code where the product was manufactured — required for customs
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Product Type-Specific Fields */}
+          {formData.productType === 'REAL_ESTATE' && (
+            <RealEstateFields
+              formData={formData}
+              onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+              errors={errors}
+            />
+          )}
+          {formData.productType === 'VEHICLE' && (
+            <VehicleFields
+              formData={formData}
+              onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+              errors={errors}
+            />
+          )}
+          {formData.productType === 'DIGITAL' && (
+            <DigitalFields
+              formData={formData}
+              onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+              errors={errors}
+            />
+          )}
+          {formData.productType === 'SERVICE' && (
+            <ServiceFields
+              formData={formData}
+              onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+              errors={errors}
+            />
+          )}
+          {formData.productType === 'RENTAL' && (
+            <RentalFields
+              formData={formData}
+              onChange={(field, value) => setFormData({ ...formData, [field]: value })}
+              errors={errors}
+            />
+          )}
+
+          {/* Attributes (Physical only) */}
           {formData.productType === 'PHYSICAL' && (
-            <div>
-              <label htmlFor="inventory" className="block text-sm font-medium text-gray-700 mb-2">
-                Stock/Inventory <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="inventory"
-                type="number"
-                value={formData.inventory || ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, inventory: parseInt(e.target.value) || undefined })
-                }
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
-                  errors.inventory ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="0"
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <SectionHeader
+                icon={Tag}
+                title="Product Attributes"
+                subtitle="Help customers filter and find your product"
               />
-              {errors.inventory && <p className="mt-1 text-sm text-red-500">{errors.inventory}</p>}
-              {formData.inventory !== undefined &&
-                formData.inventory !== null &&
-                formData.inventory !== '' && (
-                  <div className="mt-2">
-                    <StockLevelIndicator
-                      stock={formData.inventory}
-                      lowStockThreshold={INVENTORY_DEFAULTS.LOW_STOCK_THRESHOLD}
-                    />
+
+              <div className="space-y-5">
+                <ChipField
+                  label="Available Colors"
+                  items={formData.colors}
+                  placeholder="e.g. Black, White, Navy"
+                  onAdd={(v) => handleArrayFieldAdd('colors', v)}
+                  onRemove={(v) => handleArrayFieldRemove('colors', v)}
+                />
+                <ChipField
+                  label="Available Sizes"
+                  items={formData.sizes}
+                  placeholder="e.g. S, M, L, XL"
+                  onAdd={(v) => handleArrayFieldAdd('sizes', v)}
+                  onRemove={(v) => handleArrayFieldRemove('sizes', v)}
+                />
+                <ChipField
+                  label="Materials"
+                  items={formData.materials}
+                  placeholder="e.g. Leather, Cotton, Steel"
+                  onAdd={(v) => handleArrayFieldAdd('materials', v)}
+                  onRemove={(v) => handleArrayFieldRemove('materials', v)}
+                />
+                <ChipField
+                  label="Product Badges"
+                  items={formData.badges.map((b: any) =>
+                    typeof b === 'string' ? b : b?.name || String(b)
+                  )}
+                  placeholder="e.g. New Arrival, Bestseller"
+                  onAdd={(v) => handleArrayFieldAdd('badges', v)}
+                  onRemove={(v) => handleArrayFieldRemove('badges', v)}
+                  chipColor="gold"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Tags & SEO */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <SectionHeader
+              icon={Search}
+              title="Tags & SEO"
+              subtitle="Improve discoverability in search engines and on-platform search"
+            />
+
+            <div className="space-y-5">
+              {/* Tags */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Product Tags
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addTag();
+                      }
+                    }}
+                    placeholder="Add a tag and press Enter"
+                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={addTag}
+                    className="px-4 py-2 bg-[#CBB57B] text-black text-sm font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                {formData.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.tags.map((tag: any, index: number) => {
+                      const tagValue = typeof tag === 'string' ? tag : tag?.name || String(tag);
+                      return (
+                        <Chip
+                          key={`tag-${index}-${tagValue}`}
+                          label={tagValue}
+                          onRemove={() => removeTag(tag)}
+                        />
+                      );
+                    })}
                   </div>
                 )}
-            </div>
-          )}
-
-          {/* Weight */}
-          {formData.productType === 'PHYSICAL' && (
-            <div>
-              <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-2">
-                Weight (kg)
-              </label>
-              <input
-                id="weight"
-                type="number"
-                step="0.01"
-                value={formData.weight || ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, weight: parseFloat(e.target.value) || undefined })
-                }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                placeholder="0.00"
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Product Type-Specific Fields */}
-      {formData.productType === 'REAL_ESTATE' && (
-        <RealEstateFields
-          formData={formData}
-          onChange={(field, value) => setFormData({ ...formData, [field]: value })}
-          errors={errors}
-        />
-      )}
-      {formData.productType === 'VEHICLE' && (
-        <VehicleFields
-          formData={formData}
-          onChange={(field, value) => setFormData({ ...formData, [field]: value })}
-          errors={errors}
-        />
-      )}
-      {formData.productType === 'DIGITAL' && (
-        <DigitalFields
-          formData={formData}
-          onChange={(field, value) => setFormData({ ...formData, [field]: value })}
-          errors={errors}
-        />
-      )}
-      {formData.productType === 'SERVICE' && (
-        <ServiceFields
-          formData={formData}
-          onChange={(field, value) => setFormData({ ...formData, [field]: value })}
-          errors={errors}
-        />
-      )}
-      {formData.productType === 'RENTAL' && (
-        <RentalFields
-          formData={formData}
-          onChange={(field, value) => setFormData({ ...formData, [field]: value })}
-          errors={errors}
-        />
-      )}
-
-      {/* Images */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Product Images</h3>
-
-        <EnhancedImageUpload
-          onImagesChange={handleImagesChange}
-          initialImages={formData.images}
-          maxImages={10}
-          folder="products"
-        />
-      </div>
-
-      {/* Attributes */}
-      {formData.productType === 'PHYSICAL' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Product Attributes</h3>
-
-          <div className="space-y-6">
-            {/* Colors */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Available Colors
-              </label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  id="colorInput"
-                  placeholder="Enter color name"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const input = e.currentTarget;
-                      handleArrayFieldAdd('colors', input.value);
-                      input.value = '';
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById('colorInput') as HTMLInputElement;
-                    if (input) {
-                      handleArrayFieldAdd('colors', input.value);
-                      input.value = '';
-                    }
-                  }}
-                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
-                >
-                  Add
-                </button>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.colors.map((color: string) => (
+
+              {/* SEO Title */}
+              <div>
+                <label
+                  htmlFor="metaTitle"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
+                  SEO Title
+                </label>
+                <input
+                  id="metaTitle"
+                  type="text"
+                  value={formData.metaTitle}
+                  onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                  placeholder="SEO optimized title for search engines"
+                  maxLength={60}
+                />
+                <div className="mt-1 flex justify-end">
                   <span
-                    key={color}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                    className={`text-xs ${formData.metaTitle.length > 50 ? 'text-amber-500' : 'text-gray-400'}`}
                   >
-                    {color}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayFieldRemove('colors', color)}
-                      className="text-gray-500 hover:text-red-500"
-                    >
-                      ×
-                    </button>
+                    {formData.metaTitle.length}/60
                   </span>
-                ))}
+                </div>
               </div>
-            </div>
 
-            {/* Sizes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Available Sizes
-              </label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  id="sizeInput"
-                  placeholder="Enter size (e.g., S, M, L)"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const input = e.currentTarget;
-                      handleArrayFieldAdd('sizes', input.value);
-                      input.value = '';
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById('sizeInput') as HTMLInputElement;
-                    if (input) {
-                      handleArrayFieldAdd('sizes', input.value);
-                      input.value = '';
-                    }
-                  }}
-                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+              {/* SEO Description */}
+              <div>
+                <label
+                  htmlFor="metaDescription"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
                 >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.sizes.map((size: string) => (
+                  SEO Description
+                </label>
+                <textarea
+                  id="metaDescription"
+                  value={formData.metaDescription}
+                  onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent resize-none"
+                  placeholder="Meta description for search engines (shown in search results)..."
+                  maxLength={160}
+                />
+                <div className="mt-1 flex justify-end">
                   <span
-                    key={size}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                    className={`text-xs ${formData.metaDescription.length > 140 ? 'text-amber-500' : 'text-gray-400'}`}
                   >
-                    {size}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayFieldRemove('sizes', size)}
-                      className="text-gray-500 hover:text-red-500"
-                    >
-                      ×
-                    </button>
+                    {formData.metaDescription.length}/160
                   </span>
-                ))}
+                </div>
               </div>
-            </div>
 
-            {/* Materials */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Materials</label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  id="materialInput"
-                  placeholder="Enter material"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const input = e.currentTarget;
-                      handleArrayFieldAdd('materials', input.value);
-                      input.value = '';
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById('materialInput') as HTMLInputElement;
-                    if (input) {
-                      handleArrayFieldAdd('materials', input.value);
-                      input.value = '';
-                    }
-                  }}
-                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+              {/* SEO Keywords */}
+              <div>
+                <label
+                  htmlFor="seoKeywords"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
                 >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.materials.map((material: string) => (
-                  <span
-                    key={material}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                  >
-                    {material}
-                    <button
-                      type="button"
-                      onClick={() => handleArrayFieldRemove('materials', material)}
-                      className="text-gray-500 hover:text-red-500"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Badges */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Product Badges</label>
-              <div className="flex gap-2 mb-2">
+                  SEO Keywords
+                </label>
                 <input
+                  id="seoKeywords"
                   type="text"
-                  id="badgeInput"
-                  placeholder="Enter badge (e.g., New, Sale)"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const input = e.currentTarget;
-                      handleArrayFieldAdd('badges', input.value);
-                      input.value = '';
-                    }
-                  }}
+                  value={formData.seoKeywords}
+                  onChange={(e) => setFormData({ ...formData, seoKeywords: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                  placeholder="keyword1, keyword2, keyword3"
                 />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById('badgeInput') as HTMLInputElement;
-                    if (input) {
-                      handleArrayFieldAdd('badges', input.value);
-                      input.value = '';
-                    }
-                  }}
-                  className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
-                >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.badges.map((badge: any, index: number) => {
-                  const badgeValue =
-                    typeof badge === 'string' ? badge : badge?.name || String(badge);
-                  return (
-                    <span
-                      key={`badge-${index}-${badgeValue}`}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-[#f5f0e8] text-[#8b7a5e] rounded-full text-sm font-medium"
-                    >
-                      {badgeValue}
-                      <button
-                        type="button"
-                        onClick={() => handleArrayFieldRemove('badges', badge)}
-                        className="text-[#8b7a5e] hover:text-red-500"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  );
-                })}
+                <p className="mt-1 text-xs text-gray-400">Comma-separated keywords</p>
               </div>
             </div>
           </div>
+
+          {/* Product Variants */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <SectionHeader
+              icon={Layers}
+              title="Product Variants"
+              subtitle="Add size, color, or other variant combinations"
+            />
+            <VariantManager productId={product?.id} productPrice={formData.price} />
+          </div>
         </div>
-      )}
 
-      {/* Tags */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Tags & SEO</h3>
+        {/* ─── RIGHT SIDEBAR ─── */}
+        <div className="sticky top-20 self-start space-y-4">
+          {/* Publish Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-[#CBB57B]" />
+              Publish
+            </h3>
 
-        <div className="space-y-4">
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Product Tags</label>
-            <div className="flex gap-2 mb-2">
-              <input
-                type="text"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addTag();
-                  }
-                }}
-                placeholder="Enter tag name"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-              />
+            {/* Status options */}
+            <div className="space-y-2 mb-5">
+              {[
+                {
+                  value: 'DRAFT',
+                  label: 'Draft',
+                  desc: 'Not visible to customers',
+                  icon: FileText,
+                },
+                {
+                  value: 'ACTIVE',
+                  label: 'Active',
+                  desc: 'Published in your store',
+                  icon: CheckCircle2,
+                },
+              ].map(({ value, label, desc, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, status: value })}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border-2 transition-all text-left ${
+                    formData.status === value
+                      ? value === 'ACTIVE'
+                        ? 'border-green-400 bg-green-50'
+                        : 'border-[#CBB57B] bg-[#fdf9f0]'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <Icon
+                    className={`w-4 h-4 flex-shrink-0 ${
+                      formData.status === value
+                        ? value === 'ACTIVE'
+                          ? 'text-green-600'
+                          : 'text-[#CBB57B]'
+                        : 'text-gray-400'
+                    }`}
+                  />
+                  <div>
+                    <p
+                      className={`text-sm font-medium ${
+                        formData.status === value ? 'text-gray-900' : 'text-gray-600'
+                      }`}
+                    >
+                      {label}
+                    </p>
+                    <p className="text-xs text-gray-400">{desc}</p>
+                  </div>
+                </button>
+              ))}
+              {formData.status === 'ARCHIVED' && (
+                <div className="px-3 py-2 rounded-lg border-2 border-gray-400 bg-gray-50 text-sm text-gray-600">
+                  Archived — hidden from store
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="space-y-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-[#CBB57B] text-black text-sm font-semibold rounded-lg hover:bg-[#a89158] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+              >
+                {loading && (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                )}
+                {loading ? 'Saving...' : isEdit ? 'Update Product' : 'Create Product'}
+              </button>
               <button
                 type="button"
-                onClick={addTag}
-                className="px-4 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] transition-colors"
+                onClick={onCancel}
+                disabled={loading}
+                className="w-full py-2.5 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
-                Add
+                Cancel
               </button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {formData.tags.map((tag: any, index: number) => {
-                // Handle both string tags and object tags (defensive programming)
-                const tagValue = typeof tag === 'string' ? tag : tag?.name || String(tag);
-                return (
-                  <span
-                    key={`tag-${index}-${tagValue}`}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                  >
-                    {tagValue}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="text-gray-500 hover:text-red-500"
-                    >
-                      ×
-                    </button>
+          </div>
+
+          {/* Pricing Summary Card */}
+          {(formData.price > 0 || formData.compareAtPrice > 0) && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-[#CBB57B]" />
+                Pricing Summary
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Selling price</span>
+                  <span className="font-semibold text-gray-900">
+                    ${formData.price ? Number(formData.price).toFixed(2) : '—'}
                   </span>
-                );
-              })}
+                </div>
+                {formData.compareAtPrice > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Original price</span>
+                    <span className="text-gray-400 line-through">
+                      ${Number(formData.compareAtPrice).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                {hasDiscount && (
+                  <div className="flex justify-between pt-2 border-t border-gray-100">
+                    <span className="text-green-600 font-medium">Customer saves</span>
+                    <span className="text-green-600 font-semibold">
+                      {discountPct}% (${(formData.compareAtPrice - formData.price).toFixed(2)})
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Checklist Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Listing Checklist</h3>
+            <div className="space-y-2">
+              {[
+                { label: 'Product name', done: formData.name?.length >= 3 },
+                { label: 'Description', done: formData.description?.length >= 10 },
+                { label: 'Category selected', done: !!formData.categoryId },
+                { label: 'Price set', done: formData.price > 0 },
+                {
+                  label: 'Images uploaded',
+                  done: formData.images?.length > 0,
+                },
+                ...(formData.productType === 'PHYSICAL'
+                  ? [{ label: 'Stock/inventory', done: formData.inventory > 0 }]
+                  : []),
+              ].map(({ label, done }) => (
+                <div key={label} className="flex items-center gap-2 text-sm">
+                  <span
+                    className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      done ? 'bg-green-100' : 'bg-gray-100'
+                    }`}
+                  >
+                    {done ? (
+                      <CheckCircle2 className="w-3 h-3 text-green-600" />
+                    ) : (
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                    )}
+                  </span>
+                  <span className={done ? 'text-gray-700' : 'text-gray-400'}>{label}</span>
+                </div>
+              ))}
             </div>
           </div>
-
-          {/* Meta Title */}
-          <div>
-            <label htmlFor="metaTitle" className="block text-sm font-medium text-gray-700 mb-2">
-              SEO Title
-            </label>
-            <input
-              id="metaTitle"
-              type="text"
-              value={formData.metaTitle}
-              onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-              placeholder="SEO optimized title for search engines"
-              maxLength={60}
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              {formData.metaTitle.length}/60 characters (optimal for search engines)
-            </p>
-          </div>
-
-          {/* Meta Description */}
-          <div>
-            <label
-              htmlFor="metaDescription"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              SEO Description
-            </label>
-            <textarea
-              id="metaDescription"
-              value={formData.metaDescription}
-              onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-              placeholder="Meta description for search engines..."
-              maxLength={160}
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              {formData.metaDescription.length}/160 characters
-            </p>
-          </div>
-
-          {/* SEO Keywords */}
-          <div>
-            <label htmlFor="seoKeywords" className="block text-sm font-medium text-gray-700 mb-2">
-              SEO Keywords
-            </label>
-            <input
-              id="seoKeywords"
-              type="text"
-              value={formData.seoKeywords}
-              onChange={(e) => setFormData({ ...formData, seoKeywords: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-              placeholder="keyword1, keyword2, keyword3"
-            />
-            <p className="mt-1 text-sm text-gray-500">Comma-separated keywords for SEO</p>
-          </div>
         </div>
       </div>
 
-      {/* Status */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Publishing</h3>
-
-        <div>
-          <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
-            Product Status
-          </label>
+      {/* Mobile sticky bottom action bar — hidden on xl (sidebar handles it there) */}
+      <div className="xl:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+        <div className="flex items-center gap-3 px-4 py-3">
+          {/* Status chip */}
           <select
-            id="status"
             value={formData.status}
             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+            className="flex-none text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent bg-white"
           >
-            <option value="DRAFT">Draft - Not visible to customers</option>
-            <option value="ACTIVE">Active - Published and visible</option>
-            <option value="ARCHIVED">Archived - Hidden from store</option>
+            <option value="DRAFT">Draft</option>
+            <option value="ACTIVE">Active</option>
           </select>
-          <p className="mt-2 text-sm text-gray-500">
-            {formData.status === 'DRAFT' &&
-              'This product is saved as a draft and not visible to customers.'}
-            {formData.status === 'ACTIVE' && 'This product is published and visible in your store.'}
-            {formData.status === 'ARCHIVED' &&
-              'This product is archived and hidden from your store.'}
-          </p>
+
+          {/* Cancel */}
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="flex-none px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-2.5 bg-[#CBB57B] text-black text-sm font-bold rounded-lg hover:bg-[#a89158] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+          >
+            {loading && (
+              <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+            )}
+            {loading ? 'Saving...' : isEdit ? 'Update Product' : 'Create Product'}
+          </button>
         </div>
-      </div>
-
-      {/* Product Variants */}
-      <VariantManager productId={product?.id} productPrice={formData.price} />
-
-      {/* Form Actions */}
-      <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-          disabled={loading}
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-6 py-2 bg-[#CBB57B] text-black font-medium rounded-lg hover:bg-[#a89158] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
-        >
-          {loading && (
-            <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-          )}
-          {loading ? 'Saving...' : isEdit ? 'Update Product' : 'Create Product'}
-        </button>
       </div>
 
       {/* Gelato Preview Modal */}

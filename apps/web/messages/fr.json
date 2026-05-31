@@ -9,6 +9,8 @@
       "financials": "Finances",
       "delivery": "Livraison",
       "marketing": "Marketing",
+      "affiliate": "[FR-TODO] Affiliate",
+      "blog": "Blog",
       "system": "Système"
     },
     "items": {
@@ -35,7 +37,14 @@
       "deliveryProviders": "Fournisseurs de Livraison",
       "deliveryPayouts": "Paiements de Livraison",
       "advertisements": "Publicités",
-      "settings": "Paramètres"
+      "affiliateAdvertisers": "[FR-TODO] Advertisers",
+      "affiliateProducts": "[FR-TODO] Products",
+      "affiliateCommissions": "[FR-TODO] Commissions",
+      "affiliateClicks": "[FR-TODO] Click Analytics",
+      "blogPosts": "[FR-TODO] Blog Posts",
+      "settings": "Paramètres",
+      "security": "Sécurité",
+      "profile": "Mon Profil"
     },
     "viewWebsite": "Voir le Site Web",
     "logout": "Déconnexion"
@@ -47,6 +56,7 @@
       "stores": "Magasins",
       "hotDeals": "Bonnes Affaires",
       "contact": "Contact",
+      "blog": "Blog",
       "search": "Rechercher",
       "wishlist": "Favoris",
       "cart": "Panier",
@@ -136,6 +146,7 @@
       "privacyPolicy": "Politique de Confidentialité",
       "termsOfService": "Conditions d'Utilisation",
       "sellerAgreement": "Accord Vendeur",
+      "cookiePolicy": "Politique de Cookies",
       "securePayment": "Paiement Sécurisé",
       "sslEncrypted": "Chiffrement SSL",
       "freeShipping": "Livraison Gratuite",
@@ -224,6 +235,7 @@
       "and": "et",
       "enterBothFields": "Veuillez entrer votre e-mail et mot de passe",
       "invalidEmail": "Veuillez entrer une adresse e-mail valide",
+      "enterYourEmail": "Veuillez entrer votre adresse e-mail",
       "enter2FACode": "Veuillez entrer votre code 2FA pour continuer",
       "welcomeBackRedirect": "Bon retour ! Redirection vers votre tableau de bord...",
       "verifySignIn": "Vérifier et Se Connecter"
@@ -457,7 +469,12 @@
     "review": "avis",
     "reviewsPlural": "avis",
     "reviewSubmittedSuccess": "Avis soumis avec succès ! Il sera visible après approbation.",
-    "reviewSubmitFailed": "Échec de l'envoi de l'avis. Veuillez réessayer."
+    "reviewSubmitFailed": "Échec de l'envoi de l'avis. Veuillez réessayer.",
+    "unavailable": "Indisponible",
+    "available": "Disponible",
+    "instantDownload": "Téléchargement immédiat",
+    "madeToOrder": "Fabriqué sur commande",
+    "onlyLeft": "Plus que {quantity} en stock"
   },
   "cart": {
     "shoppingCart": "Panier",
@@ -534,7 +551,12 @@
     "new": "Nouveau",
     "sale": "Solde",
     "featured": "En Vedette",
-    "bestseller": "Meilleure Vente"
+    "bestseller": "Meilleure Vente",
+    "sendInquiry": "Envoyer une demande",
+    "alwaysAvailable": "Téléchargement instantané",
+    "serviceAvailable": "Disponible",
+    "unavailable": "Indisponible",
+    "instantDownload": "Téléchargement instantané"
   },
   "productCard": {
     "addToWishlist": "Ajouter à la liste de souhaits",
@@ -1385,6 +1407,62 @@
         "returnSuccess": "Demande de retour soumise. Nous examinerons votre demande et vous recontacterons bientôt",
         "returnError": "Impossible de soumettre la demande de retour. Veuillez réessayer."
       }
+    },
+    "referrals": {
+      "title": "Parrainages",
+      "subtitle": "Invitez des amis et gagnez du crédit boutique",
+      "breadcrumb": "Parrainages",
+      "yourCode": "Votre Code de Parrainage",
+      "shareDesc": "Partagez votre code et gagnez des récompenses quand vos amis font leur premier achat",
+      "copy": "Copier",
+      "copied": "Copié !",
+      "share": "Partager",
+      "generateCode": "Générer Mon Code de Parrainage",
+      "generating": "Génération...",
+      "noCodeYet": "Vous n'avez pas encore de code de parrainage",
+      "generateDesc": "Générez votre code unique pour commencer à gagner des récompenses",
+      "stats": {
+        "totalReferrals": "Total Parrainages",
+        "pending": "En Attente",
+        "earned": "Gagné",
+        "storeCredit": "Crédit Boutique"
+      },
+      "history": {
+        "title": "Historique des Parrainages",
+        "empty": "Aucun parrainage pour l'instant",
+        "emptyDesc": "Partagez votre code et vos parrainages apparaîtront ici",
+        "name": "Nom",
+        "role": "Rôle",
+        "status": "Statut",
+        "reward": "Récompense",
+        "date": "Date"
+      },
+      "status": {
+        "PENDING": "En Attente",
+        "QUALIFIED": "Qualifié",
+        "PAID": "Payé",
+        "EXPIRED": "Expiré"
+      },
+      "role": {
+        "BUYER": "Acheteur",
+        "SELLER": "Vendeur"
+      },
+      "howItWorks": {
+        "title": "Comment Ça Marche",
+        "step1Title": "Partagez Votre Code",
+        "step1Desc": "Partagez votre code unique avec vos amis",
+        "step2Title": "L'Ami S'inscrit",
+        "step2Desc": "Il s'inscrit avec votre code de parrainage",
+        "step3Title": "Il Se Qualifie",
+        "step3Desc": "L'ami passe une commande ou publie un produit",
+        "step4Title": "Vous Gagnez",
+        "step4Desc": "Le crédit boutique est ajouté automatiquement"
+      },
+      "toast": {
+        "codeCopied": "Code de parrainage copié !",
+        "generateError": "Impossible de générer le code de parrainage",
+        "loadError": "Impossible de charger les données de parrainage"
+      }
     }
   },
   "components": {
@@ -2055,7 +2133,10 @@
       "willExpire": "Cette offre expirera automatiquement",
       "notFound": "Offre Urgente Introuvable",
       "mayBeRemoved": "Cette offre urgente a peut-être été supprimée ou a expiré.",
-      "failedToLoad": "Échec du chargement de l'offre urgente"
+      "failedToLoad": "Échec du chargement de l'offre urgente",
+      "responsesCount": "{count} réponses",
+      "markHelper": "Marquez lorsque vous avez trouvé de l'aide pour votre demande",
+      "expiresAutomatically": "Cette offre expirera automatiquement"
     },
     "hotDealsMyDeals": {
       "title": "Mes Offres Urgentes",
@@ -2070,7 +2151,7 @@
       "view": "Voir",
       "fulfill": "Satisfaire",
       "cancel": "Annuler",
-      "posted": "Publié le {date}",
+      "posted": "Publié le",
       "hoursLeft": "{hours}h {minutes}m restantes",
       "minutesLeft": "{minutes}m restantes",
       "responses": "réponses",
@@ -2079,7 +2160,12 @@
       "dealCancelled": "Offre urgente annulée",
       "failedToCancel": "Échec de l'annulation de l'offre",
       "confirmCancel": "Êtes-vous sûr de vouloir annuler cette offre urgente ?",
-      "failedToLoadDeals": "Échec du chargement de vos offres"
+      "failedToLoadDeals": "Échec du chargement de vos offres",
+      "myHotDeals": "Mes Offres Urgentes",
+      "manageRequests": "Gérez vos demandes de service",
+      "responsesCount": "{count} réponses",
+      "expired": "Expiré",
+      "failedToLoad": "Échec du chargement de vos offres"
     }
   },
   "ads": {
@@ -2274,6 +2360,7 @@
     "privacyPolicy": "Politique de Confidentialité",
     "termsOfService": "Conditions d'Utilisation",
     "sellerAgreement": "Accord Vendeur",
+    "cookiePolicy": "Politique de Cookies",
     "questionsAboutDocument": "Questions sur ce document ?",
     "questionsHelp": "Si vous avez des questions ou des préoccupations, veuillez contacter notre équipe juridique.",
     "contactUs": "Nous Contacter",
@@ -3765,6 +3852,20 @@
     "pageTitle": "Choisissez Votre Plan",
     "pageSubtitle": "Débloquez des fonctionnalités premium pour développer votre entreprise. Tous les plans payants incluent un essai gratuit de 14 jours.",
     "badge": "PLANS D'ABONNEMENT",
+    "header": {
+      "badge": "Plans d'Abonnement",
+      "title": "Choisissez Votre Plan",
+      "subtitle": "Débloquez des fonctionnalités premium pour développer votre entreprise. Tous les plans payants incluent un essai gratuit de 14 jours."
+    },
+    "backToDashboard": "Retour au Tableau de Bord",
+    "currentPlanBadge": "Plan Actuel:",
+    "taglines": {
+      "FREE": "Commencez gratuitement",
+      "STARTER": "Parfait pour les vendeurs en croissance",
+      "PROFESSIONAL": "Pour les entreprises sérieuses",
+      "BUSINESS": "Potentiel illimité",
+      "default": "Fonctionnalités puissantes"
+    },
     "breadcrumbs": {
       "backToDashboard": "Retour au Tableau de Bord"
     },
@@ -3772,7 +3873,9 @@
     "errors": {
       "fetchPlans": "Échec de la récupération des plans d'abonnement",
       "noCheckoutUrl": "Aucune URL de paiement reçue",
-      "initiateFailed": "Échec du lancement de la mise à niveau"
+      "initiateFailed": "Échec du lancement de la mise à niveau",
+      "title": "Erreur de mise à niveau",
+      "upgrade": "Échec du lancement de la mise à niveau"
     },
     "currentPlan": {
       "label": "Plan Actuel:",
@@ -3783,9 +3886,11 @@
       "monthly": "Mensuel",
       "yearly": "Annuel",
       "yearlyDiscount": "-20%",
+      "discount": "-20%",
       "year": "an",
       "month": "mois",
-      "billedYearly": "facturé annuellement"
+      "billedYearly": "facturé annuellement",
+      "monthBilledYearly": "mois, facturé annuellement"
     },
     "planTiers": {
       "taglines": {
@@ -3810,7 +3915,8 @@
       "productTypes": "Types de Produits",
       "features": "Fonctionnalités",
       "moreFeatures": "+{count} fonctionnalités supplémentaires",
-      "physicalOnly": "Produits physiques uniquement"
+      "physicalOnly": "Produits physiques uniquement",
+      "currentPlan": "Plan Actuel"
     },
     "productTypes": {
       "SERVICE": "Services",
@@ -4130,6 +4236,7 @@
       "reviews": "Avis",
       "followingStores": "Boutiques Suivies",
       "downloads": "Téléchargements",
+      "referrals": "Parrainages",
       "messages": "Messages",
       "notifications": "Notifications",
       "preferences": "Préférences"
@@ -4271,6 +4378,54 @@
       "bulkUpdateError": "Échec de la mise à jour des produits"
     }
   },
+  "adminReferrals": {
+    "pageTitle": "[FR-TODO] Referral Program",
+    "pageDescription": "[FR-TODO] Manage and monitor your referral system",
+    "header": {
+      "exportButton": "[FR-TODO] Export Report",
+      "exportComingSoon": "[FR-TODO] Export functionality coming soon"
+    },
+    "stats": {
+      "totalReferrals": "[FR-TODO] Total Referrals",
+      "totalRewardsPaid": "[FR-TODO] Total Rewards Paid",
+      "buyerReferrals": "[FR-TODO] Buyer Referrals",
+      "sellerReferrals": "[FR-TODO] Seller Referrals",
+      "totalRewardsPaidValue": "[FR-TODO] {amount} paid"
+    },
+    "statusBreakdown": {
+      "title": "[FR-TODO] Status Breakdown"
+    },
+    "status": {
+      "pending": "[FR-TODO] Pending",
+      "qualified": "[FR-TODO] Qualified",
+      "paid": "[FR-TODO] Paid",
+      "expired": "[FR-TODO] Expired",
+      "cancelled": "[FR-TODO] Cancelled"
+    },
+    "filters": {
+      "label": "[FR-TODO] Filters:",
+      "allStatuses": "[FR-TODO] All Statuses",
+      "allRoles": "[FR-TODO] All Roles",
+      "roleBuyer": "[FR-TODO] Buyers",
+      "roleSeller": "[FR-TODO] Sellers",
+      "clearFilters": "[FR-TODO] Clear Filters"
+    },
+    "table": {
+      "referrer": "[FR-TODO] Referrer",
+      "referredUser": "[FR-TODO] Referred User",
+      "type": "[FR-TODO] Type",
+      "reward": "[FR-TODO] Reward",
+      "status": "[FR-TODO] Status",
+      "date": "[FR-TODO] Date",
+      "noReferrals": "[FR-TODO] No referrals found"
+    },
+    "pagination": {
+      "previous": "[FR-TODO] Previous",
+      "next": "[FR-TODO] Next",
+      "showing": "[FR-TODO] Showing <b>{start}</b> to <b>{end}</b> of <b>{total}</b> results",
+      "ariaLabel": "[FR-TODO] Pagination"
+    }
+  },
   "adminOrders": {
     "pageTitle": "Commandes",
     "pageDescription": "Gérer les commandes clients",
@@ -4305,7 +4460,8 @@
         "paid": "Payée",
         "pending": "En attente",
         "failed": "Échouée",
-        "refunded": "Remboursée"
+        "refunded": "Remboursée",
+        "cancelled": "Annulé"
       },
       "dateRange": {
         "today": "Aujourd'hui",
@@ -5265,5 +5421,12 @@
       "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet avis ?",
       "confirmBulkDelete": "Êtes-vous sûr de vouloir supprimer {count} avis ?"
     }
+  },
+  "affiliate": {
+    "fromOurPartners": "[FR-TODO]"
+  },
+  "blog": {
+    "featuredProducts": "[FR-TODO]",
+    "featuredProductsDisclosure": "[FR-TODO]"
   }
 }

@@ -22,9 +22,11 @@ model User {
   phoneVerified Boolean  @default(false)
 
   // 2FA
-  twoFactorEnabled Boolean @default(false)
-  twoFactorSecret  String?
-  backupCodes      Json?    // Hashed 2FA backup codes (array of strings)
+  twoFactorEnabled              Boolean   @default(false)
+  twoFactorSecret               String?
+  backupCodes                   Json?     // Hashed 2FA backup codes (array of strings)
+  twoFactorGracePeriodStartsAt  DateTime? // Set on first login when role requires 2FA but user hasn't enabled it
+  twoFactorEnforcedAt           DateTime? // Set when user enables 2FA (audit trail)
 
   // OAuth & Email OTP
   googleId        String?      @unique
@@ -79,8 +81,9 @@ model User {
   escrowAllocations   EscrowSplitAllocation[]    @relation("SellerEscrowAllocations")
   commissionOverrides SellerCommissionOverride[] @relation("SellerCommissionOverrides")
   planSubscriptions   SellerPlanSubscription[]   @relation("SellerPlanSubscriptions")
-  sellerSubscription  SellerSubscription?        @relation("UserSubscription") // Inquiry-based product subscription
-  creditBalance       CreditBalance?             @relation("UserCreditBalance") // Credit balance for inquiry responses
+  sellerSubscription       SellerSubscription?        @relation("UserSubscription") // Inquiry-based product subscription
+  creditBalance            CreditBalance?             @relation("UserCreditBalance") // Credit balance for inquiry responses
+  subscriptionCreditEvents SubscriptionCreditEvent[]
 
   // Delivery Provider Extensions
   deliveryProviderId  String?
@@ -117,10 +120,38 @@ model User {
   // Seller Gelato POD Settings (v2.9.0)
   gelatoSettings SellerGelatoSettings? @relation("SellerGelatoSettings")
 
+  // Referral System (v2.11.0)
+  referredById      String? // Who referred this user (nullable - not all users are referred)
+  referredBy        User?         @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals         User[]        @relation("Referrals") // Users this user has referred
+  referralCode      ReferralCode? // This user's unique referral code
+  storeCredit       Decimal       @default(0) @db.Decimal(10, 2) // Referral reward balance (can be used for purchases)
+  totalReferrals    Int           @default(0) // Cached count of successful referrals (for performance)
+  referrerReferrals Referral[]       @relation("ReferrerReferrals") // Referrals where this user is the referrer
+  referredReferrals Referral[]       @relation("ReferredReferrals") // Referrals where this user was referred
+  referralCoupons   ReferralCoupon[]       @relation("UserReferralCoupons") // Coupons issued to this user via referrals
+  referralPayouts   ReferralPayoutRecord[] @relation("UserReferralPayouts") // Cash payout records for flat commission rewards
+
+  // Trusted Devices (v2.12.0 - 2FA enforcement)
+  trustedDevices    TrustedDevice[]
+
   @@index([email])
   @@index([lastLoginAt])
   @@index([deliveryProviderId])
+  @@index([referredById])
   @@map("users")
+
+  // Affiliate (Phase C)
+  affiliateProductsCreated         AffiliateProduct[]              @relation("AffiliateProductCreator")
+  affiliateClickLogs               AffiliateClickLog[]             @relation("AffiliateClickUser")
+  affiliateTranslationReviews      AffiliateProductTranslation[]   @relation("AffiliateProductTranslationReviewer")
+
+  // Blog (Phase C.7 / C.8)
+  blogPostsAuthored          BlogPost[]            @relation("BlogAuthor")
+  blogTranslationReviews     BlogPostTranslation[] @relation("BlogTranslationReviewer")
+  blogPostViews              BlogPostView[]        @relation("BlogPostViews")
+  blogPostLikes              BlogPostLike[]        @relation("BlogPostLikes")
+  blogPostComments           BlogPostComment[]     @relation("BlogPostComments")
 }
 
 enum UserRole {
@@ -140,7 +171,7 @@ enum AuthProvider {
 }
 
 enum EmailOTPType {
-  LOGIN                // Mandatory 2FA for all logins
+  LOGIN // Mandatory 2FA for all logins
   TWO_FACTOR_BACKUP
   ACCOUNT_RECOVERY
   SENSITIVE_ACTION
@@ -234,6 +265,14 @@ model Store {
   country    String?
   postalCode String?
 
+  // KYC / Seller Application
+  businessType            String?  // individual | sole_proprietor | llc | corporation | registered_business
+  intendedCategories      String[] @default([]) // Product categories seller intends to list
+  monthlyVolume           String?  // Expected monthly revenue range
+  applicationDocumentUrl  String?  // URL to uploaded verification document
+  applicationDocumentType String?  // government_id | business_registration | tax_certificate | other
+  applicationNotes        String?  @db.Text // Free-text notes from seller during application
+
   // Store Status
   status     StoreStatus @default(PENDING)
   isActive   Boolean     @default(true)
@@ -245,6 +284,8 @@ model Store {
   creditsLastDeducted DateTime?
   creditsExpiresAt    DateTime?
   creditsGraceEndsAt  DateTime? // Grace period deadline
+  lowCreditWarningSentAt   DateTime? // Last time a low-credit warning email was sent
+  gracePeriodWarningSentAt DateTime? // Last time a grace-period warning email was sent
 
   // Store Policies
   returnPolicy    String? @db.Text
@@ -290,6 +331,15 @@ model Store {
   vacationAutoReply    String?   @db.Text // Auto-reply for inquiries during vacation
   vacationHideProducts Boolean   @default(false) // Hide products from search during vacation
 
+  // Self-Pickup Configuration (v2.10.0 - Local Pickup)
+  pickupEnabled          Boolean  @default(false)
+  pickupAddress          String?  @db.Text // Full pickup address (if different from store address)
+  pickupInstructions     String?  @db.Text // e.g., "Ring doorbell, wait at loading dock"
+  pickupHours            Json? // Structured pickup hours { monday: "9am-5pm", ... }
+  pickupRadius           Int? // Max distance in km for pickup eligibility
+  pickupFee              Decimal? @default(0) @db.Decimal(10, 2) // Optional pickup fee
+  pickupEstimatedMinutes Int?     @default(30) // How long to prepare order
+
   // SEO
   metaTitle       String?
   metaDescription String?
@@ -325,10 +375,17 @@ model Store {
   // Gelato POD Settings (v2.9.0 - Per-seller Gelato integration)
   gelatoSettings SellerGelatoSettings?
 
+  // Self-Pickup Orders (v2.10.0 - Local Pickup)
+  pickupOrders Order[] @relation("OrderPickupStore")
+
+  // Referral System (v2.11.0) - Seller referrals track first product via store
+  referrals Referral[]
+
   @@index([slug])
   @@index([status])
   @@index([userId])
   @@index([rating])
+  @@index([pickupEnabled])
   @@map("stores")
 }
 
@@ -359,27 +416,27 @@ model StoreFollow {
 
 // Seller Credit Transactions (Monthly Subscription)
 model SellerCreditTransaction {
-  id              String                      @id @default(cuid())
-  userId          String
-  storeId         String
-  type            SellerCreditTransactionType
-  amount          Int                         // Months added/removed
-  balanceBefore   Int
-  balanceAfter    Int
+  id            String                      @id @default(cuid())
+  userId        String
+  storeId       String
+  type          SellerCreditTransactionType
+  amount        Int // Months added/removed
+  balanceBefore Int
+  balanceAfter  Int
 
   // Payment tracking
-  amountPaid      Decimal?                    @db.Decimal(10, 2)
-  currency        String?                     @default("USD")
-  stripeSessionId String?                     @unique
+  amountPaid      Decimal? @db.Decimal(10, 2)
+  currency        String?  @default("USD")
+  stripeSessionId String?  @unique
   stripePaymentId String?
 
   // Metadata
-  description     String?                     @db.Text
-  performedBy     String?                     // Admin ID for manual adjustments
-  notes           String?                     @db.Text
+  description String? @db.Text
+  performedBy String? // Admin ID for manual adjustments
+  notes       String? @db.Text
 
-  createdAt       DateTime                    @default(now())
-  updatedAt       DateTime                    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -393,11 +450,11 @@ model SellerCreditTransaction {
 }
 
 enum SellerCreditTransactionType {
-  PURCHASE   // Seller bought credits
-  DEDUCTION  // Monthly auto-deduction
-  REFUND     // Admin refund
+  PURCHASE // Seller bought credits
+  DEDUCTION // Monthly auto-deduction
+  REFUND // Admin refund
   ADJUSTMENT // Admin manual adjustment
-  BONUS      // Admin bonus credits
+  BONUS // Admin bonus credits
 }
 
 // Product Catalog
@@ -417,6 +474,9 @@ model Product {
   inventory        Int           @default(0)
   previousStock    Int? // For smooth inventory transition animations
   weight           Decimal?      @db.Decimal(10, 2)
+  weightGrams      Int?          // Canonical weight in grams. The `weight` Decimal field above is legacy (kg or assumed kg).
+  hsCode          String?       // Harmonized System tariff code for customs declarations (e.g. "6109.10")
+  countryOfOrigin String?       // ISO 2-letter country where product was manufactured (e.g. "CN", "TR")
 
   // Product Type & Purchase Model
   productType     ProductType  @default(PHYSICAL)
@@ -564,6 +624,18 @@ model Product {
   inventoryTransactions InventoryTransaction[]
   inquiries             ProductInquiry[]
 
+  // Print-on-Demand fields
+  fulfillmentType  FulfillmentType @default(SELF_FULFILLED)
+  gelatoProductUid String? // Gelato product template UID
+  gelatoTemplateId String? // Design template ID in Gelato
+  designFileUrl    String? // URL to design file
+  printAreas       Json? // Print area configs { front: {...}, back: {...} }
+  baseCost         Float? // Base production cost from Gelato
+  markupPercentage Float? // Markup % over baseCost (e.g., 50 = 50% markup)
+
+  // POD relation
+  podOrders GelatoPodOrder[]
+
   @@index([slug])
   @@index([storeId])
   @@index([categoryId])
@@ -587,19 +659,6 @@ model Product {
   @@index([status, createdAt])
   @@index([productType, purchaseType])
   @@index([status, productType, purchaseType])
-
-  // Print-on-Demand fields
-  fulfillmentType    FulfillmentType @default(SELF_FULFILLED)
-  gelatoProductUid   String?         // Gelato product template UID
-  gelatoTemplateId   String?         // Design template ID in Gelato
-  designFileUrl      String?         // URL to design file
-  printAreas         Json?           // Print area configs { front: {...}, back: {...} }
-  baseCost           Float?          // Base production cost from Gelato
-  markupPercentage   Float?          // Markup % over baseCost (e.g., 50 = 50% markup)
-
-  // POD relation
-  podOrders GelatoPodOrder[]
-
   @@map("products")
 }
 
@@ -609,7 +668,7 @@ model Product {
 
 enum FulfillmentType {
   SELF_FULFILLED // Seller ships themselves (default)
-  GELATO_POD     // Gelato print-on-demand
+  GELATO_POD // Gelato print-on-demand
 }
 
 // Category Model for elegant hierarchical organization
@@ -1004,6 +1063,7 @@ model ProductVariant {
   inventory      Int      @default(0)
   previousStock  Int? // For smooth inventory animations
   options        Json // {size: 'M', color: 'Black', material: 'Silk'}
+  weightGrams    Int? // Canonical weight in grams. Use this for shipping calculations.
 
   // Elegant UI data
   image        String? // Variant-specific image
@@ -1193,6 +1253,24 @@ model Order {
   deliveryConfirmation DeliveryConfirmation?
   delivery             Delivery?
 
+  // Shipping provider tracking
+  shippingProvider     String? // 'EASYPOST', 'DHL', 'GELATO', 'MANUAL', 'SELF_PICKUP'
+  shippingProviderData Json? // Provider-specific metadata
+
+  // Self-Pickup Fields (v2.10.0 - Local Pickup)
+  isPickup           Boolean   @default(false)
+  pickupStoreId      String?
+  pickupScheduledAt  DateTime? // When customer plans to pickup
+  pickupCompletedAt  DateTime? // When order was picked up
+  pickupCode         String? // 6-digit verification code
+  pickupInstructions String?   @db.Text // From seller
+
+  pickupStore Store? @relation("OrderPickupStore", fields: [pickupStoreId], references: [id], onDelete: SetNull)
+
+  // Referral System (v2.11.0) - Track which referral code was used for this order
+  referrerId String? // The user who referred this buyer (if any)
+  referrals  Referral[] // Link to referral records (buyer's first qualifying order)
+
   // Multi-Vendor Shipments
   sellerShipments SellerShipment[]
 
@@ -1202,10 +1280,22 @@ model Order {
   // POD
   podOrders GelatoPodOrder[]
 
+  // EasyPost Shipments
+  easypostShipments EasyPostShipment[]
+
+  // DHL Shipments
+  dhlShipments DhlShipment[]
+
+  // Dispatch Reminder Tracking
+  dispatchReminderSentAt DateTime? // Set when first reminder email is sent to seller
+
   @@index([userId])
   @@index([orderNumber])
   @@index([status])
   @@index([paymentStatus])
+  @@index([isPickup])
+  @@index([pickupStoreId])
+  @@index([pickupCode])
   @@map("orders")
 }
 
@@ -1218,17 +1308,22 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
   REFUNDED
+
+  // Self-Pickup Statuses (v2.10.0)
+  READY_FOR_PICKUP // Seller marks order ready for customer pickup
+  PICKED_UP // Customer picked up order (terminal status)
+  PICKUP_EXPIRED // Customer didn't pickup within timeframe
 }
 
 enum GelatoPodStatus {
-  PENDING       // Waiting to submit to Gelato
-  SUBMITTED     // Sent to Gelato API
+  PENDING // Waiting to submit to Gelato
+  SUBMITTED // Sent to Gelato API
   IN_PRODUCTION // Being printed/produced
-  PRODUCED      // Production complete
-  SHIPPED       // In transit to customer
-  DELIVERED     // Delivered to customer
-  CANCELLED     // Order cancelled
-  FAILED        // Production failed
+  PRODUCED // Production complete
+  SHIPPED // In transit to customer
+  DELIVERED // Delivered to customer
+  CANCELLED // Order cancelled
+  FAILED // Production failed
 }
 
 enum PaymentStatus {
@@ -1285,7 +1380,8 @@ model OrderItem {
   quantity  Int
   price     Decimal @db.Decimal(10, 2)
   total     Decimal @db.Decimal(10, 2)
-  image     String?
+  image               String?
+  weightGramsSnapshot Int?    // Canonical weight in grams, captured at order creation (frozen for invoicing/shipping).
 
   order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product         @relation(fields: [productId], references: [id])
@@ -1347,6 +1443,7 @@ model SellerShipment {
   // Shipment Costs (seller-specific portion)
   shippingCost Decimal? @db.Decimal(10, 2)
   weight       Decimal? @db.Decimal(10, 2)
+  weightGrams  Int?     // Canonical weight in grams. The `weight` Decimal field above is legacy.
 
   // Notes & Metadata
   notes    String? @db.Text
@@ -1774,17 +1871,17 @@ model EmailOTP {
 
 // In-App Notifications
 model Notification {
-  id     String           @id @default(cuid())
-  userId String
-  type   NotificationType
-  title  String
-  message String          @db.Text
-  link    String?         // Optional URL to navigate to when clicked
-  read    Boolean         @default(false)
+  id      String           @id @default(cuid())
+  userId  String
+  type    NotificationType
+  title   String
+  message String           @db.Text
+  link    String? // Optional URL to navigate to when clicked
+  read    Boolean          @default(false)
   readAt  DateTime?
 
   // Metadata for different notification types
-  metadata Json?          // Store additional data (orderId, productId, etc.)
+  metadata Json? // Store additional data (orderId, productId, etc.)
 
   // Priority (for future filtering/sorting)
   priority NotificationPriority @default(NORMAL)
@@ -1801,25 +1898,25 @@ model Notification {
 }
 
 enum NotificationType {
-  ORDER_PLACED       // New order received (for sellers)
-  ORDER_CONFIRMED    // Order confirmed (for buyers)
-  ORDER_SHIPPED      // Order shipped
-  ORDER_DELIVERED    // Order delivered
-  ORDER_CANCELLED    // Order cancelled
-  PAYMENT_SUCCESS    // Payment successful
-  PAYMENT_FAILED     // Payment failed
-  PRODUCT_REVIEW     // New product review
-  LOW_STOCK_ALERT    // Product stock running low
-  STOCK_OUT          // Product out of stock
-  INQUIRY_RECEIVED   // New product inquiry
-  INQUIRY_RESPONSE   // Inquiry response received
-  RETURN_REQUEST     // Return request submitted
-  PAYOUT_PROCESSED   // Seller payout processed
-  CREDIT_LOW         // Seller credits running low
-  CREDIT_EXPIRED     // Seller credits expired
+  ORDER_PLACED // New order received (for sellers)
+  ORDER_CONFIRMED // Order confirmed (for buyers)
+  ORDER_SHIPPED // Order shipped
+  ORDER_DELIVERED // Order delivered
+  ORDER_CANCELLED // Order cancelled
+  PAYMENT_SUCCESS // Payment successful
+  PAYMENT_FAILED // Payment failed
+  PRODUCT_REVIEW // New product review
+  LOW_STOCK_ALERT // Product stock running low
+  STOCK_OUT // Product out of stock
+  INQUIRY_RECEIVED // New product inquiry
+  INQUIRY_RESPONSE // Inquiry response received
+  RETURN_REQUEST // Return request submitted
+  PAYOUT_PROCESSED // Seller payout processed
+  CREDIT_LOW // Seller credits running low
+  CREDIT_EXPIRED // Seller credits expired
   SUBSCRIPTION_EXPIRING // Subscription expiring soon
-  SYSTEM_ANNOUNCEMENT   // System-wide announcement
-  ACCOUNT_ALERT         // Account security alert
+  SYSTEM_ANNOUNCEMENT // System-wide announcement
+  ACCOUNT_ALERT // Account security alert
 }
 
 enum NotificationPriority {
@@ -2196,7 +2293,7 @@ model SellerPayoutSettings {
   bankCountry       String?
 
   // Stripe Connect (For automated payouts via Stripe)
-  stripeAccountId     String? @unique
+  stripeAccountId     String?   @unique
   stripeAccountStatus String? // 'pending', 'verified', 'restricted'
   stripeOnboardedAt   DateTime?
 
@@ -2259,28 +2356,28 @@ model SellerGelatoSettings {
   storeId  String @unique
 
   // Gelato API Credentials (ENCRYPTED with AES-256-GCM)
-  gelatoApiKey       String?  // Encrypted API key
-  gelatoStoreId      String?  // Gelato store/account ID
+  gelatoApiKey        String? // Encrypted API key
+  gelatoStoreId       String? // Gelato store/account ID
   gelatoWebhookSecret String? // Encrypted webhook secret
 
   // Connection Status
-  isEnabled          Boolean   @default(false)
-  isVerified         Boolean   @default(false) // Connection verified via test API call
-  verifiedAt         DateTime?
-  lastTestAt         DateTime? // Last connection test
+  isEnabled  Boolean   @default(false)
+  isVerified Boolean   @default(false) // Connection verified via test API call
+  verifiedAt DateTime?
+  lastTestAt DateTime? // Last connection test
 
   // Gelato Account Info (fetched from API after connection)
   gelatoAccountName  String?
   gelatoAccountEmail String?
 
   // Webhook Configuration
-  webhookUrl         String?   // Auto-generated seller-specific webhook URL
-  webhookId          String?   // Gelato webhook subscription ID
+  webhookUrl String? // Auto-generated seller-specific webhook URL
+  webhookId  String? // Gelato webhook subscription ID
 
   // Metadata
-  connectionError    String?   @db.Text // Last connection error if any
-  notes              String?   @db.Text
-  metadata           Json?
+  connectionError String? @db.Text // Last connection error if any
+  notes           String? @db.Text
+  metadata        Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2754,9 +2851,9 @@ model Announcement {
   id String @id @default(cuid())
 
   // Content
-  text String      @db.Text
-  icon String?     @db.VarChar(10) // Emoji or icon code
-  link String?     // Optional CTA link
+  text String           @db.Text
+  icon String?          @db.VarChar(10) // Emoji or icon code
+  link String? // Optional CTA link
   type AnnouncementType @default(INFO)
 
   // Display Settings
@@ -3023,8 +3120,9 @@ model SellerSubscription {
   updatedAt DateTime @updatedAt
 
   // Relations
-  user User             @relation("UserSubscription", fields: [userId], references: [id], onDelete: Cascade)
-  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+  user         User             @relation("UserSubscription", fields: [userId], references: [id], onDelete: Cascade)
+  plan         SubscriptionPlan @relation(fields: [planId], references: [id])
+  creditEvents SubscriptionCreditEvent[]
 
   @@index([userId])
   @@index([planId])
@@ -3230,8 +3328,9 @@ model Delivery {
   dhlEstimatedDelivery DateTime? // From DHL API
 
   // Package Details
-  packageWeight     String? // e.g., "2.5 kg"
-  packageDimensions String? // e.g., "30x20x10 cm"
+  packageWeight      String? // e.g., "2.5 kg"
+  packageWeightGrams Int?    // Canonical package weight in grams. The `packageWeight` String field above is legacy ("2.5 kg" format).
+  packageDimensions  String? // e.g., "30x20x10 cm"
   shippedAt         DateTime?
 
   // Current Location (from DHL API)
@@ -3449,8 +3548,8 @@ model GelatoPodOrder {
   productId   String
 
   // Seller tracking (v2.9.0 - Per-seller Gelato)
-  storeId             String?  // Seller's store ID
-  usedPlatformAccount Boolean  @default(false) // True if platform fallback was used
+  storeId             String? // Seller's store ID
+  usedPlatformAccount Boolean @default(false) // True if platform fallback was used
 
   // Gelato identifiers
   gelatoOrderId        String  @unique
@@ -3475,13 +3574,13 @@ model GelatoPodOrder {
   currency            String @default("USD")
 
   // Timestamps
-  submittedAt  DateTime?
-  producedAt   DateTime?
-  shippedAt    DateTime?
-  deliveredAt  DateTime?
-  cancelledAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  submittedAt DateTime?
+  producedAt  DateTime?
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Relations
   order         Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -3498,15 +3597,15 @@ model GelatoPodOrder {
 }
 
 model GelatoWebhookEvent {
-  id         String  @id @default(cuid())
-  eventId    String  @unique
-  eventType  String
-  podOrderId String?
-  data       Json
-  status     String  @default("PENDING")
+  id           String    @id @default(cuid())
+  eventId      String    @unique
+  eventType    String
+  podOrderId   String?
+  data         Json
+  status       String    @default("PENDING")
   errorMessage String?
   processedAt  DateTime?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
   podOrder GelatoPodOrder? @relation(fields: [podOrderId], references: [id], onDelete: SetNull)
 
@@ -3531,6 +3630,7 @@ model HotDeal {
   description String          @db.Text
   category    HotDealCategory
   urgency     UrgencyLevel    @default(NORMAL)
+  images      Json            @default("[]") // Array of image URLs (jsonb). Default: empty array.
 
   // Contact Info
   contactName      String
@@ -3547,6 +3647,10 @@ model HotDeal {
   paymentStatus   PaymentStatus @default(PENDING)
   paymentIntentId String?       @unique
   paidAmount      Float         @default(1.00)
+
+  // Budget (optional — set by user when creating the deal)
+  budget     Decimal? @db.Decimal(10, 2)
+  budgetType String?  @db.VarChar(20) @map("budget_type")  // 'HOURLY' | 'FIXED' | 'NEGOTIABLE'
 
   // Status & Timestamps
   status      HotDealStatus @default(PENDING)
@@ -3625,4 +3729,718 @@ enum ResponseStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+// ============================================================================
+// EasyPost Shipping Integration
+// ============================================================================
+
+// EasyPost Shipment - stores label purchases and tracking
+model EasyPostShipment {
+  id          String  @id @default(cuid())
+  orderId     String
+  orderItemId String?
+  sellerId    String
+  storeId     String?
+
+  // EasyPost IDs
+  easypostShipmentId  String  @unique
+  easypostRateId      String?
+  easypostTrackerId   String?
+  easypostInsuranceId String?
+
+  // Carrier & Service
+  carrier String // e.g., "USPS", "UPS", "FedEx"
+  service String // e.g., "Priority", "Ground", "Express"
+
+  // Rates
+  rate       Float
+  currency   String @default("USD")
+  retailRate Float?
+  listRate   Float?
+
+  // Label
+  labelUrl    String?
+  labelFormat String  @default("PNG") // PNG, PDF, ZPL, EPL2
+  labelSize   String? // e.g., "4x6"
+
+  // Tracking
+  trackingNumber        String?
+  trackingUrl           String? // Public tracking URL
+  estimatedDeliveryDate DateTime?
+  deliveryDays          Int?
+
+  // Status
+  status       EasyPostShipmentStatus @default(PENDING)
+  refundStatus EasyPostRefundStatus?
+
+  // Addresses (JSON for flexibility)
+  fromAddress Json
+  toAddress   Json
+  parcel      Json
+  customsInfo Json? // For international shipments
+
+  // Insurance
+  insuredAmount Float?
+  insuranceFee  Float?
+
+  // Shipping options used
+  options Json?
+
+  // Fees breakdown
+  postageFee Float?
+
+  // Timestamps
+  purchasedAt DateTime?
+  refundedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  order          Order                   @relation(fields: [orderId], references: [id])
+  trackingEvents EasyPostTrackingEvent[]
+
+  @@index([orderId])
+  @@index([sellerId])
+  @@index([trackingNumber])
+  @@index([easypostShipmentId])
+  @@index([status])
+  @@map("easypost_shipments")
+}
+
+enum EasyPostShipmentStatus {
+  PENDING // Created but not purchased
+  RATED // Rates retrieved
+  PURCHASED // Label purchased
+  IN_TRANSIT // Package picked up
+  OUT_FOR_DELIVERY
+  DELIVERED
+  RETURN_TO_SENDER
+  FAILURE
+  CANCELLED
+  UNKNOWN
+}
+
+enum EasyPostRefundStatus {
+  SUBMITTED
+  REFUNDED
+  REJECTED
+}
+
+// Tracking Events - stores tracking history
+model EasyPostTrackingEvent {
+  id         String @id @default(cuid())
+  shipmentId String
+
+  // Event details
+  status       String // pre_transit, in_transit, out_for_delivery, delivered, etc.
+  statusDetail String? // More specific status
+  message      String // Carrier message
+  description  String?
+
+  // Location
+  city    String?
+  state   String?
+  country String?
+  zip     String?
+
+  // Timing
+  eventDatetime DateTime
+  source        String? // Carrier name
+  carrierCode   String?
+
+  createdAt DateTime @default(now())
+
+  shipment EasyPostShipment @relation(fields: [shipmentId], references: [id])
+
+  @@index([shipmentId])
+  @@index([eventDatetime])
+  @@map("easypost_tracking_events")
+}
+
+// Webhook Event Log - for idempotency
+model EasyPostWebhookLog {
+  id           String    @id @default(cuid())
+  eventId      String    @unique // EasyPost event ID (evt_xxx)
+  eventType    String // tracker.created, tracker.updated, etc.
+  status       String    @default("PENDING") // PENDING, PROCESSED, FAILED
+  payload      Json
+  errorMessage String?
+  processedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([eventId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("easypost_webhook_logs")
+}
+
+// ============================================================================
+// DHL EXPRESS INTEGRATION
+// ============================================================================
+
+model DhlShipment {
+  id       String  @id @default(cuid())
+  orderId  String
+  sellerId String?
+  storeId  String?
+
+  // DHL Shipment IDs
+  shipmentId                 String? // DHL shipment tracking number
+  trackingNumber             String? // Primary tracking number
+  dispatchConfirmationNumber String? // DHL confirmation number
+
+  // Carrier & Service
+  productCode String? // DHL product code (P, U, K, etc.)
+  productName String? // Human-readable product name
+
+  // Label
+  labelUrl     String? // URL to shipping label PDF
+  labelFormat  String? // PDF, PNG, ZPL, EPL
+  labelContent String? @db.Text // Base64 encoded label (if stored)
+  waybillUrl   String? // URL to waybill document
+
+  // Tracking
+  trackingUrl           String? // Public tracking URL
+  estimatedDeliveryDate DateTime?
+  totalTransitDays      Int?
+
+  // Pricing
+  totalPrice Float?
+  currency   String @default("USD")
+
+  // Status
+  status String @default("CREATED") // CREATED, PURCHASED, IN_TRANSIT, DELIVERED, CANCELLED
+
+  // Raw Response (for debugging/auditing)
+  rawResponse Json?
+
+  // Timestamps
+  purchasedAt DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([sellerId])
+  @@index([trackingNumber])
+  @@index([shipmentId])
+  @@index([status])
+  @@map("dhl_shipments")
+}
+
+// ============================================================================
+// REFERRAL SYSTEM (v2.11.0)
+// Dynamic Referral Management Module
+// Supports both BUYER and SELLER referrals with different reward structures
+// ============================================================================
+
+model ReferralCode {
+  id                  String              @id @default(cuid())
+  code                String              @unique // Unique referral code (e.g., "JOHN2024XYZ")
+  userId              String              @unique // One referral code per user
+  usageCount          Int                 @default(0) // How many times this code has been used
+  maxUsage            Int? // Optional: Maximum number of uses (null = unlimited)
+  expiresAt           DateTime? // Optional: Expiration date (null = no expiration)
+  isActive            Boolean             @default(true) // Can be deactivated by admin or user
+  preferredRewardType ReferralRewardType? // User's preferred reward delivery method (null = use platform default)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([code])
+  @@index([userId])
+  @@index([isActive])
+  @@map("referral_codes")
+}
+
+model Referral {
+  id               String             @id @default(cuid())
+  referrerId       String // The user who referred someone (owner of referral code)
+  referredId       String // The user who was referred (used the referral code)
+  referredUserRole UserRole // Role of referred user at time of registration (BUYER or SELLER)
+  rewardAmount     Decimal            @db.Decimal(10, 2) // Reward amount given to referrer
+  rewardCurrency   String             @default("USD") // Reward currency
+  rewardType       ReferralRewardType @default(STORE_CREDIT) // How the reward is delivered
+  status           ReferralStatus     @default(PENDING) // Current status of this referral
+  orderId          String?            @unique // First qualifying order (for BUYER referrals)
+  storeId          String? // Store of first product created (for SELLER referrals)
+  qualifiedAt      DateTime? // When referral qualified (buyer made purchase OR seller created product)
+  paidAt           DateTime? // When reward was granted to referrer
+  metadata         Json? // Additional tracking data
+  createdAt        DateTime           @default(now()) // When referred user registered
+  updatedAt        DateTime           @updatedAt
+
+  couponCode String? // Denormalized coupon code when rewardType = COUPON
+
+  referrer       User                  @relation("ReferrerReferrals", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred       User                  @relation("ReferredReferrals", fields: [referredId], references: [id], onDelete: Cascade)
+  order          Order?                @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  store          Store?                @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  referralCoupon ReferralCoupon?
+  referralPayout ReferralPayoutRecord? // Set when rewardType = FLAT_COMMISSION
+
+  @@index([referrerId])
+  @@index([referredId])
+  @@index([status])
+  @@index([rewardType])
+  @@index([orderId])
+  @@index([storeId])
+  @@index([createdAt])
+  @@map("referrals")
+}
+
+/// Tracks a real cash payout owed to a referrer (rewardType = FLAT_COMMISSION).
+/// Admin reviews pending records and marks them paid after transferring money.
+model ReferralPayoutRecord {
+  id               String               @id @default(cuid())
+  referralId       String               @unique // One payout per referral
+  referrerId       String // The user to be paid
+  amount           Decimal              @db.Decimal(10, 2)
+  currency         String               @default("USD")
+  status           ReferralPayoutStatus @default(PENDING)
+  paymentMethod    String? // "bank_transfer" | "stripe_connect" | "paypal"
+  paymentReference String? // External reference (transfer ID, batch ID, etc.)
+  notes            String?              @db.Text
+  paidAt           DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  referral Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  referrer User     @relation("UserReferralPayouts", fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("referral_payout_records")
+}
+
+enum ReferralRewardType {
+  STORE_CREDIT    // Reward added to User.storeCredit (platform wallet)
+  COUPON          // Single-use ReferralCoupon issued for store credit redemption
+  FLAT_COMMISSION // Real cash payout queued for admin to process
+}
+
+enum ReferralPayoutStatus {
+  PENDING    // Awaiting admin action
+  PROCESSING // Admin initiated payment, awaiting confirmation
+  PAID       // Confirmed paid out to referrer
+  FAILED     // Payment attempt failed
+}
+
+model ReferralCoupon {
+  id         String               @id @default(cuid())
+  referralId String               @unique // One coupon per referral
+  referrerId String               // The user who will redeem the coupon
+  code       String               @unique // e.g. "CPN-ABCD1234"
+  amount     Decimal              @db.Decimal(10, 2)
+  currency   String               @default("USD")
+  status     ReferralCouponStatus @default(ACTIVE)
+  expiresAt  DateTime?
+  redeemedAt DateTime?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  referralRecord Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  referrer       User     @relation("UserReferralCoupons", fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+  @@index([code])
+  @@index([status])
+  @@map("referral_coupons")
+}
+
+enum ReferralCouponStatus {
+  ACTIVE   // Coupon is valid and can be redeemed
+  REDEEMED // Coupon has been redeemed for store credit
+  EXPIRED  // Coupon expired before redemption
+}
+
+enum ReferralStatus {
+  PENDING // Referral created, waiting for qualification (no purchase/product yet)
+  QUALIFIED // Referred user met qualification criteria (made purchase OR created product)
+  PAID // Reward granted to referrer (store credit added)
+  EXPIRED // Referral expired before qualifying (based on expiration settings)
+  CANCELLED // Referral cancelled (user deleted, fraud detected, etc.)
+}
+
+// ============================================================================
+// Subscription Credit Audit Trail (Pre-Launch Fix, April 27, 2026)
+// ============================================================================
+
+enum SubscriptionCreditEventType {
+  RENEWAL_RESET // invoice.paid webhook — subscription renewed, credits reset
+  CANCELLATION  // customer.subscription.deleted webhook — downgraded to FREE
+  CRON_RESET    // monthly cron job — 1st of each month credit refresh
+}
+
+model SubscriptionCreditEvent {
+  id             String @id @default(cuid())
+  subscriptionId String
+  userId         String
+
+  // Event classification
+  eventType SubscriptionCreditEventType
+
+  // Before/after snapshot (creditsAllocated)
+  creditsBefore Int
+  creditsAfter  Int
+
+  // Before/after snapshot (creditsUsed)
+  creditsUsedBefore Int
+  creditsUsedAfter  Int // Always 0 for resets; explicit > implicit
+
+  // Audit context
+  reason   String? // e.g. "Subscription renewed via invoice inv_xxx"
+  metadata Json?   // Stripe invoice ID, period boundaries, plan transitions, etc.
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  subscription SellerSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("subscription_credit_events")
+}
+
+// ---------------------------------------------------------------------------
+// Trusted Devices (v2.12.0 - 2FA enforcement)
+// ---------------------------------------------------------------------------
+model TrustedDevice {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fingerprint String    // Browser/device fingerprint (UA + screen + timezone hash)
+  tokenHash   String    // SHA-256 hash of the raw cookie token
+  userAgent   String?
+  ipAddress   String?
+  lastUsedAt  DateTime  @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+  @@map("trusted_devices")
+}
+
+// =============================================================================
+// AFFILIATE (Awin Publisher integration — Phase C)
+// Manual-curation only in v1. Feed import deferred (see FUTURE_CONSIDERATIONS.md).
+// =============================================================================
+
+enum AffiliateAdvertiserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAUSED
+}
+
+enum AffiliateCommissionStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  PAID
+}
+
+enum TranslationStatus {
+  ORIGINAL           // Human-written in original language
+  MACHINE_TRANSLATED // MT output, not yet reviewed
+  HUMAN_REVIEWED     // A human approved it
+  PUBLISHED          // Approved AND released to public
+}
+
+model AffiliateAdvertiser {
+  id                    String                    @id @default(cuid())
+  awinMerchantId        String                    @unique
+  name                  String
+  websiteUrl            String?
+  logoUrl               String?
+  approvalStatus        AffiliateAdvertiserStatus @default(PENDING)
+  defaultCommissionRate Float?                    // Informational only — Awin owns truth
+  notes                 String?                   @db.Text
+  isActive              Boolean                   @default(true)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  deletedAt             DateTime?
+
+  products       AffiliateProduct[]
+  clickLogs      AffiliateClickLog[]
+  commissions    AffiliateCommission[]
+
+  @@index([approvalStatus])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("affiliate_advertisers")
+}
+
+model AffiliateProduct {
+  id                  String   @id @default(cuid())
+  slug                String   @unique // URL-safe; generated from default-locale title
+  advertiserId        String
+  awinDeepLink        String   @db.Text // The full Awin tracked URL
+  imageUrl            String   @db.Text // Primary image
+  galleryUrls         String[] // Optional additional images
+
+  // Display-only pricing (Awin is source of truth)
+  displayPrice        Float?
+  displayCurrency     String?  @default("EUR")
+  originalPrice       Float?   // For showing discount
+
+  // Categorization (soft links — arrays of IDs from existing Category model)
+  productCategoryIds  String[] // Links to Category (existing model)
+  tags                String[] // Free-form tags
+
+  // State
+  isActive            Boolean  @default(true)
+  isFeatured          Boolean  @default(false) // Homepage feature
+  displayOrder        Int      @default(0)
+
+  // Denormalized analytics (truth lives in AffiliateClickLog + AffiliateCommission)
+  clickCount          Int      @default(0)
+  conversionCount     Int      @default(0)
+
+  // Audit
+  createdById         String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  deletedAt           DateTime?
+
+  // Relations
+  advertiser   AffiliateAdvertiser           @relation(fields: [advertiserId], references: [id])
+  createdBy    User                          @relation("AffiliateProductCreator", fields: [createdById], references: [id])
+  translations AffiliateProductTranslation[]
+  clickLogs    AffiliateClickLog[]
+  commissions  AffiliateCommission[]
+  blogFeatures BlogPostProduct[]
+
+  @@index([advertiserId])
+  @@index([isActive, isFeatured])
+  @@index([isActive, displayOrder])
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("affiliate_products")
+}
+
+model AffiliateProductTranslation {
+  id                 String            @id @default(cuid())
+  affiliateProductId String
+  locale             String            // Locale code: 'en', 'fr', 'es'
+  title              String
+  description        String            @db.Text
+  longDescription    String?           @db.Text
+  seoTitle           String?
+  seoDescription     String?
+  translationStatus  TranslationStatus @default(ORIGINAL)
+  isOriginal         Boolean           @default(false) // Exactly one per product
+  reviewedById       String?
+  reviewedAt         DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  affiliateProduct AffiliateProduct @relation(fields: [affiliateProductId], references: [id], onDelete: Cascade)
+  reviewedBy       User?            @relation("AffiliateProductTranslationReviewer", fields: [reviewedById], references: [id])
+
+  @@unique([affiliateProductId, locale])
+  @@index([translationStatus])
+  @@index([locale])
+  @@map("affiliate_product_translations")
+}
+
+model AffiliateClickLog {
+  id                 String   @id @default(cuid())
+  affiliateProductId String
+  advertiserId       String
+  userId             String?  // Null for anonymous clicks
+  sessionId          String?  // For tying to user session if logged in
+  ipAddress          String?
+  userAgent          String?  @db.Text
+  referrer           String?  @db.Text
+  locale             String?  // Which locale page led to the click
+  createdAt          DateTime @default(now())
+
+  affiliateProduct AffiliateProduct    @relation(fields: [affiliateProductId], references: [id], onDelete: Cascade)
+  advertiser       AffiliateAdvertiser @relation(fields: [advertiserId], references: [id])
+  user             User?               @relation("AffiliateClickUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([affiliateProductId, createdAt])
+  @@index([advertiserId, createdAt])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("affiliate_click_logs")
+}
+
+model AffiliateCommission {
+  id                 String                    @id @default(cuid())
+  affiliateProductId String?                   // May not always be resolvable
+  advertiserId       String?
+  awinTransactionId  String                    @unique
+  awinClickRef       String?                   // Links to AffiliateClickLog when matchable
+  saleAmount         Float
+  commissionAmount   Float
+  currency           String
+  status             AffiliateCommissionStatus
+  transactionDate    DateTime
+  validationDate     DateTime?
+  paymentDate        DateTime?
+  rawPayload         Json                      // Full Awin payload for audit
+  syncedAt           DateTime                  @default(now())
+
+  affiliateProduct AffiliateProduct?    @relation(fields: [affiliateProductId], references: [id])
+  advertiser       AffiliateAdvertiser? @relation(fields: [advertiserId], references: [id])
+
+  @@index([status, transactionDate])
+  @@index([advertiserId, transactionDate])
+  @@index([affiliateProductId])
+  @@map("affiliate_commissions")
+}
+
+// =============================================================================
+// Blog (Phase C.7)
+// =============================================================================
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model BlogPost {
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  status        BlogPostStatus @default(DRAFT)
+  coverImageUrl String?
+  authorId      String
+  tags          String[]       @default([])
+  publishedAt   DateTime?
+  deletedAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  author           User                  @relation("BlogAuthor", fields: [authorId], references: [id])
+  translations     BlogPostTranslation[]
+  featuredProducts BlogPostProduct[]
+  views            BlogPostView[]
+  likes            BlogPostLike[]
+  comments         BlogPostComment[]
+
+  @@index([status, publishedAt])
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("blog_posts")
+}
+
+model BlogPostTranslation {
+  id                String            @id @default(cuid())
+  blogPostId        String
+  locale            String
+  title             String
+  excerpt           String?           @db.Text
+  body              String            @db.Text
+  seoTitle          String?
+  seoDescription    String?
+  translationStatus TranslationStatus @default(ORIGINAL)
+  isOriginal        Boolean           @default(false)
+  reviewedById      String?
+  reviewedAt        DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  blogPost BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  reviewer User?    @relation("BlogTranslationReviewer", fields: [reviewedById], references: [id])
+
+  @@unique([blogPostId, locale])
+  @@index([translationStatus])
+  @@index([locale])
+  @@map("blog_post_translations")
+}
+
+model BlogPostProduct {
+  id                 String   @id @default(cuid())
+  blogPostId         String
+  affiliateProductId String
+  position           Int      @default(0)
+  createdAt          DateTime @default(now())
+
+  blogPost         BlogPost         @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  affiliateProduct AffiliateProduct @relation(fields: [affiliateProductId], references: [id], onDelete: Cascade)
+
+  @@unique([blogPostId, affiliateProductId])
+  @@index([blogPostId])
+  @@index([affiliateProductId])
+  @@map("blog_post_products")
+}
+
+// =============================================================================
+// Blog engagement — views, likes, comments (Phase C.8)
+// =============================================================================
+
+model BlogPostView {
+  id        String    @id @default(cuid())
+  postId    String
+  post      BlogPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?     @relation("BlogPostViews", fields: [userId], references: [id], onDelete: SetNull)
+  ipHash    String?
+  createdAt DateTime  @default(now())
+
+  @@index([postId])
+  @@index([userId])
+  @@map("blog_post_views")
+}
+
+model BlogPostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("BlogPostLikes", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@map("blog_post_likes")
+}
+
+model BlogPostComment {
+  id        String           @id @default(cuid())
+  postId    String
+  post      BlogPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation("BlogPostComments", fields: [userId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    BlogPostComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   BlogPostComment[] @relation("CommentReplies")
+  body      String           @db.Text
+  isDeleted Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([postId])
+  @@index([parentId])
+  @@map("blog_post_comments")
+}
+
+// =============================================================================
+// Digital downloads — log table (used by downloads.service.ts)
+// =============================================================================
+model DownloadLog {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  orderId      String   @map("order_id")
+  productId    String   @map("product_id")
+  ipAddress    String?  @map("ip_address")
+  downloadedAt DateTime @default(now()) @map("downloaded_at")
+
+  @@index([userId, orderId, productId], map: "download_logs_user_id_order_id_product_id_idx")
+  @@index([downloadedAt], map: "download_logs_downloaded_at_idx")
+  @@map("download_logs")
 }

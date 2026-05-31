@@ -8,6 +8,11 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import { SellerShipment, ShipmentStatus, OrderStatus, UserRole, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { SendcloudService } from '../integrations/sendcloud/sendcloud.service';
+import { EasyshipService } from '../integrations/easyship/easyship.service';
+import { DhlShipmentService } from '../integrations/dhl/dhl-shipment.service';
+import { EasyPostShipmentService } from '../integrations/easypost/easypost-shipment.service';
+import { EasyPostService } from '../integrations/easypost/easypost.service';
 
 interface CreateShipmentDto {
   orderId: string;
@@ -20,6 +25,8 @@ interface CreateShipmentDto {
   shippingCost?: number;
   weight?: number;
   notes?: string;
+  // Auto-generation flags
+  autoGenerate?: boolean; // trigger provider API to create label
 }
 
 interface UpdateShipmentDto {
@@ -37,18 +44,27 @@ interface UpdateShipmentDto {
 export class ShipmentsService {
   private readonly logger = new Logger(ShipmentsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly sendcloudService: SendcloudService,
+    private readonly easyshipService: EasyshipService,
+    private readonly dhlShipmentService: DhlShipmentService,
+    private readonly easyPostShipmentService: EasyPostShipmentService,
+    private readonly easyPostService: EasyPostService
+  ) {}
 
   /**
    * Create a new shipment for seller's order items
    */
-  async createShipment(dto: CreateShipmentDto, sellerId: string): Promise<SellerShipment> {
+  async createShipment(
+    dto: CreateShipmentDto,
+    sellerId: string,
+    userRole?: string
+  ): Promise<SellerShipment> {
     // Verify seller owns the store
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
     const store = await this.prisma.store.findFirst({
-      where: {
-        id: dto.storeId,
-        userId: sellerId,
-      },
+      where: isAdmin ? { id: dto.storeId } : { id: dto.storeId, userId: sellerId },
     });
 
     if (!store) {
@@ -88,11 +104,394 @@ export class ShipmentsService {
       throw new BadRequestException(`Items already in shipment: ${duplicateItems}`);
     }
 
+    // ── Auto-generate label via shipping provider API ──────────────────────────
+    // If autoGenerate=true, delegate to the provider that was used at checkout.
+    // The provider's createLabel/createShipment method persists the SellerShipment
+    // itself and returns the tracking info, so we return early here.
+    if (dto.autoGenerate) {
+      const order = await this.prisma.order.findUnique({
+        where: { id: dto.orderId },
+        include: {
+          shippingAddress: true,
+          items: { include: { product: true } },
+          user: true,
+        },
+      });
+
+      if (!order) throw new NotFoundException('Order not found');
+
+      const provider = order.shippingProvider as string | null;
+      const providerData = order.shippingProviderData as any;
+      const addr = order.shippingAddress as any;
+
+      if (provider === 'SENDCLOUD') {
+        const weightGrams = order.items.reduce((sum: number, item: any) => {
+          const kg = item.product?.weight ? Number(item.product.weight) : 0.5;
+          return sum + item.quantity * kg * 1000;
+        }, 0);
+
+        const serviceCode = providerData?.serviceCode || providerData?.rateId || providerData?.id;
+        if (!serviceCode) {
+          throw new BadRequestException(
+            'Cannot auto-generate: SendCloud service code not recorded on this order. Use manual tracking entry instead.'
+          );
+        }
+
+        const result = await this.sendcloudService.createLabel({
+          orderId: dto.orderId,
+          storeId: dto.storeId,
+          serviceCode: String(serviceCode),
+          servicePointId: providerData?.servicePointId
+            ? Number(providerData.servicePointId)
+            : undefined,
+          toAddress: {
+            name:
+              `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim() || 'Customer',
+            address: addr?.address1 || addr?.street || '',
+            city: addr?.city || '',
+            postalCode: addr?.postalCode || addr?.zipCode || '',
+            country: addr?.country || 'BE',
+            // US destinations require state; SendCloud ignores it for EU countries
+            state: addr?.province || addr?.state || undefined,
+            phone: order.user?.phone || addr?.phone || undefined,
+            email: order.user?.email || undefined,
+          },
+          fromAddress: {
+            name: store.name || 'NextPik',
+            address: (store as any).address1 || '',
+            city: (store as any).city || '',
+            postalCode: (store as any).postalCode || '',
+            country: (store as any).country || 'BE',
+            phone: (store as any).phone || undefined,
+            email: (store as any).email || undefined,
+          },
+          items: order.items.map((item: any) => ({
+            description: item.product?.name || 'Item',
+            quantity: item.quantity,
+            weight: item.product?.weight ? Number(item.product.weight) : 0.5,
+            value: Number(item.price || item.product?.price || 0),
+            sku: item.product?.sku || undefined,
+            hsCode: item.product?.hsCode || undefined,
+            originCountry: item.product?.countryOfOrigin || undefined,
+          })),
+          weightGrams: Math.max(10, Math.round(weightGrams)),
+          orderNumber: order.orderNumber,
+        });
+
+        // Add shipment items to the created shipment
+        await this.prisma.shipmentItem.createMany({
+          data: orderItems.map((item) => ({
+            shipmentId: result.sellerShipmentId,
+            orderItemId: item.id,
+            quantity: item.quantity,
+          })),
+          skipDuplicates: true,
+        });
+
+        await this.updateOrderStatusAfterShipmentChange(dto.orderId);
+        return this.prisma.sellerShipment.findUniqueOrThrow({
+          where: { id: result.sellerShipmentId },
+          include: { order: true, store: true },
+        });
+      }
+
+      if (provider === 'EASYSHIP') {
+        const totalWeightKg = order.items.reduce((sum: number, item: any) => {
+          const kg = item.product?.weight ? Number(item.product.weight) : 0.5;
+          return sum + item.quantity * kg;
+        }, 0);
+
+        const courierId =
+          providerData?.serviceCode ||
+          providerData?.courierId ||
+          providerData?.rateId ||
+          providerData?.id;
+        if (!courierId) {
+          throw new BadRequestException(
+            'Cannot auto-generate: EasyShip courier ID not recorded on this order. Use manual tracking entry instead.'
+          );
+        }
+
+        const result = await this.easyshipService.createShipment({
+          orderId: dto.orderId,
+          storeId: dto.storeId,
+          courierId: String(courierId),
+          toAddress: {
+            name:
+              `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim() || 'Customer',
+            street: addr?.address1 || addr?.street || '',
+            city: addr?.city || '',
+            postalCode: addr?.postalCode || addr?.zipCode || '',
+            country: addr?.country || 'US',
+            phone: addr?.phone || undefined,
+          },
+          fromAddress: {
+            name: store.name || 'NextPik',
+            company: store.name,
+            street: store.address1 || '',
+            city: store.city || '',
+            postalCode: store.postalCode || '',
+            country: store.country || 'US',
+            phone: store.phone || undefined,
+            email: store.email || undefined,
+          },
+          items: order.items.map((item: any) => ({
+            description: item.product?.name || 'Item',
+            quantity: item.quantity,
+            value: Number(item.price),
+            weightKg: item.product?.weight ? Number(item.product.weight) : 0.5,
+            hsCode: item.product?.hsCode || undefined,
+            originCountry: item.product?.countryOfOrigin || undefined,
+          })),
+          totalWeightKg: Math.max(0.01, totalWeightKg),
+          orderNumber: order.orderNumber,
+        });
+
+        await this.prisma.shipmentItem.createMany({
+          data: orderItems.map((item) => ({
+            shipmentId: result.sellerShipmentId,
+            orderItemId: item.id,
+            quantity: item.quantity,
+          })),
+          skipDuplicates: true,
+        });
+
+        await this.updateOrderStatusAfterShipmentChange(dto.orderId);
+        return this.prisma.sellerShipment.findUniqueOrThrow({
+          where: { id: result.sellerShipmentId },
+          include: { order: true, store: true },
+        });
+      }
+
+      if (provider === 'EASYPOST') {
+        const totalWeightOz = order.items.reduce((sum: number, item: any) => {
+          const kg = item.product?.weight ? Number(item.product.weight) : 0.5;
+          return sum + item.quantity * kg * 35.274; // kg → oz
+        }, 0);
+
+        // Build fromAddress from store or platform settings
+        // Use platform-configured shipping origin (not store's physical address,
+        // which may be in a country unsupported by the EasyPost account)
+        const originSettings = await this.prisma.systemSetting.findMany({
+          where: {
+            key: {
+              in: [
+                'origin_street1',
+                'origin_city',
+                'origin_state',
+                'origin_postal_code',
+                'origin_country',
+                'origin_company_name',
+              ],
+            },
+          },
+        });
+        const originMap = Object.fromEntries(
+          originSettings.map((s) => [s.key, (s.value as string)?.replace(/^"|"$/g, '')])
+        );
+        const platformFrom = {
+          name: originMap['origin_company_name'] || store.name || 'NextPik',
+          street1: originMap['origin_street1'] || '417 Montgomery St',
+          city: originMap['origin_city'] || 'San Francisco',
+          state: originMap['origin_state'] || 'CA',
+          zip: originMap['origin_postal_code'] || '94104',
+          country: originMap['origin_country'] || 'US',
+          phone: '+14155550100', // Required by DHL and some other carriers
+        };
+
+        const toCountry = addr?.country || 'US';
+        const toAddress = {
+          name: `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim() || 'Customer',
+          street1: addr?.address1 || addr?.street || '',
+          city: addr?.city || '',
+          // EasyPost only uses state codes for US/CA; omit for other countries to avoid 0-rate responses
+          state: ['US', 'CA'].includes(toCountry) ? addr?.province || addr?.state || '' : undefined,
+          zip: addr?.postalCode || addr?.zipCode || '',
+          country: toCountry,
+          phone: addr?.phone || undefined,
+        };
+
+        // Get fresh rates from EasyPost
+        const client = this.easyPostService.getClient();
+        const isInternational = toCountry !== platformFrom.country;
+        const customsInfo = isInternational
+          ? {
+              contents_type: 'merchandise',
+              customs_certify: true,
+              customs_signer: platformFrom.name,
+              eel_pfc: 'NOEEI 30.37(a)',
+              non_delivery_option: 'return',
+              restriction_type: 'none',
+              customs_items: order.items.map((item: any) => ({
+                description: (item.product?.name || 'Item').substring(0, 60),
+                quantity: item.quantity,
+                value: Number(item.price),
+                weight: Math.max(
+                  1,
+                  Math.round(
+                    (item.product?.weight ? Number(item.product.weight) : 0.5) *
+                      item.quantity *
+                      35.274
+                  )
+                ),
+                // EasyPost uses hs_tariff_number (not hs_code) in CustomsItem
+                hs_tariff_number: item.product?.hsCode || '',
+                origin_country:
+                  item.product?.countryOfOrigin?.toUpperCase() || platformFrom.country || 'US',
+              })),
+            }
+          : undefined;
+
+        const epShipment = await client.Shipment.create({
+          to_address: toAddress,
+          from_address: platformFrom,
+          parcel: {
+            length: 20,
+            width: 15,
+            height: 10,
+            weight: Math.max(1, Math.round(totalWeightOz)),
+          },
+          customs_info: customsInfo,
+          options: { label_format: 'PNG', label_size: '4x6' },
+        });
+
+        this.logger.debug(
+          `[EasyPost] Shipment ${epShipment.id} — rates: ${epShipment.rates?.length ?? 0}, messages: ${JSON.stringify(epShipment.messages ?? [])}`
+        );
+
+        if (!epShipment.rates || epShipment.rates.length === 0) {
+          throw new BadRequestException(
+            'EasyPost returned no rates — cannot auto-generate label. Use manual tracking entry instead.'
+          );
+        }
+
+        // Pick cheapest rate; for international prefer DHLExpress over USPS (USPS international
+        // labels often fail without full customs certification in test/sandbox accounts)
+        const preferredCarrier = providerData?.carrier;
+        const sortedRates = [...epShipment.rates].sort(
+          (a: any, b: any) => parseFloat(a.rate) - parseFloat(b.rate)
+        );
+        const preferredRate =
+          (preferredCarrier &&
+            sortedRates.find(
+              (r: any) => r.carrier?.toUpperCase() === preferredCarrier?.toUpperCase()
+            )) ||
+          (isInternational && sortedRates.find((r: any) => r.carrier === 'DHLExpress')) ||
+          sortedRates[0];
+
+        // Purchase label
+        this.logger.debug(
+          `[EasyPost] Buying rate ${preferredRate.id} (${preferredRate.carrier} ${preferredRate.service} $${preferredRate.rate})`
+        );
+        let boughtShipment: any;
+        try {
+          boughtShipment = await client.Shipment.buy(epShipment.id, preferredRate.id);
+        } catch (buyErr: any) {
+          this.logger.error(
+            `[EasyPost] Label purchase failed: ${JSON.stringify(buyErr?.message || buyErr)}`
+          );
+          throw new BadRequestException(
+            `EasyPost label purchase failed (${preferredRate.carrier} ${preferredRate.service}): ${buyErr?.message || 'unknown error'}. Try a different carrier or use manual tracking.`
+          );
+        }
+
+        const trackingNumber: string = boughtShipment.tracking_code || '';
+        const trackingUrl: string | null = boughtShipment.tracker?.public_url || null;
+        const labelUrl: string | null = boughtShipment.postage_label?.label_url || null;
+
+        const shipmentNumber = `EP-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
+        // Persist SellerShipment
+        const sellerShipment = await this.prisma.sellerShipment.create({
+          data: {
+            orderId: dto.orderId,
+            storeId: dto.storeId,
+            shipmentNumber,
+            status: trackingNumber ? ShipmentStatus.LABEL_CREATED : ShipmentStatus.PROCESSING,
+            carrier: preferredRate.carrier || 'USPS',
+            trackingNumber: trackingNumber || null,
+            trackingUrl,
+            shippingCost: preferredRate.rate ? new Decimal(String(preferredRate.rate)) : undefined,
+            metadata: {
+              provider: 'EASYPOST',
+              easypostShipmentId: epShipment.id,
+              rateId: preferredRate.id,
+              service: preferredRate.service,
+              labelUrl,
+            } as any,
+          },
+          include: { order: true, store: true },
+        });
+
+        // Also store in EasyPostShipment table for webhook tracking
+        await this.prisma.easyPostShipment.create({
+          data: {
+            orderId: dto.orderId,
+            sellerId,
+            storeId: dto.storeId,
+            easypostShipmentId: epShipment.id,
+            easypostRateId: preferredRate.id,
+            easypostTrackerId: boughtShipment.tracker?.id || null,
+            carrier: preferredRate.carrier,
+            service: preferredRate.service,
+            rate: parseFloat(String(preferredRate.rate)),
+            currency: preferredRate.currency || 'USD',
+            labelUrl: boughtShipment.postage_label?.label_url || null,
+            labelFormat: 'PNG',
+            trackingNumber: trackingNumber || null,
+            trackingUrl,
+            status: 'PURCHASED',
+            fromAddress: platformFrom as any,
+            toAddress: toAddress as any,
+            parcel: { weight: Math.max(1, Math.round(totalWeightOz)) } as any,
+            purchasedAt: new Date(),
+          },
+        });
+
+        await this.prisma.shipmentItem.createMany({
+          data: orderItems.map((item) => ({
+            shipmentId: sellerShipment.id,
+            orderItemId: item.id,
+            quantity: item.quantity,
+          })),
+          skipDuplicates: true,
+        });
+
+        await this.prisma.order.update({
+          where: { id: dto.orderId },
+          data: {
+            shippingProvider: 'EASYPOST',
+            shippingProviderData: {
+              ...(providerData || {}),
+              shipmentId: sellerShipment.id,
+              trackingNumber,
+              carrier: preferredRate.carrier,
+            } as any,
+          },
+        });
+
+        await this.updateOrderStatusAfterShipmentChange(dto.orderId);
+
+        this.logger.log(
+          `[EasyPost] Auto-generated label — ${preferredRate.carrier} ${preferredRate.service}, tracking ${trackingNumber}`
+        );
+
+        return sellerShipment;
+      }
+
+      // For other providers (DHL, ZONE, MANUAL) fall through to manual creation
+      // but still generate the shipment record (they can paste tracking later)
+    }
+
     // Generate unique shipment number
     const shipmentNumber = `SH-${Date.now()}-${Math.random()
       .toString(36)
       .substring(2, 8)
       .toUpperCase()}`;
+
+    // If the seller provides a tracking number the parcel is already with the carrier.
+    // Start at IN_TRANSIT so the order cascade immediately sets the order to SHIPPED.
+    const initialStatus = dto.trackingNumber ? ShipmentStatus.IN_TRANSIT : ShipmentStatus.PENDING;
 
     // Create shipment with items in a transaction
     const shipment = await this.prisma.$transaction(async (tx) => {
@@ -102,7 +501,7 @@ export class ShipmentsService {
           orderId: dto.orderId,
           storeId: dto.storeId,
           shipmentNumber,
-          status: ShipmentStatus.PENDING,
+          status: initialStatus,
           carrier: dto.carrier,
           trackingNumber: dto.trackingNumber,
           trackingUrl: dto.trackingUrl,
@@ -110,6 +509,7 @@ export class ShipmentsService {
           shippingCost: dto.shippingCost ? new Decimal(dto.shippingCost) : undefined,
           weight: dto.weight ? new Decimal(dto.weight) : undefined,
           notes: dto.notes,
+          shippedAt: dto.trackingNumber ? new Date() : undefined,
         },
         include: {
           order: true,
@@ -130,9 +530,13 @@ export class ShipmentsService {
       await tx.shipmentEvent.create({
         data: {
           shipmentId: newShipment.id,
-          status: ShipmentStatus.PENDING,
-          title: 'Shipment Created',
-          description: `Shipment created by ${store.name}`,
+          status: initialStatus,
+          title:
+            initialStatus === ShipmentStatus.IN_TRANSIT ? 'Marked as Shipped' : 'Shipment Created',
+          description:
+            initialStatus === ShipmentStatus.IN_TRANSIT
+              ? `Order marked as shipped by ${store.name}${dto.trackingNumber ? ` — tracking: ${dto.trackingNumber}` : ''}`
+              : `Shipment created by ${store.name}`,
         },
       });
 
@@ -153,7 +557,8 @@ export class ShipmentsService {
   async updateShipment(
     shipmentId: string,
     dto: UpdateShipmentDto,
-    sellerId: string
+    sellerId: string,
+    userRole?: string
   ): Promise<SellerShipment> {
     // Verify seller owns this shipment
     const shipment = await this.prisma.sellerShipment.findUnique({
@@ -167,7 +572,8 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
-    if (shipment.store.userId !== sellerId) {
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+    if (!isAdmin && shipment.store.userId !== sellerId) {
       throw new ForbiddenException('You do not own this shipment');
     }
 
@@ -496,6 +902,85 @@ export class ShipmentsService {
   }
 
   /**
+   * Mark all non-shipped shipments for an order as IN_TRANSIT.
+   * Called when a seller clicks "Mark as Shipped" on an order that already has
+   * provider-generated shipments (SendCloud, EasyPost, DHL…). Updating the
+   * existing shipments avoids creating a duplicate that would confuse the cascade.
+   */
+  async markOrderShipments(
+    orderId: string,
+    sellerId: string,
+    trackingNumber?: string,
+    trackingUrl?: string
+  ): Promise<{ updated: number }> {
+    // Verify seller owns at least one item in this order (or is admin)
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: { include: { product: { include: { store: true } } } } },
+    });
+
+    if (!order) throw new NotFoundException('Order not found');
+
+    const isSeller = order.items.some((item) => item.product.store?.userId === sellerId);
+    if (!isSeller) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: sellerId },
+        select: { role: true },
+      });
+      if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
+        throw new ForbiddenException('You do not own this order');
+      }
+    }
+
+    const pendingStatuses: ShipmentStatus[] = [
+      ShipmentStatus.PENDING,
+      ShipmentStatus.PROCESSING,
+      ShipmentStatus.LABEL_CREATED,
+      ShipmentStatus.PICKED_UP,
+    ];
+
+    const pendingShipments = await this.prisma.sellerShipment.findMany({
+      where: { orderId, status: { in: pendingStatuses } },
+    });
+
+    if (pendingShipments.length === 0) {
+      throw new BadRequestException('No pending shipments to mark as shipped');
+    }
+
+    const now = new Date();
+    await this.prisma.sellerShipment.updateMany({
+      where: { id: { in: pendingShipments.map((s) => s.id) } },
+      data: {
+        status: ShipmentStatus.IN_TRANSIT,
+        shippedAt: now,
+        ...(trackingNumber ? { trackingNumber } : {}),
+        ...(trackingUrl ? { trackingUrl } : {}),
+      },
+    });
+
+    // Create a shipment event for each updated shipment
+    await this.prisma.shipmentEvent.createMany({
+      data: pendingShipments.map((s) => ({
+        shipmentId: s.id,
+        status: ShipmentStatus.IN_TRANSIT,
+        title: 'Marked as Shipped',
+        description: trackingNumber
+          ? `Seller marked as shipped — tracking: ${trackingNumber}`
+          : 'Seller manually marked as shipped',
+      })),
+    });
+
+    // Cascade order status (should become SHIPPED)
+    await this.updateOrderStatusAfterShipmentChange(orderId);
+
+    this.logger.log(
+      `[markOrderShipments] ${pendingShipments.length} shipment(s) marked IN_TRANSIT for order ${orderId}`
+    );
+
+    return { updated: pendingShipments.length };
+  }
+
+  /**
    * Update order status based on all shipments' statuses
    */
   private async updateOrderStatusAfterShipmentChange(orderId: string): Promise<void> {
@@ -619,6 +1104,9 @@ export class ShipmentsService {
       [OrderStatus.DELIVERED]: 'Delivered',
       [OrderStatus.CANCELLED]: 'Cancelled',
       [OrderStatus.REFUNDED]: 'Refunded',
+      [OrderStatus.READY_FOR_PICKUP]: 'Ready for Pickup',
+      [OrderStatus.PICKED_UP]: 'Picked Up',
+      [OrderStatus.PICKUP_EXPIRED]: 'Pickup Expired',
     };
     return titles[status];
   }
@@ -641,6 +1129,9 @@ export class ShipmentsService {
       [OrderStatus.DELIVERED]: 'All items delivered',
       [OrderStatus.CANCELLED]: 'Order cancelled',
       [OrderStatus.REFUNDED]: 'Order refunded',
+      [OrderStatus.READY_FOR_PICKUP]: 'Your order is ready for pickup',
+      [OrderStatus.PICKED_UP]: 'Order has been picked up',
+      [OrderStatus.PICKUP_EXPIRED]: 'Pickup window has expired',
     };
     return descriptions[status];
   }
@@ -655,6 +1146,9 @@ export class ShipmentsService {
       [OrderStatus.DELIVERED]: 'check-circle',
       [OrderStatus.CANCELLED]: 'x-circle',
       [OrderStatus.REFUNDED]: 'arrow-left',
+      [OrderStatus.READY_FOR_PICKUP]: 'store',
+      [OrderStatus.PICKED_UP]: 'check-circle',
+      [OrderStatus.PICKUP_EXPIRED]: 'clock',
     };
     return icons[status];
   }

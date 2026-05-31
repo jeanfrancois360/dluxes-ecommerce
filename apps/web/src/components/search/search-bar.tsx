@@ -8,6 +8,24 @@ import { SearchAutocompleteItem } from './search-autocomplete-item';
 import { SearchSuggestions } from './search-suggestions';
 import { useTranslations } from 'next-intl';
 
+const RECENT_SEARCHES_KEY = 'luxury_recent_searches';
+const MAX_RECENT = 5;
+
+function saveRecentSearch(query: string) {
+  if (typeof window === 'undefined' || !query.trim()) return;
+  try {
+    const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+    const current: string[] = stored ? JSON.parse(stored) : [];
+    const filtered = current.filter((s) => s.toLowerCase() !== query.toLowerCase());
+    localStorage.setItem(
+      RECENT_SEARCHES_KEY,
+      JSON.stringify([query, ...filtered].slice(0, MAX_RECENT))
+    );
+  } catch {
+    /* noop */
+  }
+}
+
 interface SearchBarProps {
   className?: string;
   placeholder?: string;
@@ -91,7 +109,8 @@ export function SearchBar({
     if (!searchQuery.trim()) return;
 
     const query = searchQuery.trim();
-    router.push(`/search?q=${encodeURIComponent(query)}`);
+    saveRecentSearch(query);
+    router.push(`/products?q=${encodeURIComponent(query)}`);
     setIsFocused(false);
     setSelectedIndex(-1);
 
@@ -112,10 +131,11 @@ export function SearchBar({
 
   const handleSuggestionSelect = (query: string) => {
     setSearchQuery(query);
+    saveRecentSearch(query);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('navigation:start'));
     }
-    router.push(`/search?q=${encodeURIComponent(query)}`);
+    router.push(`/products?q=${encodeURIComponent(query)}`);
     setIsFocused(false);
   };
 
@@ -280,35 +300,65 @@ export function SearchBar({
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
             className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden z-[60] max-h-[70vh] sm:max-h-[500px] overflow-y-auto"
           >
-            {/* Show autocomplete results when searching */}
+            {/* Autocomplete results */}
             {searchQuery.length >= 2 && (
               <>
-                {results.length > 0 ? (
-                  <>
-                    <div className="py-2">
-                      {results.map((product, index) => (
-                        <div
-                          key={product.id}
-                          className={selectedIndex === index ? 'bg-gray-50' : ''}
-                        >
-                          <SearchAutocompleteItem
-                            product={product}
-                            searchQuery={searchQuery}
-                            onClick={() => handleProductSelect(product.slug)}
-                          />
+                {/* Skeleton while loading */}
+                {isLoading && (
+                  <div className="py-2 space-y-1 px-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 py-2 animate-pulse">
+                        <div className="w-14 h-14 rounded-xl bg-gray-100 flex-shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3 bg-gray-100 rounded w-3/4" />
+                          <div className="h-2.5 bg-gray-100 rounded w-1/2" />
+                          <div className="h-2 bg-gray-100 rounded w-1/3" />
                         </div>
+                        <div className="w-12 space-y-1.5 flex-shrink-0">
+                          <div className="h-3 bg-gray-100 rounded" />
+                          <div className="h-2 bg-gray-100 rounded w-2/3 ml-auto" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!isLoading && results.length > 0 && (
+                  <>
+                    {/* Result count header */}
+                    <div className="flex items-center justify-between px-4 pt-3 pb-1.5">
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                        {results.length} result{results.length !== 1 ? 's' : ''} for &ldquo;
+                        {searchQuery}&rdquo;
+                      </span>
+                    </div>
+
+                    <div className="pb-1">
+                      {results.map((product, index) => (
+                        <SearchAutocompleteItem
+                          key={product.id}
+                          product={product}
+                          searchQuery={searchQuery}
+                          isSelected={selectedIndex === index}
+                          onClick={() => handleProductSelect(product.slug)}
+                        />
                       ))}
                     </div>
 
                     {/* View All Results Footer */}
-                    <div className="border-t border-gray-100">
+                    <div className="border-t border-gray-100 bg-gradient-to-r from-[#CBB57B]/5 to-transparent">
                       <button
                         onClick={handleSearch}
-                        className="w-full px-4 py-3 text-sm font-medium text-[#CBB57B] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                        className="w-full px-4 py-3 flex items-center justify-between group transition-colors hover:bg-[#CBB57B]/5"
                       >
-                        <span>View all results for "{searchQuery}"</span>
+                        <span className="text-sm font-medium text-gray-700 group-hover:text-[#CBB57B] transition-colors">
+                          See all results for{' '}
+                          <span className="text-[#CBB57B] font-semibold">
+                            &ldquo;{searchQuery}&rdquo;
+                          </span>
+                        </span>
                         <svg
-                          className="w-4 h-4"
+                          className="w-4 h-4 text-[#CBB57B] group-hover:translate-x-0.5 transition-transform"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -323,25 +373,52 @@ export function SearchBar({
                       </button>
                     </div>
                   </>
-                ) : !isLoading ? (
+                )}
+
+                {!isLoading && results.length === 0 && (
                   <div className="px-4 py-8 text-center">
-                    <svg
-                      className="mx-auto w-12 h-12 text-gray-300 mb-3"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                      <svg
+                        className="w-6 h-6 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900 mb-1">
+                      No results for &ldquo;{searchQuery}&rdquo;
+                    </p>
+                    <p className="text-xs text-gray-400 mb-3">
+                      Try different keywords or browse categories below
+                    </p>
+                    <button
+                      onClick={handleSearch}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-[#CBB57B] hover:text-[#b89f60] transition-colors"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <p className="text-sm font-medium text-gray-900 mb-1">No results found</p>
-                    <p className="text-xs text-gray-500">Try searching for different keywords</p>
+                      Search anyway
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </button>
                   </div>
-                ) : null}
+                )}
               </>
             )}
 

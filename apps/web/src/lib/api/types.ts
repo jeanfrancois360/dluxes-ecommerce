@@ -9,6 +9,7 @@ export interface User {
   role: 'BUYER' | 'SELLER' | 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN' | 'DELIVERY_PARTNER';
   emailVerified: boolean;
   twoFactorEnabled: boolean;
+  emailOTPEnabled?: boolean;
   authProvider?: 'LOCAL' | 'GOOGLE';
   googleId?: string;
   createdAt: string;
@@ -35,6 +36,9 @@ export interface LoginCredentials {
   email: string;
   password: string;
   rememberMe?: boolean;
+  twoFactorCode?: string; // TOTP code from authenticator app
+  emailOTPCode?: string; // Email OTP code (when email-OTP 2FA is enabled)
+  trustDevice?: boolean; // Trust this device for N days (skips 2FA on future logins)
 }
 
 export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN';
@@ -48,6 +52,8 @@ export interface RegisterData {
   // Seller-specific fields
   storeName?: string;
   storeDescription?: string;
+  // Referral System (v2.11.0)
+  referralCode?: string;
 }
 
 // Type aliases for compatibility
@@ -129,6 +135,8 @@ export interface Product {
   // Product type properties
   productType?: ProductType;
   purchaseType?: PurchaseType;
+  fulfillmentType?: string | null;
+  isAvailable?: boolean;
   status?: ProductStatus;
   contactRequired?: boolean;
   isPreOrder?: boolean;
@@ -360,6 +368,26 @@ export interface Order {
   delivery?: Delivery;
   trackingNumber?: string;
   paymentIntentId?: string;
+  // Pickup fields (v2.10.0 - Self-Pickup Feature)
+  isPickup?: boolean;
+  pickupStoreId?: string | null;
+  pickupCode?: string | null;
+  pickupInstructions?: string | null;
+  pickupScheduledAt?: string | null;
+  pickupCompletedAt?: string | null;
+  pickupStore?: {
+    id: string;
+    name: string;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zipCode?: string | null;
+    phone?: string | null;
+    pickupAddress?: string | null;
+    pickupInstructions?: string | null;
+    pickupHours?: Record<string, string> | null;
+    pickupEstimatedMinutes?: number | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -371,7 +399,10 @@ export type OrderStatus =
   | 'shipped'
   | 'delivered'
   | 'cancelled'
-  | 'refunded';
+  | 'refunded'
+  | 'ready_for_pickup' // v2.10.0 - Self-Pickup Feature
+  | 'picked_up' // v2.10.0 - Self-Pickup Feature
+  | 'pickup_expired'; // v2.10.0 - Self-Pickup Feature
 
 export type PaymentStatus = 'pending' | 'processing' | 'paid' | 'failed' | 'refunded';
 
@@ -466,7 +497,7 @@ export interface WishlistItem {
 
 // Search Types
 export interface SearchFilters {
-  query?: string;
+  search?: string;
   category?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -532,4 +563,110 @@ export interface PaginatedResponse<T> {
     limit: number;
     totalPages: number;
   };
+}
+
+// Referral System Types (v2.11.0)
+export type ReferralStatus = 'PENDING' | 'QUALIFIED' | 'PAID' | 'EXPIRED' | 'CANCELLED';
+
+export interface ReferralSummary {
+  referralCode: string | null;
+  codeActive: boolean;
+  usageCount: number;
+  maxUsage: number;
+  storeCredit: number;
+  totalReferrals: number;
+  pending: {
+    count: number;
+    potentialEarnings: number;
+  };
+  qualified: {
+    count: number;
+    amount: number;
+  };
+  paid: {
+    count: number;
+    amount: number;
+  };
+  expired: {
+    count: number;
+  };
+}
+
+export interface ReferralSettings {
+  enabled: boolean;
+  buyerReward: number;
+  sellerReward: number;
+  minOrderValue: number;
+  currency: string;
+  showLeaderboard: boolean;
+}
+
+export interface Referral {
+  id: string;
+  referrerId: string;
+  referredId: string;
+  referredUserRole: UserRole;
+  rewardAmount: number;
+  rewardCurrency: string;
+  status: ReferralStatus;
+  orderId?: string;
+  storeId?: string;
+  qualifiedAt?: string;
+  paidAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  referrer?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  };
+  referred?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: UserRole;
+  };
+  order?: {
+    id: string;
+    orderNumber: string;
+    total: number;
+    createdAt: string;
+  };
+  store?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}
+
+export interface ReferralStatistics {
+  total: {
+    count: number;
+    rewardsPaid: number;
+  };
+  buyers: {
+    count: number;
+    rewardsPaid: number;
+  };
+  sellers: {
+    count: number;
+    rewardsPaid: number;
+  };
+  byStatus: {
+    pending: { count: number; amount: number };
+    qualified: { count: number; amount: number };
+    paid: { count: number; amount: number };
+    expired: { count: number; amount: number };
+    cancelled: { count: number; amount: number };
+  };
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  email: string;
+  totalReferrals: number;
+  code: string | null;
 }

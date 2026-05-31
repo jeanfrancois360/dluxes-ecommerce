@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsArray, ValidateNested, IsNumber, Min, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+  IsNumber,
+  IsBoolean,
+  Min,
+  IsEnum,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -35,8 +44,8 @@ export class CalculateTotalsDto {
   shippingAddressId: string;
 
   @IsOptional()
-  @IsEnum(['standard', 'express', 'overnight'])
-  shippingMethod?: string;
+  @IsString()
+  shippingMethod?: string; // Can be 'standard', 'express', 'overnight', or 'pickup-{storeId}'
 
   @IsOptional()
   @IsString()
@@ -45,6 +54,10 @@ export class CalculateTotalsDto {
   @IsOptional()
   @IsString()
   couponCode?: string; // For future coupon feature
+
+  @IsOptional()
+  @IsBoolean()
+  useStoreCredit?: boolean; // Preview store credit application
 }
 
 /**
@@ -89,7 +102,26 @@ export interface OrderCalculationResponse {
     shipping: number;
     tax: number;
     discount: number;
+    storeCredit?: number;
     total: number;
+  };
+  storeCredit?: {
+    available: number;
+    applied: number;
+  };
+  taxBreakdown?: {
+    sellerBreakdown: Array<{
+      storeId: string;
+      storeName: string;
+      businessType: string | null;
+      taxHandling: 'NEXTPIK_COLLECTS' | 'PRICE_INCLUSIVE';
+      subtotal: number;
+      taxRate: number;
+      taxAmount: number;
+      jurisdiction: string;
+    }>;
+    hasTaxInclusiveItems: boolean;
+    hasTaxableItems: boolean;
   };
   warnings?: string[];
 }

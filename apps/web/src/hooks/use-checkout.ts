@@ -153,7 +153,13 @@ export function useCheckout() {
   // Create order and then payment intent (CORRECT FLOW)
   // 🔒 UPDATED: Uses locked prices and currency from cart
   const createOrderAndPaymentIntent = useCallback(
-    async (cartItems: any[], totals: any, cartCurrency?: string) => {
+    async (
+      cartItems: any[],
+      totals: any,
+      cartCurrency?: string,
+      useStoreCredit?: boolean,
+      couponCode?: string
+    ) => {
       setIsLoading(true);
       setError(null);
 
@@ -167,9 +173,11 @@ export function useCheckout() {
           throw new Error('Please provide a shipping address');
         }
 
-        // Step 1: Validate stock for all items
+        // Step 1: Validate stock for all items (skip POD items — unlimited inventory)
         const stockErrors: string[] = [];
         for (const item of cartItems) {
+          if (item.fulfillmentType === 'GELATO_POD') continue;
+
           try {
             const stockResponse = await axios.get(`${API_URL}/inventory/status/${item.productId}`, {
               params: item.variantId ? { variantId: item.variantId } : undefined,
@@ -179,7 +187,7 @@ export function useCheckout() {
             });
 
             const stockData = stockResponse.data;
-            if (stockData.quantity < item.quantity) {
+            if (!stockData.isUnlimited && stockData.quantity < item.quantity) {
               const available =
                 stockData.quantity > 0
                   ? `Only ${stockData.quantity} ${stockData.quantity === 1 ? 'item' : 'items'} available`
@@ -222,6 +230,8 @@ export function useCheckout() {
             paymentMethod: 'STRIPE',
             notes: '',
             idempotencyKey, // Prevents duplicate orders if called twice
+            useStoreCredit: useStoreCredit || false,
+            ...(couponCode ? { couponCode } : {}),
           },
           {
             headers: {

@@ -55,6 +55,8 @@ export interface GelatoFileSpec {
 export interface GelatoCreateOrderRequest {
   orderReferenceId: string;
   customerReferenceId?: string;
+  /** 'order' (default, live fulfillment) | 'draft' (test — not fulfilled, no company info required) */
+  orderType?: 'order' | 'draft';
   currency: string;
   items: GelatoOrderItem[];
   shippingAddress: GelatoAddress;

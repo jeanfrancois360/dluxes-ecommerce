@@ -7,13 +7,16 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { CartService } from '../cart/cart.service';
 import { SettingsService } from '../settings/settings.service';
 import { PrismaService } from '../database/prisma.service';
+import { ReferralService } from '../referral/referral.service';
 
-// Account lockout configuration
-const MAX_LOGIN_ATTEMPTS = 5;
+// Account lockout configuration — MAX_LOGIN_ATTEMPTS is now read dynamically from SystemSettings
+// This constant is the safe fallback when the setting cannot be read
+const MAX_LOGIN_ATTEMPTS_DEFAULT = 5;
 const LOCKOUT_DURATION_MINUTES = 15;
 
 @Injectable()
@@ -25,7 +28,8 @@ export class AuthService {
     private jwtService: JwtService,
     private cartService: CartService,
     private settingsService: SettingsService,
-    private prisma: PrismaService
+    private prisma: PrismaService,
+    private referralService: ReferralService
   ) {}
 
   /**
@@ -33,6 +37,17 @@ export class AuthService {
    */
   async isAccountLocked(email: string): Promise<{ locked: boolean; remainingMinutes?: number }> {
     const lockoutTime = new Date(Date.now() - LOCKOUT_DURATION_MINUTES * 60 * 1000);
+
+    // Read max_login_attempts from system settings (falls back to default if unavailable)
+    let maxLoginAttempts = MAX_LOGIN_ATTEMPTS_DEFAULT;
+    try {
+      const setting = await this.settingsService.getSetting('max_login_attempts');
+      if (setting?.value && typeof setting.value === 'number') {
+        maxLoginAttempts = setting.value;
+      }
+    } catch {
+      // Use fallback silently
+    }
 
     // Count failed attempts in the lockout window
     const failedAttempts = await this.prisma.loginAttempt.count({
@@ -43,7 +58,7 @@ export class AuthService {
       },
     });
 
-    if (failedAttempts >= MAX_LOGIN_ATTEMPTS) {
+    if (failedAttempts >= maxLoginAttempts) {
       // Find the most recent failed attempt to calculate remaining lockout time
       const lastAttempt = await this.prisma.loginAttempt.findFirst({
         where: {
@@ -110,6 +125,16 @@ export class AuthService {
   async getRemainingAttempts(email: string): Promise<number> {
     const lockoutTime = new Date(Date.now() - LOCKOUT_DURATION_MINUTES * 60 * 1000);
 
+    let maxLoginAttempts = MAX_LOGIN_ATTEMPTS_DEFAULT;
+    try {
+      const setting = await this.settingsService.getSetting('max_login_attempts');
+      if (setting?.value && typeof setting.value === 'number') {
+        maxLoginAttempts = setting.value;
+      }
+    } catch {
+      // Use fallback silently
+    }
+
     const failedAttempts = await this.prisma.loginAttempt.count({
       where: {
         email: email.toLowerCase(),
@@ -118,7 +143,7 @@ export class AuthService {
       },
     });
 
-    return Math.max(0, MAX_LOGIN_ATTEMPTS - failedAttempts);
+    return Math.max(0, maxLoginAttempts - failedAttempts);
   }
 
   async validateUser(
@@ -199,19 +224,17 @@ export class AuthService {
       userAgent?: string;
     }
   ) {
-    const payload = { email: user.email, sub: user.id, role: user.role };
-    const accessToken = this.jwtService.sign(payload);
-
-    // Create user session
+    // Create user session first to get session ID for JWT
     let userSession = null;
     try {
       const parsedDevice = this.parseUserAgent(deviceInfo?.userAgent || '');
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      const sessionToken = randomBytes(32).toString('hex');
 
       userSession = await this.prisma.userSession.create({
         data: {
           userId: user.id,
-          token: accessToken,
+          token: sessionToken,
           deviceName: parsedDevice.deviceName,
           deviceType: parsedDevice.deviceType,
           browser: parsedDevice.browser,
@@ -226,6 +249,10 @@ export class AuthService {
     } catch (sessionError) {
       this.logger.error(`Error creating session for user ${user.id}:`, sessionError);
     }
+
+    const payload: Record<string, unknown> = { email: user.email, sub: user.id, role: user.role };
+    if (userSession?.id) payload.session_id = userSession.id;
+    const accessToken = this.jwtService.sign(payload);
 
     // Merge guest cart with user cart if sessionId provided
     let cart = null;
@@ -322,7 +349,10 @@ export class AuthService {
     firstName: string;
     lastName: string;
     role?: any;
+    storeName?: string;
+    storeDescription?: string;
     sessionId?: string;
+    referralCode?: string;
     deviceInfo?: {
       ipAddress?: string;
       userAgent?: string;
@@ -340,6 +370,39 @@ export class AuthService {
       lastName: data.lastName,
       role: data.role || ('BUYER' as any),
     });
+
+    // Auto-create a PENDING store for users who register directly as SELLER
+    if (data.role === 'SELLER' && data.storeName) {
+      const slug = data.storeName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .slice(0, 50);
+      await this.prisma.store.create({
+        data: {
+          userId: user.id,
+          name: data.storeName,
+          slug: `${slug}-${Date.now()}`,
+          description: data.storeDescription,
+          email: data.email,
+          status: 'PENDING',
+        },
+      });
+    }
+
+    // Referral System (v2.11.0) - NON-BLOCKING
+    // Auto-generate referral code for new user
+    this.referralService.generateReferralCode(user.id).catch((err) => {
+      this.logger.warn(`Failed to generate referral code for user ${user.id}: ${err.message}`);
+    });
+
+    // Apply referral code if provided
+    if (data.referralCode) {
+      this.referralService.applyReferralCode(data.referralCode, user.id).catch((err) => {
+        this.logger.warn(`Failed to apply referral code ${data.referralCode}: ${err.message}`);
+      });
+    }
 
     return this.login(user, data.sessionId, data.deviceInfo);
   }

@@ -8,21 +8,34 @@ export interface OTPInputProps {
   length?: number;
   value: string;
   onChange: (value: string) => void;
+  onComplete?: (value: string) => void;
   error?: string;
+  disabled?: boolean;
 }
 
 export const OTPInput: React.FC<OTPInputProps> = ({
   length = 6,
   value,
   onChange,
+  onComplete,
   error,
+  disabled = false,
 }) => {
   const inputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
+  const completeFiredRef = React.useRef(false);
 
   React.useEffect(() => {
     // Auto-focus first input on mount
     inputRefs.current[0]?.focus();
   }, []);
+
+  // Reset the "already fired" guard whenever value loses completeness
+  React.useEffect(() => {
+    const filled = value.split('').filter((c) => c !== '').length;
+    if (filled < length) {
+      completeFiredRef.current = false;
+    }
+  }, [value, length]);
 
   const handleChange = (index: number, digitValue: string) => {
     // Only allow single digit
@@ -44,6 +57,18 @@ export const OTPInput: React.FC<OTPInputProps> = ({
     // Auto-advance to next input
     if (digitValue && index < length - 1) {
       inputRefs.current[index + 1]?.focus();
+    }
+
+    // Fire onComplete when the last digit is entered
+    if (
+      onComplete &&
+      digitValue &&
+      newValueString.length === length &&
+      newValueString.split('').every((c) => /\d/.test(c)) &&
+      !completeFiredRef.current
+    ) {
+      completeFiredRef.current = true;
+      onComplete(newValueString);
     }
   };
 
@@ -67,13 +92,19 @@ export const OTPInput: React.FC<OTPInputProps> = ({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text/plain').slice(0, length);
+    const pastedData = e.clipboardData.getData('text/plain').replace(/\D/g, '').slice(0, length);
 
-    if (/^\d+$/.test(pastedData)) {
-      onChange(pastedData);
-      // Focus the next empty input or last input
-      const nextIndex = Math.min(pastedData.length, length - 1);
-      inputRefs.current[nextIndex]?.focus();
+    if (!pastedData) return;
+
+    onChange(pastedData);
+    // Focus the next empty input or last input
+    const nextIndex = Math.min(pastedData.length, length - 1);
+    inputRefs.current[nextIndex]?.focus();
+
+    // Fire onComplete if paste fills all boxes
+    if (onComplete && pastedData.length === length && !completeFiredRef.current) {
+      completeFiredRef.current = true;
+      onComplete(pastedData);
     }
   };
 
@@ -83,7 +114,9 @@ export const OTPInput: React.FC<OTPInputProps> = ({
         {Array.from({ length }).map((_, index) => (
           <motion.input
             key={index}
-            ref={(el) => { inputRefs.current[index] = el; }}
+            ref={(el) => {
+              inputRefs.current[index] = el;
+            }}
             type="text"
             inputMode="numeric"
             maxLength={1}
@@ -91,6 +124,7 @@ export const OTPInput: React.FC<OTPInputProps> = ({
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
             onPaste={handlePaste}
+            disabled={disabled}
             className={cn(
               // Base styles
               'w-14 h-16 text-center text-2xl font-semibold',
@@ -107,7 +141,10 @@ export const OTPInput: React.FC<OTPInputProps> = ({
               error && 'border-error-DEFAULT focus:border-error-DEFAULT',
 
               // Filled styles
-              value[index] && 'border-gold bg-accent-50'
+              value[index] && 'border-gold bg-accent-50',
+
+              // Disabled styles
+              disabled && 'opacity-60 cursor-not-allowed'
             )}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}

@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { useParams, useRouter, notFound } from 'next/navigation';
 import { useProduct, useRelatedProducts } from '@/hooks/use-product';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
+import { getProductAvailability, type ProductAvailability } from '@/lib/utils/product-availability';
 import { getColorHex } from '@/lib/utils/color-mapping';
 import { Price } from '@/components/price';
 import { isLightColor, calculateDiscountPercentage } from '@nextpik/ui/lib/utils/color-utils';
@@ -181,11 +182,19 @@ export default function ProductDetailPage() {
     return Array.from(new Map(sizes.map((s) => [s.value, s])).values());
   }, [product]);
 
-  // Calculate stock status
-  const stockStatus = useMemo(() => {
-    if (!product) return { inStock: false, quantity: 0, showQuantity: false };
+  // Calculate stock status — handles ALL product types via central utility
+  const stockStatus = useMemo((): ProductAvailability => {
+    if (!product) {
+      return {
+        inStock: false,
+        status: 'out_of_stock',
+        quantity: 0,
+        showQuantity: false,
+        isLowStock: false,
+      };
+    }
 
-    // If variants exist and one is selected, check variant stock
+    // If a variant is selected, check variant-level stock first
     const selectedVar = product.variants?.find(
       (v) =>
         (!selectedVariant.color || v.attributes.color?.toLowerCase() === selectedVariant.color) &&
@@ -193,20 +202,24 @@ export default function ProductDetailPage() {
     );
 
     if (selectedVar) {
-      return {
-        inStock: selectedVar.isAvailable && selectedVar.inventory > 0,
-        quantity: selectedVar.inventory,
-        showQuantity: true,
-      };
+      return getProductAvailability({
+        productType: product.productType,
+        fulfillmentType: product.fulfillmentType,
+        inventory: selectedVar.inventory,
+        isAvailable: selectedVar.isAvailable,
+        trackInventory: product.trackInventory,
+        lowStockThreshold: product.lowStockThreshold,
+      });
     }
 
-    // Use inventory field from database
-    const inventoryCount = product.inventory ?? 0;
-    return {
-      inStock: inventoryCount > 0,
-      quantity: inventoryCount,
-      showQuantity: inventoryCount > 0,
-    };
+    return getProductAvailability({
+      productType: product.productType,
+      fulfillmentType: product.fulfillmentType,
+      inventory: product.inventory,
+      isAvailable: product.isAvailable,
+      trackInventory: product.trackInventory,
+      lowStockThreshold: product.lowStockThreshold,
+    });
   }, [product, selectedVariant]);
 
   // Get product images - use variant-specific image if available
@@ -904,7 +917,10 @@ export default function ProductDetailPage() {
                         </span>
                         <button
                           onClick={() => setQuantity(quantity + 1)}
-                          disabled={quantity >= stockStatus.quantity}
+                          disabled={
+                            stockStatus.showQuantity &&
+                            quantity >= (stockStatus.quantity ?? Infinity)
+                          }
                           className="px-3 sm:px-4 py-2 hover:bg-neutral-100 transition-colors disabled:opacity-50"
                         >
                           <svg
@@ -925,20 +941,40 @@ export default function ProductDetailPage() {
 
                       {/* Stock Status */}
                       <div className="flex items-center gap-2">
-                        {stockStatus.inStock ? (
+                        {stockStatus.status === 'out_of_stock' ||
+                        stockStatus.status === 'unavailable' ? (
                           <>
-                            <div className="w-2 h-2 bg-green-500 rounded-full" />
-                            <span className="text-sm text-green-600 font-medium">
-                              {stockStatus.showQuantity
-                                ? t('inStockQuantity', { quantity: stockStatus.quantity })
-                                : t('inStock')}
+                            <div className="w-2 h-2 bg-red-500 rounded-full" />
+                            <span className="text-sm text-red-600 font-medium">
+                              {stockStatus.status === 'unavailable'
+                                ? t('unavailable') || 'Unavailable'
+                                : t('outOfStock')}
+                            </span>
+                          </>
+                        ) : stockStatus.status === 'always_available' ? (
+                          <>
+                            <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                            <span className="text-sm text-blue-600 font-medium">
+                              {product.fulfillmentType === 'GELATO_POD'
+                                ? t('madeToOrder') || 'Made to Order'
+                                : t('instantDownload') || 'Instant Download'}
+                            </span>
+                          </>
+                        ) : stockStatus.status === 'low_stock' ? (
+                          <>
+                            <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                            <span className="text-sm text-amber-600 font-medium">
+                              {t('onlyLeft', { quantity: stockStatus.quantity ?? 0 }) ||
+                                `Only ${stockStatus.quantity} left`}
                             </span>
                           </>
                         ) : (
                           <>
-                            <div className="w-2 h-2 bg-red-500 rounded-full" />
-                            <span className="text-sm text-red-600 font-medium">
-                              {t('outOfStock')}
+                            <div className="w-2 h-2 bg-green-500 rounded-full" />
+                            <span className="text-sm text-green-600 font-medium">
+                              {stockStatus.showQuantity
+                                ? t('inStockQuantity', { quantity: stockStatus.quantity ?? 0 })
+                                : t('inStock')}
                             </span>
                           </>
                         )}
@@ -1123,11 +1159,24 @@ export default function ProductDetailPage() {
                         <div className="flex justify-between py-2 border-b border-neutral-200">
                           <dt className="text-neutral-600">{t('availability')}</dt>
                           <dd className="font-medium">
-                            {stockStatus.inStock
-                              ? stockStatus.showQuantity
-                                ? t('inStockQuantity', { quantity: stockStatus.quantity })
-                                : t('inStock')
-                              : t('outOfStock')}
+                            {stockStatus.status === 'out_of_stock'
+                              ? t('outOfStock')
+                              : stockStatus.status === 'unavailable'
+                                ? t('unavailable') || 'Unavailable'
+                                : stockStatus.status === 'always_available'
+                                  ? product.fulfillmentType === 'GELATO_POD'
+                                    ? t('madeToOrder') || 'Made to Order'
+                                    : t('instantDownload') || 'Instant Download'
+                                  : stockStatus.status === 'available'
+                                    ? t('available') || 'Available'
+                                    : stockStatus.status === 'low_stock'
+                                      ? t('onlyLeft', { quantity: stockStatus.quantity ?? 0 }) ||
+                                        `Only ${stockStatus.quantity} left`
+                                      : stockStatus.showQuantity
+                                        ? t('inStockQuantity', {
+                                            quantity: stockStatus.quantity ?? 0,
+                                          })
+                                        : t('inStock')}
                           </dd>
                         </div>
                       </dl>
@@ -1179,6 +1228,10 @@ export default function ProductDetailPage() {
           outOfStock: tModal('outOfStock'),
           onlyLeftInStock: tModal('onlyLeftInStock', { count: 0 }),
           addToCart: tModal('addToCart'),
+          sendInquiry: tModal('sendInquiry'),
+          alwaysAvailable: tModal('alwaysAvailable'),
+          serviceAvailable: tModal('serviceAvailable'),
+          unavailable: tModal('unavailable'),
           viewFullDetails: tModal('viewFullDetails'),
           reviews: tModal('reviews'),
           review: tModal('review'),

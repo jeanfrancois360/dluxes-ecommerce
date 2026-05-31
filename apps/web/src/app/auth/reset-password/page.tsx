@@ -101,7 +101,7 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthLayout title={t('title')} subtitle={t('subtitle')}>
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {/* Info Message */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-accent-50 rounded-full mb-4">

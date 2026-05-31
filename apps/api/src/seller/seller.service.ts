@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -11,8 +12,10 @@ import { SubscriptionService } from '../subscription/subscription.service';
 import { CreditsService } from '../credits/credits.service';
 import { DhlTrackingService } from '../integrations/dhl/dhl-tracking.service';
 import { SettingsService } from '../settings/settings.service';
+import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 import { CurrencyService } from '../currency/currency.service';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
+import { ReferralService } from '../referral/referral.service';
 import { ProductStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
@@ -28,7 +31,8 @@ export class SellerService {
     private dhlTrackingService: DhlTrackingService,
     private settingsService: SettingsService,
     private currencyService: CurrencyService,
-    private gelatoOrdersService: GelatoOrdersService
+    private gelatoOrdersService: GelatoOrdersService,
+    @Optional() private referralService?: ReferralService
   ) {}
 
   /**
@@ -472,6 +476,9 @@ export class SellerService {
     // Calculate seller's gross total (before commission)
     const sellerTotal = sellerSubtotal.plus(sellerShipping).plus(sellerTax).minus(sellerDiscount);
 
+    // TODO(settings-refactor): commission and payment fee reads below are owned by the
+    // commission/payment domain and were intentionally excluded from the SETTING_DEFAULTS
+    // refactor pass. Refactor these when the commission module is reviewed.
     // Get commission rate from settings (default 10%)
     let commissionRate = new Decimal(10); // Default 10%
     try {
@@ -854,7 +861,7 @@ export class SellerService {
     }
 
     // Validate allowed status transitions
-    const allowedStatuses = ['PROCESSING', 'SHIPPED', 'DELIVERED'];
+    const allowedStatuses = ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
     if (!allowedStatuses.includes(status)) {
       throw new ForbiddenException(
         `Sellers can only update order status to: ${allowedStatuses.join(', ')}`
@@ -1387,8 +1394,17 @@ export class SellerService {
         this.logger.log(`Saved ${images.length} images for product ${product.id}`);
       } catch (error) {
         this.logger.error(`Failed to save images for product ${product.id}:`, error);
-        // Don't fail the entire operation if images fail
+        // Images failed — product was created but without images.
+        // Return the product with a warning flag so the frontend can notify the user.
+        return { ...product, _imagesSaveFailed: true };
       }
+    }
+
+    // Trigger seller referral qualification (NON-BLOCKING: first product creation)
+    if (this.referralService) {
+      this.referralService.checkSellerQualification(store.id).catch((err) => {
+        this.logger.warn(`Referral seller qualification check failed: ${err.message}`);
+      });
     }
 
     return product;
@@ -2027,6 +2043,9 @@ export class SellerService {
       country?: string;
       productCategories?: string[];
       monthlyVolume?: string;
+      applicationDocumentUrl?: string;
+      applicationDocumentType?: string;
+      applicationNotes?: string;
     }
   ) {
     // Check if user already has a store
@@ -2036,13 +2055,11 @@ export class SellerService {
 
     if (existingStore) {
       if (existingStore.status === 'ACTIVE') {
-        throw new ForbiddenException('You are already a seller');
+        throw new ForbiddenException('You are already an active seller');
       }
-      if (existingStore.status === 'PENDING') {
-        throw new ForbiddenException('Your seller application is already pending review');
-      }
-      if (existingStore.status === 'REJECTED') {
-        // Allow re-application by updating the existing store
+
+      // Allow update for PENDING (KYC completion) and REJECTED (re-application)
+      if (existingStore.status === 'PENDING' || existingStore.status === 'REJECTED') {
         const updatedStore = await this.prisma.store.update({
           where: { userId },
           data: {
@@ -2061,6 +2078,25 @@ export class SellerService {
           },
         });
 
+        // KYC fields are not yet in the generated Prisma client types — update via raw SQL
+        const categories = data.productCategories || [];
+        const arrayLiteral =
+          '{' +
+          categories
+            .map((c) => '"' + String(c).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')
+            .join(',') +
+          '}';
+        await this.prisma.$executeRaw`
+          UPDATE stores
+          SET "businessType" = ${data.businessType || null},
+              "intendedCategories" = ${arrayLiteral}::text[],
+              "monthlyVolume" = ${data.monthlyVolume || null},
+              "applicationDocumentUrl" = ${data.applicationDocumentUrl || null},
+              "applicationDocumentType" = ${data.applicationDocumentType || null},
+              "applicationNotes" = ${data.applicationNotes || null}
+          WHERE "userId" = ${userId}
+        `;
+
         // Get user info for email
         const user = await this.prisma.user.findUnique({
           where: { id: userId },
@@ -2075,10 +2111,12 @@ export class SellerService {
           });
         }
 
+        const isPending = existingStore.status === 'PENDING';
         return {
           success: true,
-          message:
-            'Seller application resubmitted successfully. We will review your application and get back to you soon.',
+          message: isPending
+            ? 'Application details updated successfully. Our team will review your complete application.'
+            : 'Seller application resubmitted successfully. We will review your application and get back to you soon.',
           store: {
             id: updatedStore.id,
             name: updatedStore.name,
@@ -2097,9 +2135,13 @@ export class SellerService {
       throw new NotFoundException('User not found');
     }
 
-    if (user.role !== 'BUYER' && user.role !== 'CUSTOMER') {
+    // Allow SELLER role users who registered directly (store auto-created, KYC still needed)
+    if (user.role !== 'BUYER' && user.role !== 'CUSTOMER' && user.role !== 'SELLER') {
       throw new ForbiddenException('Only buyers can apply to become sellers');
     }
+
+    // If they are SELLER with no store yet, fall through to create one below
+    // (Edge case: SELLER role but store creation failed at registration)
 
     // Create the store with PENDING status
     const store = await this.prisma.store.create({
@@ -2120,6 +2162,34 @@ export class SellerService {
         status: 'PENDING',
       },
     });
+
+    // KYC fields are not yet in the generated Prisma client types — set via raw SQL
+    const newCategories = data.productCategories || [];
+    const newArrayLiteral =
+      '{' +
+      newCategories
+        .map((c) => '"' + String(c).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')
+        .join(',') +
+      '}';
+    await this.prisma.$executeRaw`
+      UPDATE stores
+      SET "businessType" = ${data.businessType || null},
+          "intendedCategories" = ${newArrayLiteral}::text[],
+          "monthlyVolume" = ${data.monthlyVolume || null},
+          "applicationDocumentUrl" = ${data.applicationDocumentUrl || null},
+          "applicationDocumentType" = ${data.applicationDocumentType || null},
+          "applicationNotes" = ${data.applicationNotes || null}
+      WHERE id = ${store.id}
+    `;
+
+    // Promote user role to SELLER so they can access seller-only features
+    // (store remains PENDING — role controls portal access, status controls selling)
+    if (user.role === 'BUYER' || user.role === 'CUSTOMER') {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: 'SELLER' },
+      });
+    }
 
     // Send application submitted email
     await this.emailService.sendSellerApplicationSubmitted(user.email, {
@@ -2152,6 +2222,9 @@ export class SellerService {
         status: true,
         createdAt: true,
         verifiedAt: true,
+        taxId: true,
+        phone: true,
+        country: true,
       },
     });
 
@@ -2165,10 +2238,14 @@ export class SellerService {
       };
     }
 
+    // KYC is considered complete if the store has at minimum a phone and country
+    const kycComplete = !!(store.phone && store.country);
+
     return {
       success: true,
       data: {
         hasApplication: true,
+        kycComplete,
         store: {
           id: store.id,
           name: store.name,
@@ -2342,6 +2419,290 @@ export class SellerService {
   }
 
   /**
+   * Mark pickup order as ready for customer collection
+   * Self-Pickup Feature (v2.10.0)
+   */
+  async markReadyForPickup(userId: string, orderId: string, notes?: string) {
+    // Get seller's store
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Find order and verify it's a pickup order for this seller
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                storeId: true,
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Verify it's a pickup order
+    if (!order.isPickup) {
+      throw new BadRequestException('This is not a pickup order');
+    }
+
+    // Verify it's for this seller's store
+    if (order.pickupStoreId !== store.id) {
+      throw new ForbiddenException('This pickup order is not for your store');
+    }
+
+    // Validate order status
+    if (order.status === 'CANCELLED' || order.status === 'REFUNDED') {
+      throw new BadRequestException('Cannot mark cancelled or refunded order as ready');
+    }
+
+    if (order.status === 'READY_FOR_PICKUP') {
+      throw new BadRequestException('Order is already marked as ready for pickup');
+    }
+
+    if (order.status === 'PICKED_UP') {
+      throw new BadRequestException('Order has already been picked up');
+    }
+
+    try {
+      // Update order status to READY_FOR_PICKUP
+      const updatedOrder = await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'READY_FOR_PICKUP',
+        },
+      });
+
+      // Create timeline entry
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId: order.id,
+          status: 'READY_FOR_PICKUP',
+          title: 'Order Ready for Pickup',
+          description:
+            notes ||
+            `Your order is ready to be picked up from ${store.name}. Please bring your pickup code: ${order.pickupCode}`,
+          icon: 'bell',
+        },
+      });
+
+      // Send email notification to customer
+      try {
+        if (order.user.email) {
+          const pickupStore = await this.prisma.store.findUnique({
+            where: { id: store.id },
+            select: {
+              name: true,
+              pickupAddress: true,
+              address1: true,
+              city: true,
+              province: true,
+              postalCode: true,
+              pickupInstructions: true,
+            },
+          });
+
+          if (pickupStore) {
+            const storeAddress =
+              pickupStore.pickupAddress ||
+              `${pickupStore.address1 || ''}, ${pickupStore.city || ''}, ${pickupStore.province || ''} ${pickupStore.postalCode || ''}`.trim();
+
+            const customerName =
+              `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer';
+
+            await this.emailService.sendPickupReadyNotification(order.user.email, {
+              orderNumber: order.orderNumber,
+              customerName,
+              pickupCode: order.pickupCode || '',
+              storeName: pickupStore.name,
+              storeAddress,
+              pickupInstructions: pickupStore.pickupInstructions || undefined,
+              orderId: order.id,
+            });
+
+            this.logger.log(`Pickup ready email sent to ${order.user.email}`);
+          }
+        }
+      } catch (emailError) {
+        this.logger.error('Error sending pickup ready email:', emailError);
+        // Don't fail the operation if email fails
+      }
+
+      this.logger.log(
+        `Order ${orderId} marked as ready for pickup at store ${store.name} (${store.id})`
+      );
+
+      return {
+        success: true,
+        message: 'Order marked as ready for pickup',
+        data: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          status: updatedOrder.status,
+          pickupCode: order.pickupCode,
+          storeName: store.name,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to mark order ${orderId} as ready for pickup`, error.message);
+      throw new BadRequestException('Failed to mark order as ready for pickup');
+    }
+  }
+
+  /**
+   * Confirm customer picked up their order
+   * Self-Pickup Feature (v2.10.0)
+   */
+  async confirmPickup(userId: string, orderId: string, pickupCode: string, notes?: string) {
+    // Get seller's store
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: { id: true, name: true },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Find order and verify it's a pickup order for this seller
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                storeId: true,
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    // Verify it's a pickup order
+    if (!order.isPickup) {
+      throw new BadRequestException('This is not a pickup order');
+    }
+
+    // Verify it's for this seller's store
+    if (order.pickupStoreId !== store.id) {
+      throw new ForbiddenException('This pickup order is not for your store');
+    }
+
+    // Verify pickup code matches
+    if (order.pickupCode !== pickupCode) {
+      this.logger.warn(
+        `Invalid pickup code attempted for order ${orderId}: expected ${order.pickupCode}, got ${pickupCode}`
+      );
+      throw new BadRequestException('Invalid pickup code');
+    }
+
+    // Validate order status
+    if (order.status === 'CANCELLED' || order.status === 'REFUNDED') {
+      throw new BadRequestException('Cannot confirm pickup for cancelled or refunded order');
+    }
+
+    if (order.status === 'PICKED_UP') {
+      throw new BadRequestException('Order has already been picked up');
+    }
+
+    try {
+      // Update order status to PICKED_UP
+      const updatedOrder = await this.prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'PICKED_UP',
+          pickupCompletedAt: new Date(),
+        },
+      });
+
+      // Create timeline entry
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId: order.id,
+          status: 'PICKED_UP',
+          title: 'Order Picked Up',
+          description:
+            notes ||
+            `Order successfully picked up from ${store.name}. Thank you for your purchase!`,
+          icon: 'check-circle',
+        },
+      });
+
+      // Send confirmation email to customer
+      try {
+        if (order.user.email) {
+          const customerName =
+            `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer';
+
+          await this.emailService.sendPickupConfirmedNotification(order.user.email, {
+            orderNumber: order.orderNumber,
+            customerName,
+            storeName: store.name,
+            pickedUpAt: updatedOrder.pickupCompletedAt || new Date(),
+            orderId: order.id,
+          });
+
+          this.logger.log(`Pickup confirmed email sent to ${order.user.email}`);
+        }
+      } catch (emailError) {
+        this.logger.error('Error sending pickup confirmed email:', emailError);
+        // Don't fail the operation if email fails
+      }
+
+      this.logger.log(
+        `Order ${orderId} confirmed as picked up from store ${store.name} (${store.id})`
+      );
+
+      return {
+        success: true,
+        message: 'Pickup confirmed successfully',
+        data: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          status: updatedOrder.status,
+          pickedUpAt: updatedOrder.pickupCompletedAt,
+          storeName: store.name,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to confirm pickup for order ${orderId}`, error.message);
+      throw new BadRequestException('Failed to confirm pickup');
+    }
+  }
+
+  /**
    * Get human-readable label for product type
    */
   private getProductTypeLabel(productType: string): string {
@@ -2411,7 +2772,11 @@ export class SellerService {
     try {
       // Get SKU prefix from settings
       const prefixSetting = await this.settingsService.getSetting('inventory.sku_prefix');
-      const prefix = String(prefixSetting.value || 'NEXTPIK').toUpperCase();
+      const prefix = (
+        prefixSetting?.value != null
+          ? String(prefixSetting.value)
+          : SETTING_DEFAULTS.inventory.sku_prefix
+      ).toUpperCase();
 
       // Get current date components
       const now = new Date();
@@ -2455,5 +2820,111 @@ export class SellerService {
       const timestamp = Date.now().toString(36).toUpperCase();
       return `NEXTPIK-${timestamp}`;
     }
+  }
+
+  // ============================================================================
+  // Self-Pickup Settings (v2.10.0)
+  // ============================================================================
+
+  /**
+   * Get seller's pickup configuration
+   */
+  async getPickupSettings(userId: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+      select: {
+        pickupEnabled: true,
+        pickupAddress: true,
+        pickupInstructions: true,
+        pickupHours: true,
+        pickupRadius: true,
+        pickupFee: true,
+        pickupEstimatedMinutes: true,
+        // Include store address as fallback
+        address1: true,
+        address2: true,
+        city: true,
+        province: true,
+        country: true,
+        postalCode: true,
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    return {
+      success: true,
+      data: {
+        pickupEnabled: store.pickupEnabled,
+        pickupAddress: store.pickupAddress || null,
+        pickupInstructions: store.pickupInstructions || null,
+        pickupHours: store.pickupHours || null,
+        pickupRadius: store.pickupRadius || 25, // Default 25km
+        pickupFee: store.pickupFee ? Number(store.pickupFee) : 0,
+        pickupEstimatedMinutes: store.pickupEstimatedMinutes || 30,
+        // Store address (for reference)
+        storeAddress: {
+          address1: store.address1,
+          address2: store.address2,
+          city: store.city,
+          province: store.province,
+          country: store.country,
+          postalCode: store.postalCode,
+        },
+      },
+    };
+  }
+
+  /**
+   * Update seller's pickup configuration
+   */
+  async updatePickupSettings(userId: string, data: any) {
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // Update pickup settings
+    const updated = await this.prisma.store.update({
+      where: { userId },
+      data: {
+        pickupEnabled: data.pickupEnabled,
+        pickupAddress: data.pickupAddress || null,
+        pickupInstructions: data.pickupInstructions || null,
+        pickupHours: data.pickupHours || null,
+        pickupRadius: data.pickupRadius || null,
+        pickupFee: data.pickupFee !== undefined ? data.pickupFee : null,
+        pickupEstimatedMinutes: data.pickupEstimatedMinutes || null,
+      },
+      select: {
+        id: true,
+        name: true,
+        pickupEnabled: true,
+        pickupAddress: true,
+        pickupInstructions: true,
+        pickupHours: true,
+        pickupRadius: true,
+        pickupFee: true,
+        pickupEstimatedMinutes: true,
+      },
+    });
+
+    this.logger.log(
+      `Pickup settings updated for store ${store.name} (${store.id}): ${data.pickupEnabled ? 'ENABLED' : 'DISABLED'}`
+    );
+
+    return {
+      success: true,
+      message: `Pickup settings ${data.pickupEnabled ? 'enabled' : 'disabled'} successfully`,
+      data: {
+        ...updated,
+        pickupFee: updated.pickupFee ? Number(updated.pickupFee) : 0,
+      },
+    };
   }
 }

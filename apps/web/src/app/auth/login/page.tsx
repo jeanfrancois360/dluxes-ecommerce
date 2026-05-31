@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import AuthLayout from '@/components/auth/auth-layout';
 import { FloatingInput, OTPInput, Button } from '@nextpik/ui';
 import { initiateGoogleAuth } from '@/lib/api/auth';
-import { api } from '@/lib/api/client';
+import { TokenManager, api } from '@/lib/api/client';
+import { storeUser, setTokenExpiry, getAuthRedirectUrl } from '@/lib/auth-utils';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { showAuthError } from '@/lib/utils/auth-errors';
 import { useTranslations } from 'next-intl';
@@ -16,15 +17,27 @@ import { useTranslations } from 'next-intl';
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isLoading: authLoading, error: authError, clearError } = useAuth();
+  const {
+    login,
+    isLoading: authLoading,
+    error: authError,
+    clearError,
+    isAuthenticated,
+    isInitialized,
+    user,
+  } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [show2FA, setShow2FA] = useState(false);
+  const [otpMode, setOtpMode] = useState<'totp' | 'emailOtp'>('totp');
   const [otpValue, setOtpValue] = useState('');
+  const [trustDevice, setTrustDevice] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [submitting2FA, setSubmitting2FA] = useState(false);
+  const [googlePendingToken, setGooglePendingToken] = useState('');
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
   const [resending, setResending] = useState(false);
@@ -69,6 +82,20 @@ export default function LoginPage() {
     }
   }, []);
 
+  // If auth has initialised and the user is already authenticated, redirect them
+  // away. This handles the case where the middleware bounced them here because
+  // the cookie was absent (expired / cleared) but localStorage held a valid JWT.
+  // initializeAuth() re-syncs the cookie, so we can safely forward them.
+  useEffect(() => {
+    if (!isInitialized || !isAuthenticated) return;
+    const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect');
+    if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+      router.replace(returnUrl);
+    } else {
+      router.replace(getAuthRedirectUrl(user));
+    }
+  }, [isInitialized, isAuthenticated, router, searchParams, user]);
+
   // Show error from OAuth redirect (e.g. ?error=Account+suspended)
   useEffect(() => {
     const oauthError = searchParams.get('error');
@@ -78,13 +105,92 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
+  // Detect Google OAuth 2FA pending token — show inline TOTP step
+  useEffect(() => {
+    const pendingToken = searchParams.get('pendingToken');
+    if (pendingToken) {
+      setGooglePendingToken(pendingToken);
+      setShow2FA(true);
+    }
+  }, [searchParams]);
+
   const error = authError || localError;
-  const isLoading = authLoading;
+  const isLoading = authLoading || submitting2FA;
+
+  // Called automatically when all OTP boxes are filled
+  const handleComplete2FA = async (code: string) => {
+    if (isLoading) return;
+    setLocalError('');
+    clearError();
+    setSubmitting2FA(true);
+    try {
+      // Google OAuth 2FA path
+      if (googlePendingToken) {
+        const result: any = await api.post('/auth/google/verify-2fa', {
+          pendingToken: googlePendingToken,
+          code,
+        });
+        TokenManager.setAccessToken(result.accessToken);
+        if (result.sessionToken) {
+          localStorage.setItem('nextpik_session_token', result.sessionToken);
+        }
+        storeUser(result.user);
+        setTokenExpiry(7 * 24 * 60 * 60);
+        router.replace(getAuthRedirectUrl(result.user));
+        return;
+      }
+      // Standard email/password 2FA path
+      const credentials: Parameters<typeof login>[0] = { email, password, rememberMe };
+      if (otpMode === 'emailOtp') {
+        credentials.emailOTPCode = code;
+      } else {
+        credentials.twoFactorCode = code;
+        credentials.trustDevice = trustDevice;
+      }
+      await login(credentials);
+      // Respect returnUrl after 2FA success
+      const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect');
+      if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+        router.replace(returnUrl);
+      }
+    } catch (err: any) {
+      setOtpValue('');
+      showAuthError(err, router);
+    } finally {
+      setSubmitting2FA(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError('');
     clearError();
+
+    // Google OAuth 2FA step — verify TOTP against the pending token from the URL
+    if (googlePendingToken && show2FA) {
+      if (!otpValue || otpValue.length < 6) {
+        toast.error(t('enter2FACode'));
+        return;
+      }
+      try {
+        const result: any = await api.post('/auth/google/verify-2fa', {
+          pendingToken: googlePendingToken,
+          code: otpValue,
+        });
+        TokenManager.setAccessToken(result.accessToken);
+        if (result.sessionToken) {
+          localStorage.setItem('nextpik_session_token', result.sessionToken);
+        }
+        storeUser(result.user);
+        setTokenExpiry(7 * 24 * 60 * 60); // 7 days
+        router.replace(getAuthRedirectUrl(result.user));
+      } catch (err: any) {
+        setLocalError(
+          err?.response?.data?.message || err?.message || 'Verification failed. Try again.'
+        );
+      }
+      return;
+    }
 
     // Validate fields
     if (!email || !password) {
@@ -98,11 +204,30 @@ export default function LoginPage() {
     }
 
     try {
-      const result = await login({ email, password });
+      const credentials: Parameters<typeof login>[0] = { email, password, rememberMe };
+      if (show2FA && otpValue) {
+        if (otpMode === 'emailOtp') {
+          credentials.emailOTPCode = otpValue;
+        } else {
+          credentials.twoFactorCode = otpValue;
+          credentials.trustDevice = trustDevice;
+        }
+      }
 
-      // Check if 2FA is required
+      const result = await login(credentials);
+
+      // Check if email OTP 2FA is required
+      if (result && (result as any).requiresEmailOTP) {
+        setShow2FA(true);
+        setOtpMode('emailOtp');
+        toast.info('Check your email for a 6-digit verification code.');
+        return;
+      }
+
+      // Check if TOTP 2FA is required
       if (result && (result as any).requires2FA) {
         setShow2FA(true);
+        setOtpMode('totp');
         toast.info(t('enter2FACode'));
         return;
       }
@@ -113,7 +238,13 @@ export default function LoginPage() {
           duration: 2000,
         });
       }
-      // Auth context handles redirect
+      // Respect returnUrl if the user was redirected here from a protected page
+      const returnUrl = searchParams.get('returnUrl') || searchParams.get('redirect');
+      if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+        router.replace(returnUrl);
+        return;
+      }
+      // Auth context handles default role-based redirect
     } catch (err: any) {
       // Check if error is email verification required
       const errorData = err?.response?.data;
@@ -129,6 +260,10 @@ export default function LoginPage() {
             onClick: () => handleResendVerification(errorData.email || email),
           },
         });
+      } else if (errorData?.code === '2FA_GRACE_EXPIRED' && errorData?.setupToken) {
+        // Grace period expired — redirect to security page with a short-lived setup token
+        sessionStorage.setItem('2fa_setup_token', errorData.setupToken);
+        router.push(errorData.setupUrl || '/seller/security');
       } else {
         // Use enhanced auth error handler with actionable links
         showAuthError(err, router);
@@ -158,7 +293,7 @@ export default function LoginPage() {
 
   return (
     <AuthLayout title={t('title')} subtitle={t('subtitle')}>
-      <form onSubmit={handleLogin} className="space-y-6">
+      <form onSubmit={handleLogin} className="space-y-4 sm:space-y-6">
         {!show2FA ? (
           <>
             {/* Email & Password Fields */}
@@ -188,7 +323,6 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
-                error={error}
                 icon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -233,6 +367,24 @@ export default function LoginPage() {
                 )}
               </button>
             </div>
+
+            {/* Auth error — shown as standalone alert, not attached to any field */}
+            {error && (
+              <div className="flex items-start gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                <svg
+                  className="w-4 h-4 flex-shrink-0 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
 
             {/* Remember Me & Forgot Password - Mobile-friendly touch targets */}
             <div className="flex items-center justify-between gap-2">
@@ -333,53 +485,235 @@ export default function LoginPage() {
             animate={{ opacity: 1, x: 0 }}
             className="space-y-6"
           >
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gold/10 rounded-full mb-4">
-                <svg
-                  className="w-8 h-8 text-gold"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                  />
-                </svg>
+            {/* Header — morphs between idle and verifying states */}
+            <div className="text-center mb-2">
+              <div className="relative inline-flex items-center justify-center w-16 h-16 mb-4">
+                {/* Background ring */}
+                <AnimatePresence mode="wait">
+                  {submitting2FA ? (
+                    <motion.div
+                      key="spinner-ring"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="absolute inset-0 rounded-full border-2 border-gold/20"
+                    />
+                  ) : (
+                    <motion.div
+                      key="idle-ring"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 rounded-full bg-gold/10"
+                    />
+                  )}
+                </AnimatePresence>
+
+                {/* Spinning arc when verifying */}
+                {submitting2FA && (
+                  <svg
+                    className="absolute inset-0 w-16 h-16 -rotate-90 animate-spin"
+                    viewBox="0 0 64 64"
+                    fill="none"
+                  >
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="#CBB57B"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeDasharray="44 132"
+                    />
+                  </svg>
+                )}
+
+                {/* Icon */}
+                <AnimatePresence mode="wait">
+                  {submitting2FA ? (
+                    <motion.svg
+                      key="check"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      className="w-7 h-7 text-gold relative z-10"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                      />
+                    </motion.svg>
+                  ) : (
+                    <motion.svg
+                      key="lock"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      className="w-8 h-8 text-gold relative z-10"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </motion.svg>
+                  )}
+                </AnimatePresence>
               </div>
-              <h3 className="text-lg font-semibold text-black mb-2">
-                {t('enterVerificationCode')}
-              </h3>
-              <p className="text-sm text-neutral-600">{t('enter6DigitCode')}</p>
+
+              <AnimatePresence mode="wait">
+                {submitting2FA ? (
+                  <motion.div
+                    key="verifying-text"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                  >
+                    <h3 className="text-lg font-semibold text-black mb-1">Verifying…</h3>
+                    <p className="text-sm text-neutral-500">Checking your code, please wait.</p>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="idle-text"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                  >
+                    <h3 className="text-lg font-semibold text-black mb-1">
+                      {t('enterVerificationCode')}
+                    </h3>
+                    <p className="text-sm text-neutral-500">
+                      {otpMode === 'emailOtp'
+                        ? 'Enter the 6-digit code sent to your email address.'
+                        : t('enter6DigitCode')}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-            <OTPInput length={6} value={otpValue} onChange={setOtpValue} />
+            {/* OTP boxes ↔ bouncing dots loader */}
+            <AnimatePresence mode="wait">
+              {submitting2FA ? (
+                <motion.div
+                  key="loader"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex items-center justify-center gap-2 py-10"
+                >
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-2.5 h-2.5 rounded-full bg-gold"
+                      animate={{ y: [0, -10, 0], opacity: [0.4, 1, 0.4] }}
+                      transition={{
+                        delay: i * 0.1,
+                        duration: 0.7,
+                        repeat: Infinity,
+                        ease: 'easeInOut',
+                      }}
+                    />
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="otp"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <OTPInput
+                    length={6}
+                    value={otpValue}
+                    onChange={setOtpValue}
+                    onComplete={handleComplete2FA}
+                    disabled={isLoading}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            <Button
-              type="submit"
-              className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition-all duration-300 font-semibold"
-            >
-              {t('verifySignIn')}
-            </Button>
+            {/* Error */}
+            <AnimatePresence>
+              {error && !submitting2FA && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="flex items-start gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"
+                >
+                  <svg
+                    className="w-4 h-4 flex-shrink-0 mt-0.5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span>{error}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            <div className="text-center space-y-2">
-              <button
-                type="button"
-                onClick={() => setShow2FA(false)}
-                className="w-full text-center text-sm text-neutral-600 hover:text-gold transition-colors"
+            {/* Trust this device — only applicable for TOTP, not email OTP */}
+            {otpMode === 'totp' && !submitting2FA && (
+              <motion.label
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-2 cursor-pointer select-none"
               >
-                {t('useDifferentMethod')}
-              </button>
+                <input
+                  type="checkbox"
+                  checked={trustDevice}
+                  onChange={(e) => setTrustDevice(e.target.checked)}
+                  className="w-4 h-4 rounded border-neutral-300 text-gold accent-gold"
+                />
+                <span className="text-sm text-neutral-600">Trust this device for 30 days</span>
+              </motion.label>
+            )}
 
-              <Link
-                href="/auth/2fa-email"
-                className="block text-sm text-gold hover:text-accent-700 transition-colors"
-              >
-                {t('cantAccessAuthenticator')}
-              </Link>
-            </div>
+            {/* Back links — hidden while verifying */}
+            {!submitting2FA && (
+              <div className="text-center space-y-2 pt-1">
+                {!googlePendingToken && (
+                  <button
+                    type="button"
+                    onClick={() => setShow2FA(false)}
+                    className="w-full text-center text-sm text-neutral-500 hover:text-gold transition-colors"
+                  >
+                    {t('useDifferentMethod')}
+                  </button>
+                )}
+                {googlePendingToken && (
+                  <button
+                    type="button"
+                    onClick={() => router.push('/auth/login')}
+                    className="w-full text-center text-sm text-neutral-500 hover:text-gold transition-colors"
+                  >
+                    Use a different account
+                  </button>
+                )}
+                <Link
+                  href="/auth/2fa-email"
+                  className="block text-sm text-gold hover:text-accent-700 transition-colors"
+                >
+                  {t('cantAccessAuthenticator')}
+                </Link>
+              </div>
+            )}
           </motion.div>
         )}
 

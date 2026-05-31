@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { transformToQuickViewProducts } from '@/lib/utils/product-transform';
+import { isProductAvailableForCart } from '@/lib/utils/product-availability';
 
 export default function WishlistPage() {
   const router = useRouter();
@@ -71,13 +72,17 @@ export default function WishlistPage() {
     }
   };
 
+  // Use canonical availability logic for all product types
+  const isAvailableForCart = (item: (typeof items)[number]) =>
+    isProductAvailableForCart({
+      productType: item.product.productType,
+      fulfillmentType: item.product.fulfillmentType,
+      inventory: item.product.inventory,
+      isAvailable: item.product.isAvailable,
+    });
+
   const handleMoveAllToCart = async () => {
-    // Handle both isAvailable and inventory fields
-    const inStockItems = (items || []).filter(
-      (item) =>
-        item.product.isAvailable !== false &&
-        (item.product.inventory === undefined || item.product.inventory > 0)
-    );
+    const inStockItems = (items || []).filter(isAvailableForCart);
 
     if (inStockItems.length === 0) {
       toast.error(t('noItemsAvailable'));
@@ -223,13 +228,7 @@ export default function WishlistPage() {
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleMoveAllToCart}
-                  disabled={
-                    (items || []).filter(
-                      (i) =>
-                        i.product.isAvailable !== false &&
-                        (i.product.inventory === undefined || i.product.inventory > 0)
-                    ).length === 0
-                  }
+                  disabled={(items || []).filter(isAvailableForCart).length === 0}
                   className="px-6 py-3 bg-gold text-black font-semibold rounded-lg hover:bg-gold/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-gold/20"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -423,6 +422,10 @@ export default function WishlistPage() {
           outOfStock: tModal('outOfStock'),
           onlyLeftInStock: tModal('onlyLeftInStock', { count: 0 }),
           addToCart: tModal('addToCart'),
+          sendInquiry: tModal('sendInquiry'),
+          alwaysAvailable: tModal('alwaysAvailable'),
+          serviceAvailable: tModal('serviceAvailable'),
+          unavailable: tModal('unavailable'),
           viewFullDetails: tModal('viewFullDetails'),
           reviews: tModal('reviews'),
           review: tModal('review'),

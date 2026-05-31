@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { PrismaService } from '../database/prisma.service';
 import { GelatoService } from './gelato.service';
 import { SettingsService } from '../settings/settings.service';
+import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 import {
   GelatoPodStatus,
   FulfillmentType,
@@ -158,8 +159,14 @@ export class GelatoOrdersService {
       throw new BadRequestException('Order item already submitted to Gelato');
     }
 
-    const defaultShipping = await this.settingsService.getSetting('gelato_default_shipping_method');
-    const selectedShipping = shippingMethod || defaultShipping?.value || 'standard';
+    const defaultShipping = await this.settingsService
+      .getSetting('gelato_default_shipping_method')
+      .catch(() => ({ value: null }));
+    const selectedShipping =
+      shippingMethod ||
+      (defaultShipping?.value != null
+        ? String(defaultShipping.value)
+        : SETTING_DEFAULTS.gelato.default_shipping_method);
 
     const order = orderItem.order;
     const addr = order.shippingAddress;
@@ -375,6 +382,23 @@ export class GelatoOrdersService {
     for (const item of podItems) {
       try {
         const storeId = item.product.storeId;
+
+        // Idempotency: skip items already submitted to Gelato
+        const existingPodOrder = await this.prisma.gelatoPodOrder.findFirst({
+          where: { orderItemId: item.id },
+        });
+        if (existingPodOrder) {
+          this.logger.log(
+            `⏭️ Item ${item.id} (${item.product.name}) already submitted to Gelato (podOrderId: ${existingPodOrder.id}), skipping`
+          );
+          results.push({
+            itemId: item.id,
+            productName: item.product.name,
+            status: 'submitted',
+            podOrderId: existingPodOrder.id,
+          });
+          continue;
+        }
 
         // Check if seller has Gelato configured (should have been validated earlier, but double-check)
         const sellerGelatoSettings = await this.prisma.sellerGelatoSettings.findUnique({
@@ -746,6 +770,20 @@ export class GelatoOrdersService {
     const podOrder = await this.prisma.gelatoPodOrder.findUnique({ where: { id: podOrderId } });
     if (!podOrder) return;
 
+    // Only mark the main order SHIPPED once all POD sub-orders have shipped
+    const allPodOrders = await this.prisma.gelatoPodOrder.findMany({
+      where: { orderId: podOrder.orderId },
+    });
+    const allShipped = allPodOrders.every(
+      (o) => o.status === GelatoPodStatus.SHIPPED || o.status === GelatoPodStatus.DELIVERED
+    );
+    if (!allShipped) {
+      this.logger.log(
+        `POD order ${podOrderId} shipped but ${allPodOrders.filter((o) => o.status !== GelatoPodStatus.SHIPPED && o.status !== GelatoPodStatus.DELIVERED).length} sub-order(s) not yet shipped — deferring main order status update`
+      );
+      return;
+    }
+
     await this.prisma.order.update({
       where: { id: podOrder.orderId },
       data: { status: OrderStatus.SHIPPED },
@@ -794,8 +832,13 @@ export class GelatoOrdersService {
 
       // Trigger escrow release for POD-fulfilled orders
       try {
-        const holdDaysSetting = await this.settingsService.getSetting('escrow_default_hold_days');
-        const holdDays = Number(holdDaysSetting?.value) || 7;
+        const holdDaysSetting = await this.settingsService
+          .getSetting('escrow_default_hold_days')
+          .catch(() => ({ value: null }));
+        const holdDays =
+          holdDaysSetting?.value != null
+            ? Number(holdDaysSetting.value)
+            : SETTING_DEFAULTS.escrow.default_hold_days;
         const autoReleaseAt = new Date();
         autoReleaseAt.setDate(autoReleaseAt.getDate() + holdDays);
 

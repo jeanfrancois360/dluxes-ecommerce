@@ -3,7 +3,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
 import { EnhancedAuthService } from './enhanced-auth.service';
 import { EnhancedAuthController } from './enhanced-auth.controller';
 import { EmailOTPService } from './email-otp.service';
@@ -14,7 +13,9 @@ import { PasswordService } from './services/password.service';
 import { EmailVerificationService } from './services/email-verification.service';
 import { MagicLinkService } from './services/magic-link.service';
 import { TwoFactorService } from './services/two-factor.service';
+import { TrustedDeviceService } from './services/trusted-device.service';
 import { AuthCoreService } from './services/auth-core.service';
+import { TwoFactorEnforcementGuard } from './guards/two-factor-enforcement.guard';
 // Strategies
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
@@ -25,6 +26,7 @@ import { EmailModule } from '../email/email.module';
 import { DatabaseModule } from '../database/database.module';
 import { CartModule } from '../cart/cart.module';
 import { SettingsModule } from '../settings/settings.module';
+import { ReferralModule } from '../referral/referral.module';
 
 @Module({
   imports: [
@@ -33,6 +35,7 @@ import { SettingsModule } from '../settings/settings.module';
     DatabaseModule,
     CartModule,
     SettingsModule,
+    ReferralModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -54,7 +57,9 @@ import { SettingsModule } from '../settings/settings.module';
     EmailVerificationService,
     MagicLinkService,
     TwoFactorService,
+    TrustedDeviceService,
     AuthCoreService,
+    TwoFactorEnforcementGuard,
     // Existing specialized services
     EmailOTPService,
     GoogleOAuthService,
@@ -73,9 +78,11 @@ import { SettingsModule } from '../settings/settings.module';
     EmailVerificationService,
     MagicLinkService,
     TwoFactorService,
+    TrustedDeviceService,
     AuthCoreService,
     EmailOTPService,
     GoogleOAuthService,
+    JwtModule,
   ],
 })
 export class AuthModule {}

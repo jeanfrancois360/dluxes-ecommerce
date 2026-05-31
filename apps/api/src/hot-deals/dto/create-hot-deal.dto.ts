@@ -6,6 +6,11 @@ import {
   MaxLength,
   IsEmail,
   Matches,
+  IsArray,
+  IsUrl,
+  ArrayMaxSize,
+  IsNumber,
+  Min,
 } from 'class-validator';
 
 // Define enums locally until Prisma client is regenerated
@@ -40,6 +45,12 @@ export enum HotDealStatus {
   EXPIRED = 'EXPIRED',
   FULFILLED = 'FULFILLED',
   CANCELLED = 'CANCELLED',
+}
+
+export enum BudgetType {
+  HOURLY = 'HOURLY',
+  FIXED = 'FIXED',
+  NEGOTIABLE = 'NEGOTIABLE',
 }
 
 export class CreateHotDealDto {
@@ -92,4 +103,19 @@ export class CreateHotDealDto {
   @IsOptional()
   @Matches(/^\d{5}(-\d{4})?$/, { message: 'Invalid ZIP code format' })
   zipCode?: string;
+
+  @IsArray()
+  @IsOptional()
+  @ArrayMaxSize(3, { message: 'You can upload a maximum of 3 images' })
+  @IsUrl({}, { each: true, message: 'Each image must be a valid URL' })
+  images?: string[];
+
+  @IsNumber()
+  @IsOptional()
+  @Min(0.01, { message: 'Budget must be greater than $0' })
+  budget?: number;
+
+  @IsEnum(BudgetType, { message: 'Invalid budget type' })
+  @IsOptional()
+  budgetType?: BudgetType;
 }

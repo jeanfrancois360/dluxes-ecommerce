@@ -1,6 +1,16 @@
 /**
- * Shipping Configuration and Utilities
- * Centralized shipping method configuration and calculation logic
+ * Shipping Configuration and Utilities — UI FALLBACK ONLY
+ *
+ * @deprecated
+ * These hardcoded methods ($10/$25/$50, USPS/FedEx) are a **last-resort UI fallback**
+ * displayed only when the backend's `/orders/calculate-totals` has not yet returned any
+ * shipping options (e.g., during the first render before address entry).
+ *
+ * Live shipping rates come from the 8-tier backend cascade:
+ *   SendCloud → EasyPost → EasyShip → DHL → Zones → Manual
+ *
+ * Do NOT add new logic here.  Improvements to shipping pricing belong in:
+ *   apps/api/src/orders/shipping-tax.service.ts
  */
 
 export interface ShippingMethod {
@@ -56,10 +66,7 @@ export const SHIPPING_METHODS: Record<string, Omit<ShippingMethod, 'icon'>> = {
 /**
  * Calculate shipping cost with free shipping logic
  */
-export function calculateShippingCost(
-  methodId: string,
-  subtotal: number
-): ShippingCalculation {
+export function calculateShippingCost(methodId: string, subtotal: number): ShippingCalculation {
   const method = SHIPPING_METHODS[methodId];
 
   if (!method) {
@@ -140,9 +147,7 @@ export function getAvailableShippingMethods(): Array<Omit<ShippingMethod, 'icon'
 /**
  * Get shipping method by ID
  */
-export function getShippingMethodById(
-  methodId: string
-): Omit<ShippingMethod, 'icon'> | null {
+export function getShippingMethodById(methodId: string): Omit<ShippingMethod, 'icon'> | null {
   return SHIPPING_METHODS[methodId] || null;
 }
 

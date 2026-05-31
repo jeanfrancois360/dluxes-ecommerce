@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { use, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { OrderStatusBadge } from '@/components/orders/order-status-badge';
 import { OrderTimeline } from '@/components/orders/order-timeline';
 import { DeliveryTrackingSection } from '@/components/orders/delivery-tracking-section';
+import { PickupTrackingCard } from '@/components/orders/pickup-tracking-card';
 import { ShipmentCard } from '@/components/seller/shipment-card';
 import { ReviewForm } from '@/components/reviews/review-form';
 import { useOrder, useCancelOrder } from '@/hooks/use-orders';
@@ -113,7 +115,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
         credentials: 'include',
       });
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (data.success) {
         const { results } = data.data;
@@ -219,7 +221,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
         });
 
         if (response.ok) {
-          const data = await response.json();
+          const data = await safeJson(response);
           setShipments(data.data || []);
         }
       } catch (error) {
@@ -443,8 +445,27 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
             </motion.div>
           )}
 
-          {/* Legacy Delivery Tracking (if available and no shipments) */}
-          {order.delivery && shipments.length === 0 && (
+          {/* Pickup Tracking (v2.10.0) */}
+          {order.isPickup && order.pickupCode && (
+            <PickupTrackingCard
+              pickupCode={order.pickupCode}
+              orderStatus={order.status}
+              storeName={order.pickupStore?.name || 'Store'}
+              storeAddress={order.pickupStore?.address}
+              storeCity={order.pickupStore?.city}
+              storeState={order.pickupStore?.state}
+              storeZipCode={order.pickupStore?.zipCode}
+              storePhone={order.pickupStore?.phone}
+              pickupAddress={order.pickupStore?.pickupAddress}
+              pickupInstructions={order.pickupInstructions}
+              pickupHours={order.pickupStore?.pickupHours}
+              pickupScheduledAt={order.pickupScheduledAt}
+              pickupCompletedAt={order.pickupCompletedAt}
+            />
+          )}
+
+          {/* Legacy Delivery Tracking (if available and no shipments, not pickup) */}
+          {order.delivery && shipments.length === 0 && !order.isPickup && (
             <DeliveryTrackingSection delivery={order.delivery} />
           )}
 

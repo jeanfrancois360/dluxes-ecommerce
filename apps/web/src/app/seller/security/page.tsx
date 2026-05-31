@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 /**
  * Seller Security Settings Page
@@ -17,6 +18,7 @@ import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/seller/page-header';
 import { useAuth } from '@/hooks/use-auth';
+import { TokenManager } from '@/lib/api/client';
 import { toast, standardToasts } from '@/lib/utils/toast';
 
 interface UserSession {
@@ -58,6 +60,7 @@ export default function SellerSecurityPage() {
     isAuthenticated,
     isInitialized,
     changePassword,
+    refreshUser,
   } = useAuth();
   const t = useTranslations('account.security');
 
@@ -80,6 +83,31 @@ export default function SellerSecurityPage() {
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [isRevokingAll, setIsRevokingAll] = useState(false);
 
+  // TOTP 2FA setup state
+  const [twoFaStep, setTwoFaStep] = useState<'idle' | 'setup' | 'done'>('idle');
+  const [twoFaSetupData, setTwoFaSetupData] = useState<{ secret: string; qrCode: string } | null>(
+    null
+  );
+  const [twoFaCode, setTwoFaCode] = useState('');
+  const [twoFaBackupCodes, setTwoFaBackupCodes] = useState<string[]>([]);
+  const [twoFaError, setTwoFaError] = useState('');
+  const [isTwoFaLoading, setIsTwoFaLoading] = useState(false);
+  const [showDisable2FA, setShowDisable2FA] = useState(false);
+  const [disable2FACode, setDisable2FACode] = useState('');
+
+  // Email OTP 2FA state
+  const [emailOtpEnabled, setEmailOtpEnabled] = useState(false);
+  const [emailOtpStep, setEmailOtpStep] = useState<
+    'idle' | 'awaiting-code' | 'awaiting-disable-code'
+  >('idle');
+  const [emailOtpCode, setEmailOtpCode] = useState('');
+  const [emailOtpMaskedEmail, setEmailOtpMaskedEmail] = useState('');
+  const [emailOtpError, setEmailOtpError] = useState('');
+  const [isEmailOtpLoading, setIsEmailOtpLoading] = useState(false);
+
+  // Setup-only mode — entered when grace period expired at login
+  const [setupOnlyMode, setSetupOnlyMode] = useState(false);
+
   // Fetch active sessions with device trust information
   const { data: sessionsData, mutate: mutateSessions } = useSWR<UserSession[]>(
     isAuthenticated ? '/auth/sessions' : null,
@@ -92,12 +120,28 @@ export default function SellerSecurityPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch sessions');
       }
-      return response.json();
+      return safeJson(response);
     },
     { revalidateOnFocus: false }
   );
 
   const sessions = sessionsData || [];
+
+  // Fetch email OTP 2FA status
+  useSWR(
+    isAuthenticated ? '/auth/2fa/email/status' : null,
+    async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/email/status`, {
+        headers: { Authorization: `Bearer ${TokenManager.getAccessToken()}` },
+      });
+      if (!response.ok) return { enabled: false };
+      return safeJson(response);
+    },
+    {
+      revalidateOnFocus: false,
+      onSuccess: (data) => setEmailOtpEnabled(data?.enabled ?? false),
+    }
+  );
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -105,6 +149,15 @@ export default function SellerSecurityPage() {
       router.push('/auth/login?redirect=/seller/security');
     }
   }, [authLoading, isInitialized, isAuthenticated, router]);
+
+  // Setup-only mode: grace period expired at login — use the short-lived setup token
+  useEffect(() => {
+    const token = sessionStorage.getItem('2fa_setup_token');
+    if (token) {
+      TokenManager.setAccessToken(token);
+      setSetupOnlyMode(true);
+    }
+  }, []);
 
   // Calculate password strength
   useEffect(() => {
@@ -223,7 +276,7 @@ export default function SellerSecurityPage() {
         body: JSON.stringify({ password: deletePassword }),
       });
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (data.success) {
         // Clear local storage and redirect
@@ -254,7 +307,7 @@ export default function SellerSecurityPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (response.ok) {
         toast.success(t('deviceLoggedOut'));
@@ -285,7 +338,7 @@ export default function SellerSecurityPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (response.ok) {
         toast.success(t('allOtherLoggedOut'));
@@ -297,6 +350,195 @@ export default function SellerSecurityPage() {
       toast.error(t('failedRevokeSessions'));
     } finally {
       setIsRevokingAll(false);
+    }
+  };
+
+  const handle2FASetup = async () => {
+    setIsTwoFaLoading(true);
+    setTwoFaError('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/setup`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TokenManager.getAccessToken()}` },
+      });
+      const data = await safeJson(response);
+      if (!response.ok) throw new Error(data.message || 'Failed to start 2FA setup');
+      setTwoFaSetupData({ secret: data.secret, qrCode: data.qrCode });
+      setTwoFaStep('setup');
+    } catch (err: any) {
+      setTwoFaError(err.message);
+    } finally {
+      setIsTwoFaLoading(false);
+    }
+  };
+
+  const handle2FAEnable = async () => {
+    if (!twoFaCode || twoFaCode.length < 6) {
+      setTwoFaError('Enter the 6-digit code from your authenticator app.');
+      return;
+    }
+    setIsTwoFaLoading(true);
+    setTwoFaError('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/enable`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TokenManager.getAccessToken()}`,
+        },
+        body: JSON.stringify({ code: twoFaCode }),
+      });
+      const data = await safeJson(response);
+      if (!response.ok) throw new Error(data.message || 'Verification failed');
+      setTwoFaBackupCodes(data.backupCodes || []);
+      setTwoFaStep('done');
+      await refreshUser();
+      setEmailOtpEnabled(false);
+      setEmailOtpStep('idle');
+      if (setupOnlyMode) {
+        sessionStorage.removeItem('2fa_setup_token');
+        TokenManager.clearTokens();
+        toast.success('2FA set up successfully! Please log in to continue.');
+        router.push('/auth/login');
+        return;
+      }
+    } catch (err: any) {
+      setTwoFaError(err.message);
+    } finally {
+      setIsTwoFaLoading(false);
+    }
+  };
+
+  const handle2FADisable = async () => {
+    if (!disable2FACode || disable2FACode.length < 6) {
+      setTwoFaError('Enter the 6-digit code to confirm disabling 2FA.');
+      return;
+    }
+    setIsTwoFaLoading(true);
+    setTwoFaError('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/disable`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TokenManager.getAccessToken()}`,
+        },
+        body: JSON.stringify({ code: disable2FACode }),
+      });
+      const data = await safeJson(response);
+      if (!response.ok) throw new Error(data.message || 'Failed to disable 2FA');
+      toast.success('Two-factor authentication disabled.');
+      setShowDisable2FA(false);
+      setDisable2FACode('');
+      await refreshUser();
+    } catch (err: any) {
+      setTwoFaError(err.message);
+    } finally {
+      setIsTwoFaLoading(false);
+    }
+  };
+
+  const handleEmailOtpSetup = async () => {
+    setIsEmailOtpLoading(true);
+    setEmailOtpError('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/email/setup`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TokenManager.getAccessToken()}` },
+      });
+      const data = await safeJson(response);
+      if (!response.ok) throw new Error(data.message || 'Failed to send verification code');
+      setEmailOtpMaskedEmail(data.maskedEmail || '');
+      setEmailOtpStep('awaiting-code');
+    } catch (err: any) {
+      setEmailOtpError(err.message);
+    } finally {
+      setIsEmailOtpLoading(false);
+    }
+  };
+
+  const handleEmailOtpEnable = async () => {
+    if (!emailOtpCode || emailOtpCode.length < 6) {
+      setEmailOtpError('Enter the 6-digit code sent to your email.');
+      return;
+    }
+    setIsEmailOtpLoading(true);
+    setEmailOtpError('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/email/enable`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TokenManager.getAccessToken()}`,
+        },
+        body: JSON.stringify({ code: emailOtpCode }),
+      });
+      const data = await safeJson(response);
+      if (!response.ok) throw new Error(data.message || 'Verification failed');
+      toast.success('Email OTP two-factor authentication enabled.');
+      setEmailOtpEnabled(true);
+      setEmailOtpStep('idle');
+      setEmailOtpCode('');
+      await refreshUser();
+      if (setupOnlyMode) {
+        sessionStorage.removeItem('2fa_setup_token');
+        TokenManager.clearTokens();
+        toast.success('2FA set up successfully! Please log in to continue.');
+        router.push('/auth/login');
+        return;
+      }
+    } catch (err: any) {
+      setEmailOtpError(err.message);
+    } finally {
+      setIsEmailOtpLoading(false);
+    }
+  };
+
+  const handleEmailOtpDisableSetup = async () => {
+    setIsEmailOtpLoading(true);
+    setEmailOtpError('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/email/setup`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${TokenManager.getAccessToken()}` },
+      });
+      const data = await safeJson(response);
+      if (!response.ok) throw new Error(data.message || 'Failed to send verification code');
+      setEmailOtpMaskedEmail(data.maskedEmail || '');
+      setEmailOtpStep('awaiting-disable-code');
+    } catch (err: any) {
+      setEmailOtpError(err.message);
+    } finally {
+      setIsEmailOtpLoading(false);
+    }
+  };
+
+  const handleEmailOtpDisable = async () => {
+    if (!emailOtpCode || emailOtpCode.length < 6) {
+      setEmailOtpError('Enter the 6-digit code sent to your email.');
+      return;
+    }
+    setIsEmailOtpLoading(true);
+    setEmailOtpError('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/2fa/email/disable`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TokenManager.getAccessToken()}`,
+        },
+        body: JSON.stringify({ code: emailOtpCode }),
+      });
+      const data = await safeJson(response);
+      if (!response.ok) throw new Error(data.message || 'Failed to disable email OTP 2FA');
+      toast.success('Two-factor authentication disabled.');
+      setEmailOtpEnabled(false);
+      setEmailOtpStep('idle');
+      setEmailOtpCode('');
+    } catch (err: any) {
+      setEmailOtpError(err.message);
+    } finally {
+      setIsEmailOtpLoading(false);
     }
   };
 
@@ -363,6 +605,47 @@ export default function SellerSecurityPage() {
           </svg>
         );
     }
+  };
+
+  const normalizeIp = (ip: string | null): string | null => {
+    if (!ip) return null;
+    const unwrapped = ip.replace(/^::ffff:/i, '');
+    if (unwrapped === '127.0.0.1' || unwrapped === '::1') return 'localhost';
+    return unwrapped;
+  };
+
+  const getOsIcon = (os: string | null) => {
+    if (!os) return null;
+    const lower = os.toLowerCase();
+    if (lower.includes('macos') || lower.includes('ios') || lower.includes('ipados')) {
+      return (
+        <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+        </svg>
+      );
+    }
+    if (lower.includes('windows')) {
+      return (
+        <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 12V6.75l6-1.32v6.57H3zm17 0V3.5l-8 1.4V12h8zM3 13h6v6.43l-6-1.33V13zm17 0h-8v6.83L20 21.5V13z" />
+        </svg>
+      );
+    }
+    if (lower.includes('android')) {
+      return (
+        <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0012 1.5c-.71 0-1.39.13-2.04.37L8.48.39c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.3 1.3C7.45 3.35 6.5 5 6.5 7h11c0-2-.95-3.65-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z" />
+        </svg>
+      );
+    }
+    if (lower.includes('linux') || lower.includes('chromeos')) {
+      return (
+        <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489.217 1.348.859 2.498 2.047 3.31.618.422 1.276.634 1.989.635.606.001 1.225-.145 1.849-.42.583-.265 1.145-.674 1.586-1.188.465-.54.845-1.17 1.23-1.667.422-.54 1.067-.878 1.741-.748.72.137 1.269.696 1.662 1.42.444.82.73 1.783.872 2.63.08.49.101.943.08 1.26-.02.316-.017.434.168.434h.008c.026 0 .058-.002.094-.007.468-.036.911-.217 1.28-.493 1.08-.815 1.575-2.197 1.71-3.637.056-.58.058-1.154.01-1.695-.097-1.142-.354-2.224-.681-3.127-.32-.888-.727-1.614-1.108-2.147-.373-.52-.804-.95-1.205-1.35-.368-.37-.728-.721-.97-1.109-.475-.758-.756-1.628-.806-2.571-.036-.703.015-1.398.057-1.967.091-1.172.178-2.065-.348-2.979C14.3.445 13.456 0 12.504 0zM9.37 8.24c.133 0 .261.019.381.059.6.2.911.907.693 1.573-.22.667-.876 1.044-1.476.844-.6-.2-.911-.908-.691-1.574.176-.534.645-.902 1.093-.902zm5.264 0c.448 0 .917.368 1.092.902.219.666-.092 1.374-.692 1.574-.6.2-1.256-.177-1.476-.844-.217-.666.094-1.373.693-1.573.12-.04.248-.059.383-.059zM9 13c.553 0 1 .447 1 1s-.447 1-1 1-1-.447-1-1 .447-1 1-1zm6 0c.553 0 1 .447 1 1s-.447 1-1 1-1-.447-1-1 .447-1 1-1z" />
+        </svg>
+      );
+    }
+    return null;
   };
 
   const PasswordToggle = ({ show, onToggle }: { show: boolean; onToggle: () => void }) => (
@@ -463,16 +746,16 @@ export default function SellerSecurityPage() {
                   {/* 2FA Status */}
                   <div
                     className={`flex items-center gap-3 p-3 rounded-xl ${
-                      user.twoFactorEnabled ? 'bg-green-50' : 'bg-amber-50'
+                      user.twoFactorEnabled || emailOtpEnabled ? 'bg-green-50' : 'bg-amber-50'
                     }`}
                   >
                     <div
                       className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        user.twoFactorEnabled ? 'bg-green-100' : 'bg-amber-100'
+                        user.twoFactorEnabled || emailOtpEnabled ? 'bg-green-100' : 'bg-amber-100'
                       }`}
                     >
                       <svg
-                        className={`w-5 h-5 ${user.twoFactorEnabled ? 'text-green-600' : 'text-amber-600'}`}
+                        className={`w-5 h-5 ${user.twoFactorEnabled || emailOtpEnabled ? 'text-green-600' : 'text-amber-600'}`}
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
@@ -485,14 +768,14 @@ export default function SellerSecurityPage() {
                     </div>
                     <div>
                       <p
-                        className={`font-medium ${user.twoFactorEnabled ? 'text-green-800' : 'text-amber-800'}`}
+                        className={`font-medium ${user.twoFactorEnabled || emailOtpEnabled ? 'text-green-800' : 'text-amber-800'}`}
                       >
                         {t('twoFactorAuth')}
                       </p>
                       <p
-                        className={`text-sm ${user.twoFactorEnabled ? 'text-green-600' : 'text-amber-600'}`}
+                        className={`text-sm ${user.twoFactorEnabled || emailOtpEnabled ? 'text-green-600' : 'text-amber-600'}`}
                       >
-                        {user.twoFactorEnabled ? t('enabled') : t('notEnabled')}
+                        {user.twoFactorEnabled || emailOtpEnabled ? t('enabled') : t('notEnabled')}
                       </p>
                     </div>
                   </div>
@@ -930,6 +1213,473 @@ export default function SellerSecurityPage() {
                 </div>
               </div>
 
+              {/* Two-Factor Authentication — Unified Method Selection */}
+              <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <svg
+                      className="w-6 h-6 text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold font-['Poppins']">
+                      Two-Factor Authentication
+                    </h2>
+                    <p className="text-neutral-500">
+                      Add an extra layer of security to your account
+                    </p>
+                  </div>
+                </div>
+
+                {/* Setup-only mode banner */}
+                {setupOnlyMode && (
+                  <div className="mb-6 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <svg
+                      className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div>
+                      <p className="font-semibold text-red-800">2FA setup required</p>
+                      <p className="text-sm text-red-700 mt-0.5">
+                        Your grace period has expired. Set up two-factor authentication below to
+                        regain access to your account.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Neither method active — method selection */}
+                {!user.twoFactorEnabled &&
+                  !emailOtpEnabled &&
+                  twoFaStep === 'idle' &&
+                  emailOtpStep === 'idle' && (
+                    <div className="space-y-6">
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+                        Choose a verification method to protect your account. You'll need to enter a
+                        code at each sign-in.
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-5 border-2 border-neutral-200 rounded-xl space-y-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <svg
+                              className="w-5 h-5 text-blue-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                              />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-neutral-900">Authenticator App</p>
+                            <p className="text-sm text-neutral-500 mt-1">
+                              Google Authenticator, Authy, 1Password — generates a code on your
+                              phone.
+                            </p>
+                          </div>
+                          <button
+                            onClick={handle2FASetup}
+                            disabled={isTwoFaLoading}
+                            className="w-full px-4 py-2.5 bg-gold text-black text-sm font-semibold rounded-xl hover:bg-gold/90 transition-all disabled:opacity-50"
+                          >
+                            {isTwoFaLoading ? 'Loading...' : 'Set Up'}
+                          </button>
+                        </div>
+                        <div className="p-5 border-2 border-neutral-200 rounded-xl space-y-3">
+                          <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                            <svg
+                              className="w-5 h-5 text-indigo-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                              />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-neutral-900">Email Code</p>
+                            <p className="text-sm text-neutral-500 mt-1">
+                              A 6-digit code is sent to your email address each time you sign in.
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleEmailOtpSetup}
+                            disabled={isEmailOtpLoading}
+                            className="w-full px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50"
+                          >
+                            {isEmailOtpLoading ? 'Sending code...' : 'Set Up'}
+                          </button>
+                        </div>
+                      </div>
+                      {twoFaError && <p className="text-sm text-red-600">{twoFaError}</p>}
+                      {emailOtpError && <p className="text-sm text-red-600">{emailOtpError}</p>}
+                    </div>
+                  )}
+
+                {/* TOTP active */}
+                {user.twoFactorEnabled && twoFaStep === 'idle' && emailOtpStep === 'idle' && (
+                  <div className="space-y-5">
+                    <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg
+                          className="w-5 h-5 text-green-600"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-green-800">
+                          2FA active — Authenticator App
+                        </p>
+                        <p className="text-sm text-green-600">
+                          Your account is protected with an authenticator app.
+                        </p>
+                      </div>
+                    </div>
+                    {!showDisable2FA ? (
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={handleEmailOtpSetup}
+                          disabled={isEmailOtpLoading}
+                          className="px-5 py-2.5 text-sm font-medium text-neutral-700 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                        >
+                          {isEmailOtpLoading ? 'Sending code...' : 'Switch to Email Code'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowDisable2FA(true);
+                            setTwoFaError('');
+                          }}
+                          className="px-5 py-2.5 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
+                        >
+                          Disable 2FA
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                        <p className="text-sm font-medium text-red-800">
+                          Enter your authenticator code to confirm:
+                        </p>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={disable2FACode}
+                          onChange={(e) => {
+                            setDisable2FACode(e.target.value.replace(/\D/g, ''));
+                            setTwoFaError('');
+                          }}
+                          placeholder="000000"
+                          className="w-40 px-4 py-2 border-2 border-neutral-200 rounded-xl text-center text-lg font-mono tracking-widest focus:outline-none focus:border-red-400"
+                        />
+                        {twoFaError && <p className="text-sm text-red-600">{twoFaError}</p>}
+                        <div className="flex gap-3">
+                          <button
+                            onClick={handle2FADisable}
+                            disabled={isTwoFaLoading}
+                            className="px-5 py-2.5 text-sm font-semibold bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+                          >
+                            {isTwoFaLoading ? 'Disabling...' : 'Confirm Disable'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowDisable2FA(false);
+                              setDisable2FACode('');
+                              setTwoFaError('');
+                            }}
+                            className="px-5 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Email OTP active */}
+                {emailOtpEnabled &&
+                  !user.twoFactorEnabled &&
+                  emailOtpStep === 'idle' &&
+                  twoFaStep === 'idle' && (
+                    <div className="space-y-5">
+                      <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <svg
+                            className="w-5 h-5 text-green-600"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-green-800">2FA active — Email Code</p>
+                          <p className="text-sm text-green-600">
+                            A verification code will be sent to your email each time you sign in.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={handle2FASetup}
+                          disabled={isTwoFaLoading}
+                          className="px-5 py-2.5 text-sm font-medium text-neutral-700 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                        >
+                          {isTwoFaLoading ? 'Loading...' : 'Switch to Authenticator App'}
+                        </button>
+                        <button
+                          onClick={handleEmailOtpDisableSetup}
+                          disabled={isEmailOtpLoading}
+                          className="px-5 py-2.5 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-50"
+                        >
+                          {isEmailOtpLoading ? 'Sending code...' : 'Disable 2FA'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                {/* Disable email OTP confirm */}
+                {emailOtpEnabled &&
+                  !user.twoFactorEnabled &&
+                  emailOtpStep === 'awaiting-disable-code' && (
+                    <div className="space-y-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                      <p className="text-sm font-medium text-red-800">
+                        Enter the code sent to {emailOtpMaskedEmail} to confirm:
+                      </p>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={emailOtpCode}
+                        onChange={(e) => {
+                          setEmailOtpCode(e.target.value.replace(/\D/g, ''));
+                          setEmailOtpError('');
+                        }}
+                        placeholder="000000"
+                        className="w-40 px-4 py-2 border-2 border-neutral-200 rounded-xl text-center text-lg font-mono tracking-widest focus:outline-none focus:border-red-400"
+                      />
+                      {emailOtpError && <p className="text-sm text-red-600">{emailOtpError}</p>}
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleEmailOtpDisable}
+                          disabled={isEmailOtpLoading}
+                          className="px-5 py-2.5 text-sm font-semibold bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+                        >
+                          {isEmailOtpLoading ? 'Disabling...' : 'Confirm Disable'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEmailOtpStep('idle');
+                            setEmailOtpCode('');
+                            setEmailOtpError('');
+                          }}
+                          className="px-5 py-2.5 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                {/* TOTP setup — QR code */}
+                {twoFaStep === 'setup' && twoFaSetupData && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+                      <div>
+                        <p className="text-sm font-medium text-neutral-700 mb-3">
+                          1. Scan this QR code with your authenticator app
+                        </p>
+                        <div className="inline-block p-3 bg-white border-2 border-neutral-200 rounded-xl">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={twoFaSetupData.qrCode}
+                            alt="2FA QR code"
+                            className="w-48 h-48"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-sm font-medium text-neutral-700 mb-2">
+                            Can't scan? Enter this key manually:
+                          </p>
+                          <code className="block px-3 py-2 bg-neutral-100 rounded-lg text-sm font-mono tracking-wider break-all">
+                            {twoFaSetupData.secret}
+                          </code>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-neutral-700 mb-2">
+                            2. Enter the 6-digit code from your app to verify:
+                          </p>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            value={twoFaCode}
+                            onChange={(e) => {
+                              setTwoFaCode(e.target.value.replace(/\D/g, ''));
+                              setTwoFaError('');
+                            }}
+                            placeholder="000000"
+                            className="w-40 px-4 py-2 border-2 border-neutral-200 rounded-xl text-center text-lg font-mono tracking-widest focus:outline-none focus:border-gold"
+                          />
+                        </div>
+                        {twoFaError && <p className="text-sm text-red-600">{twoFaError}</p>}
+                        <div className="flex gap-3">
+                          <button
+                            onClick={handle2FAEnable}
+                            disabled={isTwoFaLoading || twoFaCode.length < 6}
+                            className="px-6 py-3 bg-gold text-black font-semibold rounded-xl hover:bg-gold/90 transition-all disabled:opacity-50"
+                          >
+                            {isTwoFaLoading ? 'Verifying...' : 'Enable 2FA'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setTwoFaStep('idle');
+                              setTwoFaSetupData(null);
+                              setTwoFaCode('');
+                              setTwoFaError('');
+                            }}
+                            className="px-5 py-3 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TOTP done — backup codes */}
+                {twoFaStep === 'done' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+                      <svg
+                        className="w-6 h-6 text-green-600 flex-shrink-0"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <p className="font-semibold text-green-800">
+                        Two-factor authentication enabled!
+                      </p>
+                    </div>
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                      <p className="text-sm font-semibold text-amber-800 mb-3">
+                        Save these backup codes — they won't be shown again
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {twoFaBackupCodes.map((code) => (
+                          <code
+                            key={code}
+                            className="px-3 py-1.5 bg-white border border-amber-200 rounded-lg text-sm font-mono text-center"
+                          >
+                            {code}
+                          </code>
+                        ))}
+                      </div>
+                      <p className="text-xs text-amber-700 mt-3">
+                        Each code can only be used once if you lose access to your authenticator
+                        app.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setTwoFaStep('idle')}
+                      className="px-5 py-2.5 text-sm font-semibold bg-black text-white rounded-xl hover:bg-neutral-800 transition-colors"
+                    >
+                      Done
+                    </button>
+                  </div>
+                )}
+
+                {/* Email OTP setup — awaiting code */}
+                {emailOtpStep === 'awaiting-code' && (
+                  <div className="space-y-5">
+                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl text-sm text-indigo-800">
+                      A 6-digit code has been sent to <strong>{emailOtpMaskedEmail}</strong>. Enter
+                      it below to enable email 2FA.
+                    </div>
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={emailOtpCode}
+                        onChange={(e) => {
+                          setEmailOtpCode(e.target.value.replace(/\D/g, ''));
+                          setEmailOtpError('');
+                        }}
+                        placeholder="000000"
+                        className="w-40 px-4 py-2 border-2 border-neutral-200 rounded-xl text-center text-lg font-mono tracking-widest focus:outline-none focus:border-indigo-400"
+                      />
+                      {emailOtpError && <p className="text-sm text-red-600">{emailOtpError}</p>}
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleEmailOtpEnable}
+                        disabled={isEmailOtpLoading || emailOtpCode.length < 6}
+                        className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50"
+                      >
+                        {isEmailOtpLoading ? 'Verifying...' : 'Enable Email 2FA'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEmailOtpStep('idle');
+                          setEmailOtpCode('');
+                          setEmailOtpError('');
+                        }}
+                        className="px-5 py-3 text-sm font-medium text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Active Sessions Card - Due to length limit, continuing with abbreviated version */}
               <div className="bg-white rounded-2xl shadow-lg border border-neutral-200 p-8">
                 <div className="flex items-center justify-between mb-6">
@@ -1007,11 +1757,19 @@ export default function SellerSecurityPage() {
                             {getDeviceIcon(session.deviceInfo?.device || session.deviceType)}
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium text-black">
-                                {session.deviceInfo?.description ||
-                                  `${session.browser || 'Unknown Browser'}${session.os ? ` on ${session.os}` : ''}`}
-                              </p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="flex items-center gap-1.5">
+                                {getOsIcon(session.deviceInfo?.os || session.os) && (
+                                  <span className="text-neutral-500">
+                                    {getOsIcon(session.deviceInfo?.os || session.os)}
+                                  </span>
+                                )}
+                                <p className="font-medium text-black">
+                                  {session.deviceInfo?.description ||
+                                    session.browser ||
+                                    'Unknown device'}
+                                </p>
+                              </div>
                               {session.isCurrent && (
                                 <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">
                                   {t('currentDevice')}
@@ -1043,8 +1801,10 @@ export default function SellerSecurityPage() {
                                   {session.location}
                                 </span>
                               )}
-                              {session.ipAddress && (
-                                <span className="text-neutral-400">IP: {session.ipAddress}</span>
+                              {normalizeIp(session.ipAddress) && (
+                                <span className="font-mono text-neutral-400">
+                                  {normalizeIp(session.ipAddress)}
+                                </span>
                               )}
                               <span>Active {formatSessionDate(session.lastActiveAt)}</span>
                             </div>

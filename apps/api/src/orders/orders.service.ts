@@ -4,21 +4,29 @@ import {
   BadRequestException,
   Logger,
   Inject,
+  Optional,
   forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CalculateTotalsDto, OrderCalculationResponse } from './dto/calculate-totals.dto';
-import { OrderStatus, PaymentStatus, InventoryTransactionType } from '@prisma/client';
+import {
+  OrderStatus,
+  PaymentStatus,
+  InventoryTransactionType,
+  UserRole,
+  ReferralCouponStatus,
+} from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { InventoryService } from '../inventory/inventory.service';
-import { ShippingTaxService } from './shipping-tax.service';
+import { ShippingTaxService, TaxCalculationWithBreakdown } from './shipping-tax.service';
 import { CurrencyService } from '../currency/currency.service';
 import { EmailService } from '../email/email.service';
 import { CartService } from '../cart/cart.service';
 import { PaymentService } from '../payment/payment.service';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import PDFDocument from 'pdfkit';
+import { ReferralService } from '../referral/referral.service';
 
 /**
  * Orders Service
@@ -38,7 +46,8 @@ export class OrdersService {
     @Inject(forwardRef(() => CartService))
     private readonly cartService: CartService,
     private readonly paymentService: PaymentService,
-    private readonly gelatoOrdersService: GelatoOrdersService
+    private readonly gelatoOrdersService: GelatoOrdersService,
+    @Optional() private readonly referralService?: ReferralService
   ) {
     this.inventoryService = new InventoryService(prisma);
   }
@@ -57,6 +66,21 @@ export class OrdersService {
 
     const subtotal = items.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
 
+    // Fetch product details so fulfillmentType and gelatoProductUid are populated
+    // (required for Gelato Tier-0 detection and the POD fallback path)
+    const productIds = [...new Set(items.map((i) => i.productId))];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: {
+        id: true,
+        fulfillmentType: true,
+        gelatoProductUid: true,
+        storeId: true,
+        weight: true,
+      },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
     return await this.shippingTaxService.calculateShippingOptions(
       {
         country: address.country,
@@ -64,11 +88,18 @@ export class OrdersService {
         postalCode: address.postalCode,
         city: address.city,
       },
-      items.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        price: Number(item.price),
-      })),
+      items.map((item) => {
+        const product = productMap.get(item.productId);
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          price: Number(item.price),
+          fulfillmentType: product?.fulfillmentType || undefined,
+          gelatoProductUid: product?.gelatoProductUid || undefined,
+          storeId: product?.storeId || undefined,
+          weight: product?.weight ? Number(product.weight) * 1000 : undefined,
+        };
+      }),
       subtotal
     );
   }
@@ -353,7 +384,9 @@ export class OrdersService {
     shippingAddressId: string,
     billingAddressId?: string,
     notes?: string,
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    shippingMethodId?: string,
+    servicePointId?: number
   ) {
     // 1. Check for duplicate order (idempotency)
     if (idempotencyKey) {
@@ -419,13 +452,19 @@ export class OrdersService {
     const subtotal = new Decimal(cartTotals.subtotal);
     const discount = new Decimal(cartTotals.discount);
 
-    // 5. Calculate shipping and tax in locked currency
-    const taxCalc = await this.shippingTaxService.calculateTax(
+    // 5. Calculate tax per seller (respects businessType: corporation/registered_business = PRICE_INCLUSIVE)
+    const taxCalc = await this.shippingTaxService.calculateTaxPerSeller(
       {
         country: shippingAddress.country,
         state: shippingAddress.province || undefined,
         postalCode: shippingAddress.postalCode || undefined,
       },
+      cart.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: Number(item.price),
+        storeId: item.product?.storeId || undefined,
+      })),
       Number(subtotal)
     );
 
@@ -439,6 +478,10 @@ export class OrdersService {
         productId: item.productId,
         quantity: item.quantity,
         price: Number(item.price),
+        weight: item.product?.weight ? Number(item.product.weight) * 1000 : undefined,
+        fulfillmentType: item.product?.fulfillmentType || undefined,
+        gelatoProductUid: item.product?.gelatoProductUid || undefined,
+        storeId: item.product?.storeId || undefined,
       })),
       Number(subtotal)
     );
@@ -450,6 +493,34 @@ export class OrdersService {
 
     // 6. Generate order number
     const orderNumber = `ORD-${Date.now()}`;
+
+    // 6.5 Detect if this is a pickup order and generate pickup data
+    let isPickup = false;
+    let pickupStoreId: string | null = null;
+    let pickupCode: string | null = null;
+    let pickupInstructions: string | null = null;
+
+    if (shippingMethodId && shippingMethodId.startsWith('pickup-')) {
+      isPickup = true;
+      // Extract storeId from shippingMethodId (format: "pickup-{storeId}")
+      pickupStoreId = shippingMethodId.replace('pickup-', '');
+
+      // Generate 6-digit pickup code
+      pickupCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Get store pickup instructions
+      const store = await this.prisma.store.findUnique({
+        where: { id: pickupStoreId },
+        select: { pickupInstructions: true, pickupAddress: true, name: true },
+      });
+
+      if (store) {
+        pickupInstructions =
+          store.pickupInstructions ||
+          `Pick up your order at ${store.name}. Show your pickup code: ${pickupCode}`;
+        this.logger.log(`✅ Pickup order for store ${store.name} - Code: ${pickupCode}`);
+      }
+    }
 
     this.logger.log(
       `💰 Order totals: subtotal=${subtotal} ${orderCurrency}, ` +
@@ -494,11 +565,33 @@ export class OrdersService {
           billingAddressId: billingAddressId || shippingAddressId,
           notes,
 
+          // Pickup fields
+          isPickup,
+          pickupStoreId,
+          pickupCode,
+          pickupInstructions,
+          shippingProvider: isPickup
+            ? 'SELF_PICKUP'
+            : selectedShipping?.source?.toUpperCase() || undefined,
+          shippingProviderData: isPickup
+            ? undefined
+            : selectedShipping
+              ? {
+                  source: selectedShipping.source,
+                  serviceCode: selectedShipping.id, // provider's rate/method ID (serviceCode for SendCloud/EasyShip)
+                  carrier: selectedShipping.carrier,
+                  name: selectedShipping.name,
+                  price: selectedShipping.price,
+                  estimatedDays: selectedShipping.estimatedDays,
+                  servicePointId: servicePointId ?? null,
+                }
+              : undefined,
+
           // Store idempotency key to prevent duplicate orders
           metadata: idempotencyKey ? { idempotencyKey } : null,
 
           items: {
-            create: orderItems,
+            create: orderItems.map(({ currency: _c, ...item }) => item),
           },
         },
         include: {
@@ -517,9 +610,11 @@ export class OrdersService {
         data: {
           orderId: newOrder.id,
           status: OrderStatus.PENDING,
-          title: 'Order Placed',
-          description: 'Your order has been received and is being processed.',
-          icon: 'shopping-bag',
+          title: isPickup ? 'Pickup Order Placed' : 'Order Placed',
+          description: isPickup
+            ? `Your order is being prepared for pickup. Pickup code: ${pickupCode}`
+            : 'Your order has been received and is being processed.',
+          icon: isPickup ? 'map-pin' : 'shopping-bag',
         },
       });
 
@@ -563,29 +658,77 @@ export class OrdersService {
         const customerName =
           `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
 
-        await this.emailService.sendOrderConfirmation(user.email, {
-          orderNumber: order.orderNumber,
-          customerName,
-          items: order.items.map((item) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: Number(item.price),
-            total: Number(item.total),
-          })),
-          subtotal: Number(subtotal),
-          shipping: Number(shipping),
-          tax: Number(tax),
-          total: Number(total),
-          currency: orderCurrency,
-          shippingAddress: {
-            street: order.shippingAddress.address1 || '',
-            city: order.shippingAddress.city || '',
-            state: order.shippingAddress.province || '',
-            zipCode: order.shippingAddress.postalCode || '',
-            country: order.shippingAddress.country || '',
-          },
-          orderId: order.id,
-        });
+        if (isPickup && pickupStoreId) {
+          // Send pickup order placed email
+          const pickupStore = await this.prisma.store.findUnique({
+            where: { id: pickupStoreId },
+            select: {
+              name: true,
+              pickupAddress: true,
+              pickupInstructions: true,
+              address1: true,
+              address2: true,
+              city: true,
+              province: true,
+              postalCode: true,
+            },
+          });
+
+          if (pickupStore) {
+            const storeAddress =
+              pickupStore.pickupAddress ||
+              `${pickupStore.address1 || ''}, ${pickupStore.city || ''}, ${pickupStore.province || ''} ${pickupStore.postalCode || ''}`.trim();
+
+            await this.emailService.sendPickupOrderPlacedNotification(user.email, {
+              orderNumber: order.orderNumber,
+              customerName,
+              pickupCode: pickupCode || '',
+              storeName: pickupStore.name,
+              storeAddress,
+              pickupInstructions: pickupInstructions || undefined,
+              items: order.items.map((item) => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: Number(item.price),
+                image: item.image,
+              })),
+              subtotal: Number(subtotal),
+              tax: Number(tax),
+              pickupFee: Number(shipping), // Pickup fee stored as shipping
+              total: Number(total),
+              currency: orderCurrency,
+              orderId: order.id,
+            });
+
+            this.logger.log(`Pickup order placed email queued for ${user.email}`);
+          }
+        } else {
+          // Send regular order confirmation email
+          await this.emailService.sendOrderConfirmation(user.email, {
+            orderNumber: order.orderNumber,
+            customerName,
+            items: order.items.map((item) => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: Number(item.price),
+              image: item.image || undefined,
+            })),
+            subtotal: Number(subtotal),
+            shipping: Number(shipping),
+            tax: Number(tax),
+            total: Number(total),
+            discount: Number(discount) > 0 ? Number(discount) : undefined,
+            currency: orderCurrency,
+            shippingAddress: {
+              street: order.shippingAddress.address1 || '',
+              city: order.shippingAddress.city || '',
+              state: order.shippingAddress.province || '',
+              zipCode: order.shippingAddress.postalCode || '',
+              country: order.shippingAddress.country || '',
+            },
+            orderId: order.id,
+          });
+        }
       }
     } catch (emailError) {
       this.logger.error('Error sending order confirmation email:', emailError);
@@ -597,13 +740,15 @@ export class OrdersService {
     try {
       this.logger.log(`💳 Creating Stripe PaymentIntent: ${total.toNumber()} ${orderCurrency}`);
 
+      // Internal call: the order was just created by this userId, so ownership is guaranteed.
+      // Construct a minimal AuthenticatedUser to satisfy the updated service signature.
       const paymentIntent = await this.paymentService.createPaymentIntent(
         {
           amount: total.toNumber(),
           currency: orderCurrency,
           orderId: order.id,
         },
-        userId
+        { id: userId, email: '', role: UserRole.BUYER }
       );
 
       clientSecret = paymentIntent.clientSecret;
@@ -643,6 +788,9 @@ export class OrdersService {
       shippingMethodId,
       currency: orderCurrency,
       idempotencyKey,
+      servicePointId,
+      useStoreCredit,
+      couponCode,
     } = createOrderDto;
 
     // 1. Check for duplicate order (idempotency protection)
@@ -672,9 +820,22 @@ export class OrdersService {
         );
         this.logger.log(`Returning existing order ${existingOrder.id}`);
 
+        // Convert Decimal fields to numbers for frontend compatibility
         return {
           success: true,
-          data: existingOrder,
+          data: {
+            ...existingOrder,
+            subtotal: Number(existingOrder.subtotal),
+            shipping: Number(existingOrder.shipping),
+            tax: Number(existingOrder.tax),
+            total: Number(existingOrder.total),
+            exchangeRate: existingOrder.exchangeRate ? Number(existingOrder.exchangeRate) : null,
+            items: existingOrder.items?.map((item) => ({
+              ...item,
+              price: Number(item.price),
+              total: Number(item.total),
+            })),
+          },
           message: 'Order already exists (duplicate prevented)',
           isDuplicate: true,
         };
@@ -736,6 +897,10 @@ export class OrdersService {
         price: item.price,
         total: itemTotal,
         image: product.heroImage,
+        weight: product.weight ? Number(product.weight) * 1000 : undefined,
+        fulfillmentType: product.fulfillmentType || undefined,
+        gelatoProductUid: product.gelatoProductUid || undefined,
+        storeId: product.storeId || undefined,
       });
 
       // Track POD items for Gelato shipping calculation
@@ -748,13 +913,19 @@ export class OrdersService {
       }
     }
 
-    // Calculate shipping and tax using actual rates
-    const taxCalc = await this.shippingTaxService.calculateTax(
+    // Calculate tax per seller (respects businessType: corporation/registered_business = PRICE_INCLUSIVE)
+    const taxCalc = await this.shippingTaxService.calculateTaxPerSeller(
       {
         country: shippingAddress?.country || 'US',
         state: shippingAddress?.province || undefined,
         postalCode: shippingAddress?.postalCode || undefined,
       },
+      orderItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: Number(item.price),
+        storeId: item.storeId || undefined,
+      })),
       Number(subtotal)
     );
 
@@ -769,6 +940,10 @@ export class OrdersService {
         productId: item.productId,
         quantity: item.quantity,
         price: Number(item.price),
+        weight: item.weight || undefined,
+        fulfillmentType: item.fulfillmentType || undefined,
+        gelatoProductUid: item.gelatoProductUid || undefined,
+        storeId: item.storeId || undefined,
       })),
       Number(subtotal)
     );
@@ -859,24 +1034,136 @@ export class OrdersService {
     }
 
     const tax = new Decimal(taxCalc.amount);
-    const total = subtotal.add(shipping).add(tax);
+
+    // Fetch exchange rate BEFORE computing totals so all amounts are stored in target currency
+    const currency = orderCurrency || 'USD';
+    const baseCurrency = 'USD';
+    let exchangeRate: Decimal | null = null;
+    let exchangeRateNum = 1;
+
+    if (currency !== baseCurrency) {
+      try {
+        const currencyRate = await this.currencyService.getRateByCode(currency);
+        exchangeRateNum = Number(currencyRate.rate);
+        exchangeRate = new Decimal(exchangeRateNum);
+        this.logger.log(`💱 Converting order amounts to ${currency} (rate: ${exchangeRateNum})`);
+      } catch (error) {
+        this.logger.error(`Failed to get exchange rate for currency ${currency}:`, error);
+      }
+    }
+
+    // Shipping may be in a non-USD source currency (e.g. EUR from SendCloud/DHL).
+    // Two-step: price / srcRate = USD equiv; * exchangeRateNum = target currency.
+    let shippingSourceRate = 1;
+    const shippingSourceCurrency = (selectedShipping as any)?.sourceCurrency as string | undefined;
+    if (shippingSourceCurrency && shippingSourceCurrency !== 'USD') {
+      try {
+        const srcRate = await this.currencyService.getRateByCode(shippingSourceCurrency);
+        shippingSourceRate = Number(srcRate.rate);
+      } catch {
+        this.logger.warn(
+          `Could not get rate for shipping source currency ${shippingSourceCurrency} — treating as USD`
+        );
+      }
+    }
+
+    // All amounts stored in target currency (product prices and tax are always USD)
+    const subtotalConverted = subtotal.mul(exchangeRateNum);
+    const shippingConverted = shipping.div(shippingSourceRate).mul(exchangeRateNum);
+    const taxConverted = tax.mul(exchangeRateNum);
+    const gelatoCostUsdOrder = (selectedShipping as any)?.gelatoCostUsd as number | undefined;
+    const gelatoConverted = gelatoCostUsdOrder
+      ? new Decimal(gelatoCostUsdOrder).mul(exchangeRateNum)
+      : new Decimal(0);
+    const preCreditTotal = subtotalConverted
+      .add(shippingConverted)
+      .add(taxConverted)
+      .add(gelatoConverted);
+
+    // Apply referral coupon discount
+    let appliedCouponDiscount = new Decimal(0);
+    let couponId: string | null = null;
+    if (couponCode) {
+      const normalizedCode = couponCode.trim().toUpperCase();
+      const coupon = await this.prisma.referralCoupon.findUnique({
+        where: { code: normalizedCode },
+      });
+      if (
+        coupon &&
+        coupon.referrerId === userId &&
+        coupon.status === ReferralCouponStatus.ACTIVE &&
+        (!coupon.expiresAt || coupon.expiresAt >= new Date())
+      ) {
+        const couponAmountConverted = new Decimal(Number(coupon.amount)).mul(exchangeRateNum);
+        appliedCouponDiscount = couponAmountConverted.gte(preCreditTotal)
+          ? preCreditTotal
+          : couponAmountConverted;
+        couponId = coupon.id;
+        this.logger.log(
+          `🎟️  Coupon '${normalizedCode}' applied: ${appliedCouponDiscount.toFixed(2)} ${currency}`
+        );
+      } else {
+        this.logger.warn(
+          `Coupon code '${normalizedCode}' is invalid or not applicable for user ${userId}`
+        );
+      }
+    }
+    const preCreditTotalAfterCoupon = preCreditTotal.sub(appliedCouponDiscount);
+
+    // Fetch user referral data and apply store credit if requested
+    const userReferralData = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { referredById: true, storeCredit: true },
+    });
+    const referredById = userReferralData?.referredById ?? null;
+    let appliedStoreCredit = new Decimal(0);
+    if (
+      useStoreCredit &&
+      userReferralData?.storeCredit &&
+      Number(userReferralData.storeCredit) > 0
+    ) {
+      const creditUsd = Number(userReferralData.storeCredit);
+      const creditConverted = new Decimal(creditUsd).mul(exchangeRateNum);
+      appliedStoreCredit = creditConverted.gte(preCreditTotalAfterCoupon)
+        ? preCreditTotalAfterCoupon
+        : creditConverted;
+    }
+    const total = preCreditTotalAfterCoupon.sub(appliedStoreCredit);
+
+    this.logger.log(
+      `💰 Order totals (${currency}): subtotal=${subtotalConverted.toFixed(2)}, ` +
+        `shipping=${shippingConverted.toFixed(2)}, tax=${taxConverted.toFixed(2)}, ` +
+        `coupon=-${appliedCouponDiscount.toFixed(2)}, storeCredit=-${appliedStoreCredit.toFixed(2)}, total=${total.toFixed(2)}`
+    );
 
     // Generate order number
     const orderNumber = `ORD-${Date.now()}`;
 
-    // Get currency and exchange rate for order
-    const currency = orderCurrency || 'USD';
-    const baseCurrency = 'USD';
-    let exchangeRate: Decimal | null = null;
+    // Detect if this is a pickup order and generate pickup data
+    let isPickup = false;
+    let pickupStoreId: string | null = null;
+    let pickupCode: string | null = null;
+    let pickupInstructions: string | null = null;
 
-    // Get the exchange rate at time of order if currency is different from base
-    if (currency !== baseCurrency) {
-      try {
-        const currencyRate = await this.currencyService.getRateByCode(currency);
-        exchangeRate = new Decimal(Number(currencyRate.rate));
-      } catch (error) {
-        this.logger.error(`Failed to get exchange rate for currency ${currency}:`, error);
-        // Continue with order creation without exchange rate
+    if (shippingMethodId && shippingMethodId.startsWith('pickup-')) {
+      isPickup = true;
+      // Extract storeId from shippingMethodId (format: "pickup-{storeId}")
+      pickupStoreId = shippingMethodId.replace('pickup-', '');
+
+      // Generate 6-digit pickup code
+      pickupCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Get store pickup instructions
+      const store = await this.prisma.store.findUnique({
+        where: { id: pickupStoreId },
+        select: { pickupInstructions: true, pickupAddress: true, name: true },
+      });
+
+      if (store) {
+        pickupInstructions =
+          store.pickupInstructions ||
+          `Pick up your order at ${store.name}. Show your pickup code: ${pickupCode}`;
+        this.logger.log(`✅ Pickup order for store ${store.name} - Code: ${pickupCode}`);
       }
     }
 
@@ -887,9 +1174,9 @@ export class OrdersService {
         data: {
           orderNumber,
           userId,
-          subtotal,
-          shipping,
-          tax,
+          subtotal: subtotalConverted,
+          shipping: shippingConverted,
+          tax: taxConverted,
           total,
           currency,
           exchangeRate,
@@ -900,10 +1187,41 @@ export class OrdersService {
           shippingAddressId,
           billingAddressId: billingAddressId || shippingAddressId,
           notes,
+          // Pickup fields
+          isPickup,
+          pickupStoreId,
+          pickupCode,
+          pickupInstructions,
+          shippingProvider: isPickup
+            ? 'SELF_PICKUP'
+            : selectedShipping?.source?.toUpperCase() || undefined,
+          shippingProviderData: isPickup
+            ? undefined
+            : selectedShipping
+              ? {
+                  source: selectedShipping.source,
+                  serviceCode: selectedShipping.id, // provider's rate/method ID (serviceCode for SendCloud/EasyShip)
+                  carrier: selectedShipping.carrier,
+                  name: selectedShipping.name,
+                  price: selectedShipping.price,
+                  estimatedDays: selectedShipping.estimatedDays,
+                  servicePointId: servicePointId ?? null,
+                }
+              : undefined,
+          // Referral tracking
+          referrerId: referredById ?? undefined,
           // Store idempotency key to prevent duplicate orders
           metadata: idempotencyKey ? { idempotencyKey } : null,
           items: {
-            create: orderItems,
+            create: orderItems.map(
+              ({
+                weight: _w,
+                fulfillmentType: _ft,
+                gelatoProductUid: _gp,
+                storeId: _si,
+                ...item
+              }) => item
+            ),
           },
         },
         include: {
@@ -922,14 +1240,42 @@ export class OrdersService {
         data: {
           orderId: newOrder.id,
           status: OrderStatus.PENDING,
-          title: 'Order Placed',
-          description: 'Your order has been received and is being processed.',
-          icon: 'shopping-bag',
+          title: isPickup ? 'Pickup Order Placed' : 'Order Placed',
+          description: isPickup
+            ? `Your order is being prepared for pickup. Pickup code: ${pickupCode}`
+            : 'Your order has been received and is being processed.',
+          icon: isPickup ? 'map-pin' : 'shopping-bag',
         },
       });
 
+      // Mark referral coupon as redeemed
+      if (couponId) {
+        await prisma.referralCoupon.update({
+          where: { id: couponId },
+          data: { status: ReferralCouponStatus.REDEEMED, redeemedAt: new Date() },
+        });
+      }
+
       return newOrder;
     });
+
+    // Deduct store credit if applied (convert back to USD for storage)
+    if (appliedStoreCredit.gt(0)) {
+      const creditUsdUsed =
+        exchangeRateNum > 0 ? appliedStoreCredit.div(exchangeRateNum) : appliedStoreCredit;
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { storeCredit: { decrement: creditUsdUsed } },
+      });
+      this.logger.log(`💳 Deducted $${creditUsdUsed.toFixed(2)} store credit from user ${userId}`);
+    }
+
+    // Fire-and-forget: check if buyer referral qualifies for reward
+    if (this.referralService) {
+      this.referralService.checkBuyerQualification(order.id).catch((err) => {
+        this.logger.warn(`Referral buyer qualification check failed: ${err.message}`);
+      });
+    }
 
     // Record inventory transactions outside the main transaction
     // This creates proper audit trail
@@ -965,31 +1311,79 @@ export class OrdersService {
         const customerName =
           `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer';
 
-        await this.emailService.sendOrderConfirmation(user.email, {
-          orderNumber: order.orderNumber,
-          customerName,
-          items: orderItems.map((item) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: Number(item.price),
-            image: item.image,
-          })),
-          subtotal: Number(subtotal),
-          tax: Number(tax),
-          shipping: Number(shipping),
-          total: Number(total),
-          currency,
-          shippingAddress: {
-            street: order.shippingAddress.address1,
-            city: order.shippingAddress.city,
-            state: order.shippingAddress.province || '',
-            zipCode: order.shippingAddress.postalCode,
-            country: order.shippingAddress.country,
-          },
-          orderId: order.id,
-        });
+        if (isPickup && pickupStoreId) {
+          // Send pickup order placed email
+          const pickupStore = await this.prisma.store.findUnique({
+            where: { id: pickupStoreId },
+            select: {
+              name: true,
+              pickupAddress: true,
+              pickupInstructions: true,
+              address1: true,
+              address2: true,
+              city: true,
+              province: true,
+              postalCode: true,
+            },
+          });
 
-        this.logger.log(`Order confirmation email queued for ${user.email}`);
+          if (pickupStore) {
+            const storeAddress =
+              pickupStore.pickupAddress ||
+              `${pickupStore.address1 || ''}, ${pickupStore.city || ''}, ${pickupStore.province || ''} ${pickupStore.postalCode || ''}`.trim();
+
+            await this.emailService.sendPickupOrderPlacedNotification(user.email, {
+              orderNumber: order.orderNumber,
+              customerName,
+              pickupCode: pickupCode || '',
+              storeName: pickupStore.name,
+              storeAddress,
+              pickupInstructions: pickupInstructions || undefined,
+              items: orderItems.map((item) => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: Number(item.price),
+                image: item.image,
+              })),
+              subtotal: Number(subtotal),
+              tax: Number(tax),
+              pickupFee: Number(shipping), // Pickup fee stored as shipping
+              total: Number(total),
+              currency,
+              orderId: order.id,
+            });
+
+            this.logger.log(`Pickup order placed email queued for ${user.email}`);
+          }
+        } else {
+          // Send regular order confirmation email
+          await this.emailService.sendOrderConfirmation(user.email, {
+            orderNumber: order.orderNumber,
+            customerName,
+            items: orderItems.map((item) => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: Number(item.price),
+              image: item.image || undefined,
+            })),
+            subtotal: Number(subtotalConverted),
+            tax: Number(taxConverted),
+            shipping: Number(shippingConverted.add(gelatoConverted)),
+            total: Number(total),
+            discount: appliedStoreCredit.greaterThan(0) ? appliedStoreCredit.toNumber() : undefined,
+            currency,
+            shippingAddress: {
+              street: order.shippingAddress.address1,
+              city: order.shippingAddress.city,
+              state: order.shippingAddress.province || '',
+              zipCode: order.shippingAddress.postalCode,
+              country: order.shippingAddress.country,
+            },
+            orderId: order.id,
+          });
+
+          this.logger.log(`Order confirmation email queued for ${user.email}`);
+        }
       }
     } catch (emailError) {
       // Don't fail the order if email fails
@@ -1073,12 +1467,48 @@ export class OrdersService {
                 0
               );
 
-              // Find commission for this store
+              // Commissions are created by the payment webhook (after payment), so they
+              // won't exist yet at order-creation time. Use the commission record if present,
+              // otherwise fall back to the configured global_commission_rate setting.
               const commission = fullOrder.commissions?.find((c: any) => c.storeId === storeId);
-              const commissionAmount = commission ? Number(commission.commissionAmount) : 0;
-              const commissionRate =
-                sellerSubtotal > 0 ? (commissionAmount / sellerSubtotal) * 100 : 10;
-              const netPayout = sellerSubtotal - commissionAmount;
+              let commissionRate = 10; // default 10 %
+              let commissionAmount = 0;
+
+              if (commission && Number(commission.commissionAmount) > 0) {
+                // Commission already recorded (e.g. re-send after payment)
+                commissionAmount = Number(commission.commissionAmount);
+                commissionRate =
+                  sellerSubtotal > 0 ? (commissionAmount / sellerSubtotal) * 100 : 10;
+              } else {
+                // Commission not yet recorded — look up configured rate
+                try {
+                  const rateSetting = await this.prisma.systemSetting.findUnique({
+                    where: { key: 'global_commission_rate' },
+                  });
+                  commissionRate = rateSetting?.value ? Number(rateSetting.value) : 10;
+                } catch {
+                  commissionRate = 10;
+                }
+                commissionAmount = sellerSubtotal * (commissionRate / 100);
+              }
+
+              // Estimate transaction fee proportionally (actual fee confirmed after payment)
+              let estimatedFeePercent = 2.9;
+              try {
+                const feePctSetting = await this.prisma.systemSetting.findUnique({
+                  where: { key: 'stripe_fee_percentage' },
+                });
+                if (feePctSetting?.value) estimatedFeePercent = Number(feePctSetting.value);
+              } catch {
+                /* use default */
+              }
+              const orderTotal = Number(fullOrder.total) || sellerSubtotal;
+              const sellerShare = orderTotal > 0 ? sellerSubtotal / orderTotal : 1;
+              // Fixed fee ($0.30 USD equiv) split proportionally; percentage applied to seller subtotal
+              const estimatedTransactionFee =
+                sellerSubtotal * (estimatedFeePercent / 100) + 0.3 * sellerShare;
+
+              const netPayout = sellerSubtotal - commissionAmount - estimatedTransactionFee;
 
               const sellerName =
                 `${seller.firstName || ''} ${seller.lastName || ''}`.trim() || 'Seller';
@@ -1098,6 +1528,8 @@ export class OrdersService {
                 subtotal: sellerSubtotal,
                 commission: commissionAmount,
                 commissionRate,
+                transactionFee: estimatedTransactionFee,
+                transactionFeeRate: estimatedFeePercent,
                 netPayout,
                 currency: fullOrder.currency,
                 shippingAddress: {
@@ -1123,7 +1555,20 @@ export class OrdersService {
       this.logger.error('Failed to send seller notification emails:', sellerEmailError);
     }
 
-    return order;
+    // Convert Decimal fields to numbers for frontend compatibility
+    return {
+      ...order,
+      subtotal: Number(order.subtotal),
+      shipping: Number(order.shipping),
+      tax: Number(order.tax),
+      total: Number(order.total),
+      exchangeRate: order.exchangeRate ? Number(order.exchangeRate) : null,
+      items: order.items?.map((item) => ({
+        ...item,
+        price: Number(item.price),
+        total: Number(item.total),
+      })),
+    };
   }
 
   /**
@@ -1140,6 +1585,28 @@ export class OrdersService {
 
     // Validate status transition
     this.validateStatusTransition(order.status, status);
+
+    // For PROCESSING status: validate Gelato POD readiness BEFORE committing the DB change.
+    // This ensures the order never gets stuck in PROCESSING with no fulfillment.
+    if (status === OrderStatus.PROCESSING) {
+      const validation = await this.gelatoOrdersService.validatePodReadiness(id);
+
+      if (!validation.ready) {
+        const unreadyProducts = validation.unreadyItems
+          .map((item) => `"${item.productName}" (${item.reason})`)
+          .join(', ');
+
+        this.logger.error(
+          `❌ Cannot move order ${id} to PROCESSING: ${validation.unreadyItems.length}/${validation.totalPodItems} POD items not ready: ${unreadyProducts}`
+        );
+
+        throw new BadRequestException(
+          `Cannot process order: ${validation.unreadyItems.length} POD item(s) cannot be fulfilled. ` +
+            `The following items require seller Gelato configuration: ${unreadyProducts}. ` +
+            `Please contact the seller(s) to enable Print-on-Demand fulfillment.`
+        );
+      }
+    }
 
     // Update order status
     const updatedOrder = await this.prisma.order.update({
@@ -1167,34 +1634,11 @@ export class OrdersService {
       data: timelineData,
     });
 
-    // Auto-submit Gelato POD items when order moves to PROCESSING
-    // This triggers after payment authorization (uncaptured) is confirmed
-    // Payment will be captured later after delivery confirmation
+    // Auto-submit Gelato POD items after the status is committed to DB
     if (status === OrderStatus.PROCESSING) {
-      // CRITICAL FIX: Validate POD readiness BEFORE allowing status change
       try {
-        const validation = await this.gelatoOrdersService.validatePodReadiness(id);
-
-        if (!validation.ready) {
-          const unreadyProducts = validation.unreadyItems
-            .map((item) => `"${item.productName}" (${item.reason})`)
-            .join(', ');
-
-          this.logger.error(
-            `❌ Cannot move order ${id} to PROCESSING: ${validation.unreadyItems.length}/${validation.totalPodItems} POD items not ready for fulfillment: ${unreadyProducts}`
-          );
-
-          throw new BadRequestException(
-            `Cannot process order: ${validation.unreadyItems.length} POD item(s) cannot be fulfilled. ` +
-              `The following items require seller Gelato configuration: ${unreadyProducts}. ` +
-              `Please contact the seller(s) to enable Print-on-Demand fulfillment.`
-          );
-        }
-
-        // All POD items ready - proceed with submission (ALL-OR-NOTHING)
         const result = await this.gelatoOrdersService.submitAllPodItems(id);
 
-        // ✅ Check if ALL items submitted successfully
         if (!result.success) {
           const failedItems = result.results.filter((r) => r.status === 'failed');
           const errorList = failedItems
@@ -1205,6 +1649,12 @@ export class OrdersService {
             `❌ Gelato submission failed for order ${id}: ${result.failed} of ${result.results.length} items failed`
           );
 
+          // Roll back the status change and remove the stale timeline entry
+          await this.prisma.order.update({ where: { id }, data: { status: order.status } });
+          await this.prisma.orderTimeline.deleteMany({
+            where: { orderId: id, status },
+          });
+
           throw new BadRequestException(
             `Cannot process order: ${result.failed} POD item(s) failed to submit to Gelato.\n\n` +
               `Failed items:\n${errorList}\n\n` +
@@ -1212,15 +1662,26 @@ export class OrdersService {
           );
         }
 
-        this.logger.log(
-          `✅ All Gelato POD items submitted successfully for order ${id}: ${result.submitted} item(s)`
-        );
+        if (result.submitted > 0) {
+          this.logger.log(
+            `✅ All Gelato POD items submitted successfully for order ${id}: ${result.submitted} item(s)`
+          );
+        }
       } catch (gelatoError) {
-        this.logger.error(`❌ Gelato POD submission failed for order ${id}:`, gelatoError.message);
-        // Re-throw to prevent status change if POD submission fails
-        throw new BadRequestException(
-          `Cannot process order: POD fulfillment validation or submission failed. ${gelatoError.message}`
-        );
+        if (!(gelatoError instanceof BadRequestException)) {
+          this.logger.error(
+            `❌ Gelato POD submission failed for order ${id}:`,
+            gelatoError.message
+          );
+          await this.prisma.order.update({ where: { id }, data: { status: order.status } });
+          await this.prisma.orderTimeline.deleteMany({
+            where: { orderId: id, status },
+          });
+          throw new BadRequestException(
+            `Cannot process order: POD fulfillment submission failed. ${gelatoError.message}`
+          );
+        }
+        throw gelatoError;
       }
     }
 
@@ -1268,6 +1729,7 @@ export class OrdersService {
       [OrderStatus.PROCESSING]: [
         OrderStatus.PARTIALLY_SHIPPED,
         OrderStatus.SHIPPED,
+        OrderStatus.READY_FOR_PICKUP, // For pickup orders
         OrderStatus.CANCELLED,
       ],
       [OrderStatus.PARTIALLY_SHIPPED]: [
@@ -1279,6 +1741,14 @@ export class OrdersService {
       [OrderStatus.DELIVERED]: [OrderStatus.REFUNDED], // Can't cancel delivered orders
       [OrderStatus.CANCELLED]: [], // Terminal state - no transitions allowed
       [OrderStatus.REFUNDED]: [], // Terminal state - no transitions allowed
+      // Pickup-specific statuses
+      [OrderStatus.READY_FOR_PICKUP]: [
+        OrderStatus.PICKED_UP,
+        OrderStatus.PICKUP_EXPIRED,
+        OrderStatus.CANCELLED,
+      ],
+      [OrderStatus.PICKED_UP]: [], // Terminal state - successful pickup
+      [OrderStatus.PICKUP_EXPIRED]: [OrderStatus.CANCELLED, OrderStatus.REFUNDED],
     };
 
     const allowedStatuses = validTransitions[currentStatus] || [];
@@ -1295,10 +1765,20 @@ export class OrdersService {
 
   /**
    * Cancel order
+   *
+   * P3-01 fix: cancelling a PAID/PARTIALLY_REFUNDED order now triggers a full
+   * Stripe refund (or PI cancellation if not yet captured) before updating state.
+   * P3-02 fix: buyers are blocked from cancelling SHIPPED orders.
+   * P3-03 fix: ADMIN/SUPER_ADMIN can cancel SHIPPED orders (force-cancel).
+   * P3-05 fix: PENDING-payment cancellations now set paymentStatus=CANCELLED.
    */
-  async cancel(id: string, userId: string) {
-    const order = await this.findOne(id, userId);
+  async cancel(id: string, userId: string, actor: { role: UserRole }) {
+    const isPrivileged = actor.role === UserRole.ADMIN || actor.role === UserRole.SUPER_ADMIN;
 
+    // P3-03: admins can look up any order regardless of ownership
+    const order = await this.findOne(id, userId, isPrivileged);
+
+    // --- Status gate (fail fast before any payment action) ---
     if (order.status === OrderStatus.DELIVERED) {
       throw new BadRequestException('Cannot cancel delivered order');
     }
@@ -1307,7 +1787,70 @@ export class OrdersService {
       throw new BadRequestException('Order already cancelled');
     }
 
-    // Restore inventory with proper transaction tracking
+    if (order.status === OrderStatus.REFUNDED) {
+      throw new BadRequestException('Order already refunded');
+    }
+
+    if (order.status === OrderStatus.SHIPPED && !isPrivileged) {
+      throw new BadRequestException(
+        'Cannot cancel shipped order. Please initiate a refund request instead.'
+      );
+    }
+
+    // --- Payment action (must succeed before any state mutation) ---
+    const wasRefundTriggered =
+      order.paymentStatus === PaymentStatus.PAID ||
+      order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED;
+
+    if (wasRefundTriggered) {
+      // createRefund handles both the requires_capture (PI cancel) and
+      // succeeded (Stripe refund) paths internally, and restores inventory.
+      // If this throws the cancellation is aborted — transactional semantics.
+      await this.paymentService.createRefund(id, undefined, 'order_cancelled');
+
+      // Deliberately using prisma.order.update (not updateStatus) because
+      // validateStatusTransition rejects REFUNDED -> CANCELLED as an invalid
+      // terminal-state transition. For cancel-with-refund, REFUNDED is an
+      // intermediate state written by createRefund, and CANCELLED is the
+      // semantically correct final state (matches admin revenue metrics'
+      // "status != CANCELLED" filter). The state machine does not currently
+      // model cancel-with-refund as a first-class flow; this bypass is
+      // intentional and documented as known gap for post-launch cleanup.
+      await this.prisma.order.update({
+        where: { id },
+        data: { status: OrderStatus.CANCELLED },
+      });
+      await this.prisma.orderTimeline.create({
+        data: {
+          orderId: id,
+          status: OrderStatus.CANCELLED,
+          title: 'Order Cancelled',
+          description: 'Order cancelled and payment refunded.',
+          icon: 'x-circle',
+        },
+      });
+
+      // Inventory was already restored inside createRefund — skip the loop.
+      return this.prisma.order.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          shippingAddress: true,
+          timeline: { orderBy: { createdAt: 'asc' } },
+        },
+      });
+    }
+
+    if (order.paymentStatus === PaymentStatus.PENDING) {
+      // No Stripe action needed; mark payment as cancelled so downstream
+      // reporting does not show a dangling PENDING payment.
+      await this.prisma.order.update({
+        where: { id },
+        data: { paymentStatus: PaymentStatus.CANCELLED as any },
+      });
+    }
+
+    // --- Inventory restoration (non-PAID paths only; createRefund handles PAID) ---
     for (const item of order.items) {
       try {
         await this.inventoryService.recordTransaction({
@@ -1761,11 +2304,15 @@ export class OrdersService {
           quantity: item.quantity,
           price: verifiedPrice,
           total: itemTotal,
+          weight: product.weight ? Number(product.weight) * 1000 : undefined,
+          fulfillmentType: product.fulfillmentType || undefined,
+          gelatoProductUid: product.gelatoProductUid || undefined,
+          storeId: product.storeId || undefined,
         });
       }
 
       // 3. Calculate shipping options
-      const shippingOptions = await this.shippingTaxService.calculateShippingOptions(
+      let shippingOptions = await this.shippingTaxService.calculateShippingOptions(
         {
           country: address.country,
           state: address.province || undefined,
@@ -1777,7 +2324,29 @@ export class OrdersService {
       );
 
       if (!shippingOptions || shippingOptions.length === 0) {
-        throw new BadRequestException('No shipping options available for this address');
+        this.logger.warn(
+          '[calculateTotals] All shipping providers failed — using hardcoded manual rates as final fallback'
+        );
+        shippingOptions = [
+          {
+            id: 'standard',
+            name: 'Standard Shipping',
+            description: '5-7 business days',
+            price: 9.99,
+            estimatedDays: 7,
+            carrier: 'USPS',
+            source: 'manual',
+          },
+          {
+            id: 'express',
+            name: 'Express Shipping',
+            description: '2-3 business days',
+            price: 19.99,
+            estimatedDays: 3,
+            carrier: 'FedEx',
+            source: 'manual',
+          },
+        ];
       }
 
       // 4. Select shipping method
@@ -1795,28 +2364,52 @@ export class OrdersService {
         }
       }
 
-      // 5. Calculate tax
-      const taxCalc = await this.shippingTaxService.calculateTax(
-        {
-          country: address.country,
-          state: address.province || undefined,
-          postalCode: address.postalCode,
-        },
-        subtotal
-      );
+      // 5. Calculate tax per seller (respects businessType: corporation/registered_business = price-inclusive)
+      const taxCalc: TaxCalculationWithBreakdown =
+        await this.shippingTaxService.calculateTaxPerSeller(
+          {
+            country: address.country,
+            state: address.province || undefined,
+            postalCode: address.postalCode,
+          },
+          verifiedItems,
+          subtotal
+        );
 
-      // 6. Apply coupon discount (future feature - placeholder)
-      const discount = 0;
-      const couponDetails = null;
+      // 6. Apply referral coupon discount
+      let discount = 0;
+      let couponDetails: { code: string; discount: number; type: 'PERCENTAGE' | 'FIXED' } | null =
+        null;
 
       if (dto.couponCode) {
-        // TODO: Implement coupon validation
-        // For now, just log that a coupon was provided
-        this.logger.log(
-          `Coupon code '${dto.couponCode}' provided but coupon system not yet implemented`
-        );
-        warnings.push('Coupon system not yet implemented. Coupon code will be ignored.');
+        const normalizedCode = dto.couponCode.trim().toUpperCase();
+        const coupon = await this.prisma.referralCoupon.findUnique({
+          where: { code: normalizedCode },
+        });
+
+        if (!coupon) {
+          warnings.push(`Coupon code '${normalizedCode}' not found.`);
+        } else if (coupon.referrerId !== userId) {
+          warnings.push(`Coupon code '${normalizedCode}' is not valid for your account.`);
+        } else if (coupon.status !== ReferralCouponStatus.ACTIVE) {
+          warnings.push(
+            `Coupon code '${normalizedCode}' has already been ${coupon.status === ReferralCouponStatus.REDEEMED ? 'redeemed' : 'expired'}.`
+          );
+        } else if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+          warnings.push(`Coupon code '${normalizedCode}' has expired.`);
+        } else {
+          discount = Number(coupon.amount); // in USD
+          couponDetails = { code: coupon.code, discount, type: 'FIXED' };
+          this.logger.log(`🎟️  Coupon '${normalizedCode}' applied: $${discount} discount`);
+        }
       }
+
+      // 6.5 Fetch user store credit balance (referral rewards)
+      const userCredit = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { storeCredit: true },
+      });
+      const storeCreditUsd = Number(userCredit?.storeCredit || 0);
 
       // 7. Get currency and exchange rate
       const targetCurrency = dto.currency || 'USD';
@@ -1838,19 +2431,73 @@ export class OrdersService {
       }
 
       // 8. Convert all prices to target currency
+      // Product prices and tax are always in USD — simple multiply.
       const convertPrice = (usdPrice: number) => usdPrice * exchangeRate;
 
+      // Shipping rates may be in a non-USD source currency (e.g. EUR from SendCloud/DHL).
+      // Pre-fetch rates for any non-USD source currencies so we can do a two-step conversion:
+      //   sourceCurrency → USD  (divide by sourceCurrencyRate)
+      //   USD → targetCurrency  (multiply by exchangeRate)
+      const sourceCurrencyRates: Record<string, number> = { USD: 1 };
+      const nonUsdSources = new Set(
+        shippingOptions
+          .map((o) => (o as any).sourceCurrency as string | undefined)
+          .filter((c): c is string => !!c && c !== 'USD')
+      );
+      for (const srcCurrency of nonUsdSources) {
+        try {
+          const srcRate = await this.currencyService.getRateByCode(srcCurrency);
+          sourceCurrencyRates[srcCurrency] = Number(srcRate.rate); // units of srcCurrency per 1 USD
+          this.logger.log(
+            `💱 Source currency rate fetched: 1 USD = ${sourceCurrencyRates[srcCurrency]} ${srcCurrency}`
+          );
+        } catch (e) {
+          this.logger.warn(
+            `Could not get rate for shipping source currency ${srcCurrency} — treating as USD`
+          );
+          sourceCurrencyRates[srcCurrency] = 1;
+        }
+      }
+
+      // Converts a shipping price from its native source currency to the target display currency
+      const convertShippingPrice = (price: number, sourceCurrency?: string): number => {
+        const src = sourceCurrency || 'USD';
+        const srcRate = sourceCurrencyRates[src] ?? 1;
+        // price / srcRate = equivalent USD amount; then * exchangeRate = target currency amount
+        return (price / srcRate) * exchangeRate;
+      };
+
       const subtotalInTargetCurrency = convertPrice(subtotal);
+      // For mixed Gelato + physical carts, the carrier price and the Gelato cost may be in
+      // different source currencies (e.g. EUR + USD). Convert each portion independently.
       const shippingCost = selectedShipping.price;
-      const shippingCostInTargetCurrency = convertPrice(shippingCost);
+      const gelatoCostUsd = (selectedShipping as any).gelatoCostUsd as number | undefined;
+      const shippingCostInTargetCurrency =
+        convertShippingPrice(shippingCost, (selectedShipping as any).sourceCurrency) +
+        convertPrice(gelatoCostUsd || 0);
       const taxAmount = taxCalc.amount;
       const taxAmountInTargetCurrency = convertPrice(taxAmount);
       const discountInTargetCurrency = convertPrice(discount);
-      const total =
+
+      // Convert coupon discount to target currency
+      if (couponDetails) {
+        couponDetails = {
+          ...couponDetails,
+          discount: Math.round(discountInTargetCurrency * 100) / 100,
+        };
+      }
+
+      // Store credit: convert USD balance → target currency, cap at order pre-credit total
+      const storeCreditInTargetCurrency = storeCreditUsd * exchangeRate;
+      const preCreditTotal =
         subtotalInTargetCurrency +
         shippingCostInTargetCurrency +
         taxAmountInTargetCurrency -
         discountInTargetCurrency;
+      const appliedCreditInTargetCurrency = dto.useStoreCredit
+        ? Math.min(storeCreditInTargetCurrency, preCreditTotal)
+        : 0;
+      const total = preCreditTotal - appliedCreditInTargetCurrency;
 
       // 9. Return detailed calculation in target currency
       return {
@@ -1862,28 +2509,51 @@ export class OrdersService {
           estimatedDays: selectedShipping.estimatedDays,
           carrier: selectedShipping.carrier,
         },
-        shippingOptions: shippingOptions.map((opt) => ({
-          id: opt.id,
-          name: opt.name,
-          price: Math.round(convertPrice(opt.price) * 100) / 100,
-          estimatedDays: opt.estimatedDays,
-          carrier: opt.carrier,
-        })),
+        shippingOptions: shippingOptions.map((opt) => {
+          const optGelatoCostUsd = (opt as any).gelatoCostUsd as number | undefined;
+          const convertedPrice =
+            convertShippingPrice(opt.price, (opt as any).sourceCurrency) +
+            convertPrice(optGelatoCostUsd || 0);
+          return {
+            id: opt.id,
+            name: opt.name,
+            price: Math.round(convertedPrice * 100) / 100,
+            estimatedDays: opt.estimatedDays,
+            carrier: opt.carrier,
+            source: opt.source,
+            requiresServicePoint: opt.requiresServicePoint ?? false,
+          };
+        }),
         tax: {
           amount: Math.round(taxAmountInTargetCurrency * 100) / 100,
           rate: taxCalc.rate,
           jurisdiction: taxCalc.jurisdiction || 'N/A',
           breakdown: taxCalc.breakdown,
         },
+        taxBreakdown: {
+          sellerBreakdown: taxCalc.sellerBreakdown.map((s) => ({
+            ...s,
+            subtotal: Math.round(s.subtotal * exchangeRate * 100) / 100,
+            taxAmount: Math.round(s.taxAmount * exchangeRate * 100) / 100,
+          })),
+          hasTaxInclusiveItems: taxCalc.hasTaxInclusiveItems,
+          hasTaxableItems: taxCalc.hasTaxableItems,
+        },
         discount: Math.round(discountInTargetCurrency * 100) / 100,
         coupon: couponDetails,
+        storeCredit: {
+          available: Math.round(storeCreditInTargetCurrency * 100) / 100,
+          applied: Math.round(appliedCreditInTargetCurrency * 100) / 100,
+        },
         total: Math.round(total * 100) / 100,
         currency: targetCurrency,
         breakdown: {
           subtotal: Math.round(subtotalInTargetCurrency * 100) / 100,
           shipping: Math.round(shippingCostInTargetCurrency * 100) / 100,
           tax: Math.round(taxAmountInTargetCurrency * 100) / 100,
-          discount: Math.round(-discountInTargetCurrency * 100) / 100,
+          discount:
+            Math.round(-(discountInTargetCurrency + appliedCreditInTargetCurrency) * 100) / 100,
+          storeCredit: Math.round(-appliedCreditInTargetCurrency * 100) / 100,
           total: Math.round(total * 100) / 100,
         },
         ...(warnings.length > 0 && { warnings }),
@@ -2151,5 +2821,76 @@ export class OrdersService {
       REFUNDED: '#FF9800',
     };
     return colors[status] || '#666';
+  }
+
+  /**
+   * Get available pickup stores for given products
+   * Returns stores that have pickup enabled and carry the specified products
+   * v2.10.0 - Self-Pickup Feature
+   */
+  async getAvailablePickupStores(productIds: string[]) {
+    if (!productIds || productIds.length === 0) {
+      return [];
+    }
+
+    try {
+      // Find all stores that have at least one of the specified products
+      // AND have pickup enabled
+      const stores = await this.prisma.store.findMany({
+        where: {
+          pickupEnabled: true,
+          status: 'ACTIVE', // Only active stores
+          products: {
+            some: {
+              id: {
+                in: productIds,
+              },
+              status: 'ACTIVE', // Only active products
+            },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          // Store address fields
+          address1: true,
+          address2: true,
+          city: true,
+          province: true,
+          postalCode: true,
+          country: true,
+          phone: true,
+          // Pickup-specific fields
+          pickupAddress: true,
+          pickupInstructions: true,
+          pickupHours: true,
+          pickupEstimatedMinutes: true,
+          pickupFee: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      });
+
+      // Transform to match frontend PickupStore interface
+      return stores.map((store) => ({
+        id: store.id,
+        name: store.name,
+        // Use pickup address if set, otherwise use store address
+        address: store.pickupAddress || store.address1 || null,
+        city: store.city,
+        state: store.province,
+        zipCode: store.postalCode,
+        phone: store.phone,
+        pickupAddress: store.pickupAddress,
+        pickupInstructions: store.pickupInstructions,
+        pickupHours: store.pickupHours as Record<string, string> | null,
+        pickupEstimatedMinutes: store.pickupEstimatedMinutes,
+      }));
+    } catch (error) {
+      this.logger.error('Failed to fetch available pickup stores', error);
+      throw new Error('Failed to fetch available pickup stores');
+    }
   }
 }

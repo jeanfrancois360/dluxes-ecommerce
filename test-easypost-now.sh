@@ -1,0 +1,2 @@
+#!/bin/bash
+curl -s http://localhost:4000/api/v1/easypost/rates/lowest -H "Content-Type: application/json" -d "{\"fromAddress\":{\"street1\":\"123 Main St\",\"city\":\"New York\",\"state\":\"NY\",\"zip\":\"10001\",\"country\":\"US\"},\"toAddress\":{\"street1\":\"456 Market St\",\"city\":\"San Francisco\",\"state\":\"CA\",\"zip\":\"94103\",\"country\":\"US\"},\"parcel\":{\"length\":10,\"width\":8,\"height\":4,\"weight\":16}}" --max-time 15

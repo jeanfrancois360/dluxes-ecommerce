@@ -12,6 +12,7 @@ import {
   Body,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { UploadService } from './upload.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -51,6 +52,33 @@ export class UploadController {
   }
 
   /**
+   * Upload a document (image or PDF) — used for KYC verification
+   * @route POST /upload/document
+   */
+  @Post('document')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadDocument(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('folder') folder?: string
+  ) {
+    try {
+      const data = await this.uploadService.uploadFile(file, folder || 'documents', {
+        allowPdf: true,
+      });
+      return {
+        success: true,
+        data,
+        message: 'Document uploaded successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
    * Upload multiple images
    * @route POST /upload/images
    */
@@ -66,6 +94,33 @@ export class UploadController {
         success: true,
         data,
         message: 'Images uploaded successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'An error occurred',
+      };
+    }
+  }
+
+  /**
+   * Upload any file type — used for digital products (ZIP, PDF, MP3, EXE, etc.)
+   * @route POST /upload/file
+   */
+  @Post('file')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 500 * 1024 * 1024 }, // 500MB for digital products
+    })
+  )
+  async uploadFile(@UploadedFile() file: Express.Multer.File, @Query('folder') folder?: string) {
+    try {
+      const data = await this.uploadService.uploadDigitalFile(file, folder || 'digital-products');
+      return {
+        success: true,
+        data,
+        message: 'File uploaded successfully',
       };
     } catch (error) {
       return {

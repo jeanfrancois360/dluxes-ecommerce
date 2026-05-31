@@ -21,6 +21,7 @@ import * as QRCode from 'qrcode';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
 import { EmailOTPService } from './email-otp.service';
+import { ReferralService } from '../referral/referral.service';
 import { EmailOTPType } from '@prisma/client';
 import {
   RegisterDto,
@@ -32,7 +33,7 @@ import {
 
 @Injectable()
 export class EnhancedAuthService {
-  private readonly MAX_LOGIN_ATTEMPTS = 5;
+  private readonly MAX_LOGIN_ATTEMPTS_DEFAULT = 5; // fallback when setting unavailable
   private readonly LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
   private readonly MAGIC_LINK_EXPIRY = 15 * 60 * 1000; // 15 minutes
   private readonly PASSWORD_RESET_EXPIRY = 60 * 60 * 1000; // 1 hour
@@ -44,7 +45,8 @@ export class EnhancedAuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private emailService: EmailService,
-    private emailOTPService: EmailOTPService
+    private emailOTPService: EmailOTPService,
+    private referralService: ReferralService
   ) {}
 
   // ============================================================================
@@ -79,6 +81,19 @@ export class EnhancedAuthService {
         lastLoginIp: ipAddress,
       },
     });
+
+    // Referral System (v2.11.0) - NON-BLOCKING
+    // Auto-generate referral code for new user
+    this.referralService.generateReferralCode(user.id).catch((err) => {
+      console.error(`Failed to generate referral code for user ${user.id}:`, err);
+    });
+
+    // Apply referral code if provided
+    if (data.referralCode) {
+      this.referralService.applyReferralCode(data.referralCode, user.id).catch((err) => {
+        console.error(`Failed to apply referral code ${data.referralCode}:`, err);
+      });
+    }
 
     // Auto-create store for all sellers (v2.6.0 feature)
     let store = null;
@@ -115,10 +130,15 @@ export class EnhancedAuthService {
     });
 
     // Create session
-    const sessionToken = await this.createSession(user.id, ipAddress, userAgent, false);
+    const { token: sessionToken, id: sessionId } = await this.createSession(
+      user.id,
+      ipAddress,
+      userAgent,
+      false
+    );
 
     // Generate JWT
-    const accessToken = this.generateJWT(user);
+    const accessToken = this.generateJWT(user, sessionId);
 
     return {
       accessToken,
@@ -184,45 +204,9 @@ export class EnhancedAuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // MANDATORY: Email OTP (2FA via email) - Required for all users
-    if (!dto.emailOTPCode) {
-      // Generate and send OTP
-      const { code } = await this.emailOTPService.createEmailOTP(
-        user.id,
-        EmailOTPType.LOGIN,
-        ipAddress,
-        userAgent
-      );
-
-      // Send OTP email
-      await this.emailService.sendEmailOTP(
-        user.email,
-        user.firstName,
-        code,
-        EmailOTPType.LOGIN,
-        ipAddress
-      );
-
-      return {
-        requiresEmailOTP: true,
-        userId: user.id,
-        message: 'Please enter the verification code sent to your email',
-      };
-    }
-
-    // Verify email OTP
-    const isEmailOTPValid = await this.emailOTPService.verifyEmailOTP(
-      user.id,
-      dto.emailOTPCode,
-      EmailOTPType.LOGIN
-    );
-
-    if (!isEmailOTPValid) {
-      throw new UnauthorizedException('Invalid or expired verification code');
-    }
-
-    // Optional: Check TOTP 2FA (if user has it enabled)
+    // MANDATORY 2FA: TOTP (authenticator app) if enabled, otherwise Email OTP
     if (user.twoFactorEnabled) {
+      // TOTP path — user has set up an authenticator app
       if (!dto.twoFactorCode) {
         return {
           requires2FA: true,
@@ -234,6 +218,40 @@ export class EnhancedAuthService {
       const is2FAValid = await this.verify2FA(user.id, dto.twoFactorCode);
       if (!is2FAValid) {
         throw new UnauthorizedException('Invalid 2FA code');
+      }
+    } else {
+      // Email OTP path — default for all users without an authenticator app
+      if (!dto.emailOTPCode) {
+        const { code } = await this.emailOTPService.createEmailOTP(
+          user.id,
+          EmailOTPType.LOGIN,
+          ipAddress,
+          userAgent
+        );
+
+        await this.emailService.sendEmailOTP(
+          user.email,
+          user.firstName,
+          code,
+          EmailOTPType.LOGIN,
+          ipAddress
+        );
+
+        return {
+          requiresEmailOTP: true,
+          userId: user.id,
+          message: 'Please enter the verification code sent to your email',
+        };
+      }
+
+      const isEmailOTPValid = await this.emailOTPService.verifyEmailOTP(
+        user.id,
+        dto.emailOTPCode,
+        EmailOTPType.LOGIN
+      );
+
+      if (!isEmailOTPValid) {
+        throw new UnauthorizedException('Invalid or expired verification code');
       }
     }
 
@@ -250,7 +268,7 @@ export class EnhancedAuthService {
     });
 
     // Create session
-    const sessionToken = await this.createSession(
+    const { token: sessionToken, id: sessionId } = await this.createSession(
       user.id,
       ipAddress,
       userAgent,
@@ -258,7 +276,7 @@ export class EnhancedAuthService {
     );
 
     // Generate JWT
-    const accessToken = this.generateJWT(user);
+    const accessToken = this.generateJWT(user, sessionId);
 
     return {
       accessToken,
@@ -350,10 +368,15 @@ export class EnhancedAuthService {
     });
 
     // Create session
-    const sessionToken = await this.createSession(magicLink.userId, ipAddress, userAgent, true);
+    const { token: sessionToken, id: sessionId } = await this.createSession(
+      magicLink.userId,
+      ipAddress,
+      userAgent,
+      true
+    );
 
     // Generate JWT
-    const accessToken = this.generateJWT(magicLink.user);
+    const accessToken = this.generateJWT(magicLink.user, sessionId);
 
     return {
       accessToken,
@@ -744,7 +767,7 @@ export class EnhancedAuthService {
     ipAddress: string,
     userAgent: string,
     rememberMe: boolean
-  ): Promise<string> {
+  ): Promise<{ token: string; id: string }> {
     const token = randomBytes(32).toString('hex');
     const expiryDuration = rememberMe ? this.SESSION_EXPIRY_REMEMBER : this.SESSION_EXPIRY_DEFAULT;
 
@@ -764,7 +787,7 @@ export class EnhancedAuthService {
       // - Temporarily lock account
     }
 
-    await this.prisma.userSession.create({
+    const session = await this.prisma.userSession.create({
       data: {
         userId,
         token,
@@ -776,7 +799,7 @@ export class EnhancedAuthService {
       },
     });
 
-    return token;
+    return { token, id: session.id };
   }
 
   /**
@@ -871,7 +894,12 @@ export class EnhancedAuthService {
     await this.revokeAllSessions(userId);
 
     // Create new session
-    const newSessionToken = await this.createSession(userId, ipAddress, userAgent, false);
+    const { token: newSessionToken } = await this.createSession(
+      userId,
+      ipAddress,
+      userAgent,
+      false
+    );
 
     return newSessionToken;
   }
@@ -881,6 +909,21 @@ export class EnhancedAuthService {
   // ============================================================================
 
   private async checkRateLimit(email: string, ipAddress: string) {
+    let maxLoginAttempts = this.MAX_LOGIN_ATTEMPTS_DEFAULT;
+    try {
+      const setting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'max_login_attempts' },
+      });
+      if (setting?.value !== null && setting?.value !== undefined) {
+        const parsed = Number(setting.value);
+        if (!isNaN(parsed) && parsed > 0) {
+          maxLoginAttempts = parsed;
+        }
+      }
+    } catch {
+      // Use fallback silently
+    }
+
     const recentAttempts = await this.prisma.loginAttempt.findMany({
       where: {
         OR: [{ email }, { ipAddress }],
@@ -892,7 +935,7 @@ export class EnhancedAuthService {
 
     const failedAttempts = recentAttempts.filter((attempt) => !attempt.success);
 
-    if (failedAttempts.length >= this.MAX_LOGIN_ATTEMPTS) {
+    if (failedAttempts.length >= maxLoginAttempts) {
       const oldestAttempt = failedAttempts[0];
       const timeRemaining = Math.ceil(
         (oldestAttempt.createdAt.getTime() + this.LOCKOUT_DURATION - Date.now()) / 1000 / 60
@@ -928,12 +971,13 @@ export class EnhancedAuthService {
   // Utility Functions
   // ============================================================================
 
-  private generateJWT(user: any) {
-    const payload = {
+  private generateJWT(user: any, sessionId?: string) {
+    const payload: Record<string, unknown> = {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
+    if (sessionId) payload.session_id = sessionId;
 
     return this.jwtService.sign(payload, {
       expiresIn: '7d', // JWT expires in 7 days, session controls actual auth
@@ -1098,10 +1142,15 @@ export class EnhancedAuthService {
     await this.emailOTPService.verifyEmailOTP(user.id, otpCode, EmailOTPType.TWO_FACTOR_BACKUP);
 
     // Create session
-    const sessionToken = await this.createSession(user.id, ipAddress, userAgent, false);
+    const { token: sessionToken, id: sessionId } = await this.createSession(
+      user.id,
+      ipAddress,
+      userAgent,
+      false
+    );
 
     // Generate JWT
-    const accessToken = this.generateJWT(user);
+    const accessToken = this.generateJWT(user, sessionId);
 
     return {
       accessToken,

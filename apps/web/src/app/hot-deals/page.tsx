@@ -1,18 +1,33 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flame,
   Search,
   MapPin,
   Clock,
   MessageCircle,
-  Filter,
-  ChevronDown,
   Plus,
   AlertCircle,
+  ChevronRight,
+  X,
+  Zap,
+  Home,
+  Car,
+  Truck,
+  Monitor,
+  BookOpen,
+  Activity,
+  Sparkles,
+  Heart,
+  Star,
+  MoreHorizontal,
+  Users,
+  ArrowRight,
+  Image as ImageIcon,
+  DollarSign,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
@@ -24,83 +39,230 @@ import {
   CATEGORY_LABELS,
   URGENCY_CONFIG,
   HotDealCategory,
+  UrgencyLevel,
+  BudgetType,
 } from '@/lib/api/hot-deals';
 
-// Calculate time remaining
-function getTimeRemaining(expiresAt: string, t: any): string {
-  const now = new Date();
-  const expiry = new Date(expiresAt);
-  const diff = expiry.getTime() - now.getTime();
+// ─── Category config ───────────────────────────────────────────────────────────
 
-  if (diff <= 0) return t('expired');
+const CATEGORY_CONFIG: Record<
+  HotDealCategory,
+  { Icon: React.ComponentType<{ className?: string }>; color: string; bg: string }
+> = {
+  CHILDCARE: { Icon: Heart, color: 'text-pink-600', bg: 'bg-pink-50' },
+  HOME_SERVICES: { Icon: Home, color: 'text-blue-600', bg: 'bg-blue-50' },
+  AUTOMOTIVE: { Icon: Car, color: 'text-slate-600', bg: 'bg-slate-50' },
+  PET_SERVICES: { Icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
+  MOVING_DELIVERY: { Icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
+  TECH_SUPPORT: { Icon: Monitor, color: 'text-violet-600', bg: 'bg-violet-50' },
+  TUTORING: { Icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  HEALTH_WELLNESS: { Icon: Activity, color: 'text-red-600', bg: 'bg-red-50' },
+  CLEANING: { Icon: Sparkles, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+  OTHER: { Icon: MoreHorizontal, color: 'text-gray-600', bg: 'bg-gray-50' },
+};
 
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+// ─── Urgency card styles ───────────────────────────────────────────────────────
 
-  if (hours > 0) {
-    return t('hoursLeft', { hours, minutes });
-  }
-  return t('minutesLeft', { minutes });
+const URGENCY_CARD: Record<UrgencyLevel, { topBar: string; badge: string; badgeText: string }> = {
+  NORMAL: {
+    topBar: 'bg-gray-200',
+    badge: 'bg-gray-100 text-gray-600',
+    badgeText: '',
+  },
+  URGENT: {
+    topBar: 'bg-gradient-to-r from-[#CBB57B] to-amber-400',
+    badge: 'bg-amber-50 text-amber-700',
+    badgeText: '',
+  },
+  EMERGENCY: {
+    topBar: 'bg-gradient-to-r from-red-500 to-rose-400',
+    badge: 'bg-red-50 text-red-700',
+    badgeText: '',
+  },
+};
+
+// ─── Countdown ────────────────────────────────────────────────────────────────
+
+function Countdown({ expiresAt }: { expiresAt: string }) {
+  const [text, setText] = useState('');
+  const [isShort, setIsShort] = useState(false);
+
+  useEffect(() => {
+    function update() {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setText('Expired');
+        setIsShort(true);
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      setIsShort(diff < 2 * 3600000);
+      setText(h > 0 ? `${h}h ${m}m` : `${m}m left`);
+    }
+    update();
+    const id = setInterval(update, 60000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  return (
+    <span
+      className={`flex items-center gap-1 text-xs font-medium tabular-nums ${isShort ? 'text-red-500' : 'text-gray-400'}`}
+    >
+      <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+      {text}
+    </span>
+  );
 }
 
-// Hot Deal Card Component
-function HotDealCard({ deal }: { deal: HotDeal }) {
-  const t = useTranslations('pages.hotDeals');
-  const urgencyConfig = URGENCY_CONFIG[deal.urgency];
+// ─── Deal Card ────────────────────────────────────────────────────────────────
+
+function HotDealCard({ deal, index }: { deal: HotDeal; index: number }) {
+  const uc = URGENCY_CARD[deal.urgency];
+  const catConf = CATEGORY_CONFIG[deal.category];
+  const isEmergency = deal.urgency === 'EMERGENCY';
+  const isUrgent = deal.urgency === 'URGENT';
+  const responseCount = deal._count?.responses ?? 0;
+  const images = deal.images as string[] | undefined;
+  const firstImage = images?.[0];
+  const budget = deal.budget;
+  const budgetType = deal.budgetType as BudgetType | null | undefined;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all duration-300"
+      transition={{ duration: 0.28, delay: index * 0.045, ease: [0.22, 1, 0.36, 1] }}
+      className="group relative flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
     >
-      <div className="flex items-start justify-between mb-3">
-        <span
-          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${urgencyConfig.bgColor} ${urgencyConfig.color}`}
-        >
-          {urgencyConfig.label}
-        </span>
-        <div className="flex items-center text-sm text-gray-500">
-          <Clock className="w-4 h-4 mr-1" />
-          {getTimeRemaining(deal.expiresAt, t)}
+      {/* Top urgency bar */}
+      <div className={`h-1 w-full flex-shrink-0 ${uc.topBar}`} />
+
+      {/* Image */}
+      {firstImage && (
+        <div className="relative h-40 overflow-hidden bg-gray-50">
+          <img
+            src={firstImage}
+            alt={deal.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+          {images && images.length > 1 && (
+            <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/55 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm">
+              <ImageIcon className="w-3 h-3" />
+              {images.length}
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
-      <Link href={`/hot-deals/${deal.id}`}>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 hover:text-[#CBB57B] transition-colors line-clamp-2">
-          {deal.title}
-        </h3>
-      </Link>
-
-      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{deal.description}</p>
-
-      <div className="flex flex-wrap gap-2 mb-4">
-        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-          {CATEGORY_LABELS[deal.category]}
-        </span>
-        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-neutral-100 text-neutral-700">
-          <MapPin className="w-3 h-3 mr-1" />
-          {deal.city}
-          {deal.state ? `, ${deal.state}` : ''}
-        </span>
-      </div>
-
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-        <div className="flex items-center text-sm text-gray-500">
-          <MessageCircle className="w-4 h-4 mr-1" />
-          {deal._count?.responses || 0}{' '}
-          {deal._count?.responses === 1 ? t('response') : t('responses')}
+      <div className="flex flex-col flex-1 p-5">
+        {/* Urgency + timer */}
+        <div className="flex items-center justify-between mb-3">
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${uc.badge}`}
+          >
+            {isEmergency && (
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping flex-shrink-0" />
+            )}
+            {isUrgent && <Zap className="w-3 h-3 flex-shrink-0" />}
+            {URGENCY_CONFIG[deal.urgency].label}
+          </span>
+          <Countdown expiresAt={deal.expiresAt} />
         </div>
-        <Link
-          href={`/hot-deals/${deal.id}`}
-          className="text-sm font-medium text-[#CBB57B] hover:text-[#b9a369] transition-colors"
-        >
-          {t('viewDetails')}
+
+        {/* Title */}
+        <Link href={`/hot-deals/${deal.id}`} className="block mb-2">
+          <h3 className="text-[15px] font-bold text-gray-900 group-hover:text-[#CBB57B] transition-colors line-clamp-2 leading-snug">
+            {deal.title}
+          </h3>
         </Link>
+
+        {/* Description */}
+        <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed flex-1 mb-4">
+          {deal.description}
+        </p>
+
+        {/* Tags */}
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${catConf.bg} ${catConf.color}`}
+          >
+            <catConf.Icon className="w-3 h-3" />
+            {CATEGORY_LABELS[deal.category]}
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500">
+            <MapPin className="w-3 h-3" />
+            {deal.city}
+            {deal.state ? `, ${deal.state}` : ''}
+          </span>
+          {(budget || budgetType) && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-50 text-green-700 border border-green-100">
+              <DollarSign className="w-3 h-3" />
+              {budget
+                ? `${budget % 1 === 0 ? budget : budget.toFixed(2)}${budgetType === 'HOURLY' ? '/hr' : ''}`
+                : budgetType === 'NEGOTIABLE'
+                  ? 'Negotiable'
+                  : ''}
+            </span>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <div className="flex items-center gap-3">
+            <span
+              className={`flex items-center gap-1 text-xs font-medium ${responseCount > 0 ? 'text-[#CBB57B]' : 'text-gray-400'}`}
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              {responseCount} {responseCount === 1 ? 'response' : 'responses'}
+            </span>
+            <span className="flex items-center gap-1 text-xs text-gray-400">
+              <Users className="w-3 h-3" />
+              {deal.user.firstName}
+            </span>
+          </div>
+          <Link
+            href={`/hot-deals/${deal.id}`}
+            className="flex items-center gap-1 text-xs font-bold text-[#CBB57B] hover:text-amber-600 transition-colors group/link"
+          >
+            View
+            <ArrowRight className="w-3.5 h-3.5 group-hover/link:translate-x-0.5 transition-transform" />
+          </Link>
+        </div>
       </div>
     </motion.div>
   );
 }
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm animate-pulse overflow-hidden">
+      <div className="h-1 bg-gray-200" />
+      <div className="p-5">
+        <div className="flex justify-between mb-3">
+          <div className="h-6 w-20 bg-gray-200 rounded-full" />
+          <div className="h-4 w-20 bg-gray-200 rounded" />
+        </div>
+        <div className="h-5 w-4/5 bg-gray-200 rounded mb-1.5" />
+        <div className="h-5 w-3/5 bg-gray-200 rounded mb-3" />
+        <div className="h-4 w-full bg-gray-100 rounded mb-1.5" />
+        <div className="h-4 w-3/4 bg-gray-100 rounded mb-4" />
+        <div className="flex gap-2 mb-4">
+          <div className="h-5 w-24 bg-gray-200 rounded-full" />
+          <div className="h-5 w-20 bg-gray-200 rounded-full" />
+        </div>
+        <div className="flex justify-between pt-3 border-t border-gray-100">
+          <div className="h-4 w-20 bg-gray-200 rounded" />
+          <div className="h-4 w-12 bg-gray-200 rounded" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HotDealsPage() {
   const t = useTranslations('pages.hotDeals');
@@ -110,17 +272,11 @@ export default function HotDealsPage() {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<HotDealFilters>({});
   const [citySearch, setCitySearch] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [pagination, setPagination] = useState({
-    total: 0,
-    page: 1,
-    limit: 20,
-    totalPages: 0,
-  });
+  const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, totalPages: 0 });
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const categories = Object.entries(CATEGORY_LABELS) as [HotDealCategory, string][];
 
-  // Fetch hot deals
   useEffect(() => {
     async function fetchDeals() {
       setIsLoading(true);
@@ -138,290 +294,358 @@ export default function HotDealsPage() {
     fetchDeals();
   }, [filters, t]);
 
-  // Handle city search
   const handleCitySearch = () => {
     if (citySearch.trim()) {
       setFilters((prev) => ({ ...prev, city: citySearch.trim(), page: 1 }));
     } else {
-      const { city, ...rest } = filters;
+      const { city: _c, ...rest } = filters;
       setFilters({ ...rest, page: 1 });
     }
   };
 
-  // Handle category filter
+  const clearCityFilter = () => {
+    setCitySearch('');
+    const { city: _c, ...rest } = filters;
+    setFilters(rest);
+  };
+
   const handleCategoryChange = (category: HotDealCategory | '') => {
     if (category) {
       setFilters((prev) => ({ ...prev, category, page: 1 }));
     } else {
-      const { category: _, ...rest } = filters;
+      const { category: _cat, ...rest } = filters;
       setFilters({ ...rest, page: 1 });
     }
   };
 
-  // Clear all filters
   const clearFilters = () => {
     setFilters({});
     setCitySearch('');
   };
 
+  const hasActiveFilters = !!(filters.category || filters.city);
+
   return (
     <PageLayout showCategoryNav={false}>
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-gold to-accent-700 text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-white/20 rounded-lg">
-                    <Flame className="w-8 h-8" />
-                  </div>
-                  <h1 className="text-4xl font-bold">{t('title')}</h1>
+      <div className="min-h-screen bg-[#F8F7F4]">
+        {/* ── HERO ─────────────────────────────────────────────────────────── */}
+        <div style={{ backgroundColor: '#0D0D0D' }}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+              {/* Left: Brand block */}
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: 'rgba(203,181,123,0.15)',
+                    border: '1.5px solid rgba(203,181,123,0.25)',
+                  }}
+                >
+                  <Flame className="w-7 h-7" style={{ color: '#CBB57B' }} />
                 </div>
-                <p className="text-lg text-white/90 max-w-xl">{t('subtitle')}</p>
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h1
+                      className="text-2xl sm:text-3xl font-black tracking-tight"
+                      style={{ color: '#ffffff' }}
+                    >
+                      Hot Deals
+                    </h1>
+                    {/* Live indicator */}
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold"
+                      style={{
+                        backgroundColor: 'rgba(34,197,94,0.15)',
+                        border: '1px solid rgba(34,197,94,0.25)',
+                        color: '#4ade80',
+                      }}
+                    >
+                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                      {isLoading ? '…' : pagination.total} live
+                    </span>
+                  </div>
+                  <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    Urgent service requests · Connect with local providers instantly ·{' '}
+                    <span className="font-semibold" style={{ color: '#CBB57B' }}>
+                      Only $1 to post
+                    </span>
+                  </p>
+                </div>
               </div>
-              <Link
-                href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
-                className="hidden sm:inline-flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
-              >
-                <Plus className="w-5 h-5" />
-                {t('postDeal')}
-              </Link>
+
+              {/* Right: CTA + search */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-2 flex-shrink-0">
+                {/* City search */}
+                <div className="relative">
+                  <Search
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                    style={{ color: 'rgba(255,255,255,0.35)' }}
+                  />
+                  <input
+                    ref={searchRef}
+                    type="text"
+                    placeholder="Search by city…"
+                    value={citySearch}
+                    onChange={(e) => setCitySearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCitySearch()}
+                    className="w-full sm:w-52 pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-all"
+                    style={{
+                      backgroundColor: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      color: '#ffffff',
+                    }}
+                  />
+                  <AnimatePresence>
+                    {citySearch && (
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        onClick={clearCityFilter}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors"
+                        style={{ color: 'rgba(255,255,255,0.4)' }}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <button
+                  onClick={handleCitySearch}
+                  className="px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-1.5 flex-shrink-0"
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                  }}
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Search</span>
+                </button>
+
+                <Link
+                  href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0"
+                  style={{ backgroundColor: '#CBB57B', color: '#000' }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Post a Deal — $1
+                </Link>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Mobile CTA */}
-        <div className="sm:hidden px-4 py-4 bg-white border-b">
-          <Link
-            href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            {t('postDeal')}
-          </Link>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white border-b sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex flex-col sm:flex-row gap-4">
-              {/* City Search */}
-              <div className="flex-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder={t('searchPlaceholder')}
-                  value={citySearch}
-                  onChange={(e) => setCitySearch(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCitySearch()}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold"
-                />
-              </div>
-
-              {/* Category Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="w-full sm:w-auto flex items-center justify-between gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <Filter className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-700">
-                    {filters.category ? CATEGORY_LABELS[filters.category] : t('allCategories')}
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
-                </button>
-
-                {showFilters && (
-                  <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-20">
-                    <div className="p-2">
-                      <button
-                        onClick={() => {
-                          handleCategoryChange('');
-                          setShowFilters(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                          !filters.category ? 'bg-gold/10 text-gold' : 'hover:bg-gray-50'
-                        }`}
-                      >
-                        {t('allCategories')}
-                      </button>
-                      {categories?.map(([key, label]) => (
-                        <button
-                          key={key}
-                          onClick={() => {
-                            handleCategoryChange(key);
-                            setShowFilters(false);
-                          }}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                            filters.category === key ? 'bg-gold/10 text-gold' : 'hover:bg-gray-50'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Search Button */}
+        {/* ── STICKY CATEGORY BAR ───────────────────────────────────────────── */}
+        <div className="bg-white border-b border-gray-100 sticky top-0 z-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+              {/* All */}
               <button
-                onClick={handleCitySearch}
-                className="px-6 py-2.5 bg-black text-white rounded-lg font-medium hover:bg-neutral-800 transition-colors"
+                onClick={() => handleCategoryChange('')}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  !filters.category
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
               >
-                {t('search')}
+                <Flame className="w-3 h-3" />
+                All
               </button>
 
-              {/* Clear Filters */}
-              {(filters.category || filters.city) && (
+              {categories.map(([key, label]) => {
+                const conf = CATEGORY_CONFIG[key];
+                const isActive = filters.category === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleCategoryChange(isActive ? '' : key)}
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                      isActive
+                        ? `${conf.bg} ${conf.color} ring-1 ring-current/20`
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <conf.Icon className="w-3 h-3" />
+                    {label}
+                  </button>
+                );
+              })}
+
+              {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="px-4 py-2.5 text-gray-600 hover:text-gray-800 transition-colors"
+                  className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors ml-auto"
                 >
-                  {t('clear')}
+                  <X className="w-3 h-3" />
+                  Clear
                 </button>
               )}
             </div>
-
-            {/* Active Filters */}
-            {(filters.category || filters.city) && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {filters.category && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-gold/20 text-gold rounded-full text-sm">
-                    {CATEGORY_LABELS[filters.category]}
-                    <button
-                      onClick={() => handleCategoryChange('')}
-                      className="ml-1 hover:text-gold/80"
-                    >
-                      ×
-                    </button>
-                  </span>
-                )}
-                {filters.city && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
-                    <MapPin className="w-3 h-3" />
-                    {filters.city}
-                    <button
-                      onClick={() => {
-                        setCitySearch('');
-                        const { city, ...rest } = filters;
-                        setFilters(rest);
-                      }}
-                      className="ml-1 hover:text-blue-900"
-                    >
-                      ×
-                    </button>
-                  </span>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Content */}
+        {/* ── CONTENT ───────────────────────────────────────────────────────── */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* My Deals Link */}
-          {isAuthenticated && (
-            <div className="mb-6 flex justify-end">
+          {/* Toolbar row */}
+          <div className="flex items-center justify-between mb-6 gap-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              {!isLoading && !error && (
+                <p className="text-sm text-gray-500">
+                  <span className="text-gray-900 font-bold">{pagination.total}</span>{' '}
+                  {pagination.total === 1 ? 'deal' : 'deals'}
+                  {filters.category && (
+                    <>
+                      {' '}
+                      in{' '}
+                      <span className="font-semibold" style={{ color: '#CBB57B' }}>
+                        {CATEGORY_LABELS[filters.category]}
+                      </span>
+                    </>
+                  )}
+                  {filters.city && (
+                    <>
+                      {' '}
+                      near{' '}
+                      <span className="font-semibold" style={{ color: '#CBB57B' }}>
+                        {filters.city}
+                      </span>
+                    </>
+                  )}
+                </p>
+              )}
+
+              {filters.city && (
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border"
+                  style={{
+                    backgroundColor: '#CBB57B18',
+                    color: '#8B7355',
+                    borderColor: '#CBB57B33',
+                  }}
+                >
+                  <MapPin className="w-3 h-3" />
+                  {filters.city}
+                  <button onClick={clearCityFilter} className="hover:opacity-70 ml-0.5">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+            </div>
+
+            {isAuthenticated && (
               <Link
                 href="/hot-deals/my-deals"
-                className="text-sm font-medium text-[#CBB57B] hover:text-[#b9a369] transition-colors"
+                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
               >
-                {t('viewMyDeals')}
+                My Deals
+                <ChevronRight className="w-3.5 h-3.5" />
               </Link>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Loading */}
           {isLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse"
-                >
-                  <div className="flex justify-between mb-3">
-                    <div className="h-6 w-20 bg-gray-200 rounded-full" />
-                    <div className="h-5 w-24 bg-gray-200 rounded" />
-                  </div>
-                  <div className="h-6 w-3/4 bg-gray-200 rounded mb-2" />
-                  <div className="h-4 w-full bg-gray-200 rounded mb-1" />
-                  <div className="h-4 w-2/3 bg-gray-200 rounded mb-4" />
-                  <div className="flex gap-2 mb-4">
-                    <div className="h-6 w-24 bg-gray-200 rounded-full" />
-                    <div className="h-6 w-20 bg-gray-200 rounded-full" />
-                  </div>
-                  <div className="h-10 bg-gray-100 rounded" />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={i} />
               ))}
             </div>
           )}
 
           {/* Error */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-              <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
-              <p className="text-red-700">{error}</p>
+          {!isLoading && error && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-red-100 shadow-sm p-12 text-center"
+            >
+              <div className="w-14 h-14 bg-red-50 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+                <AlertCircle className="w-7 h-7 text-red-400" />
+              </div>
+              <p className="text-gray-800 font-semibold mb-1">Could not load deals</p>
+              <p className="text-sm text-gray-400 mb-6">{error}</p>
               <button
                 onClick={() => setFilters({ ...filters })}
-                className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
               >
-                {t('tryAgain')}
+                Try again
               </button>
-            </div>
+            </motion.div>
           )}
 
-          {/* Empty State */}
-          {!isLoading && !error && (!deals || deals.length === 0) && (
-            <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <Flame className="w-8 h-8 text-orange-500" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('noDealsFound')}</h3>
-              <p className="text-gray-600 mb-6">
-                {filters.category || filters.city ? t('noDealsMatch') : t('beFirstToPost')}
-              </p>
-              <Link
-                href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 transition-colors"
+          {/* Empty */}
+          {!isLoading && !error && deals.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-3xl border border-gray-100 shadow-sm py-20 px-8 text-center"
+            >
+              <div
+                className="w-20 h-20 rounded-3xl mx-auto mb-6 flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, #CBB57B22, #FEF3C722)' }}
               >
-                <Plus className="w-5 h-5" />
-                {t('postDealShort')}
-              </Link>
-            </div>
+                <Flame className="w-10 h-10" style={{ color: '#CBB57B' }} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {hasActiveFilters ? 'No matches found' : 'No active deals yet'}
+              </h3>
+              <p className="text-gray-400 text-sm mb-8 max-w-xs mx-auto leading-relaxed">
+                {hasActiveFilters
+                  ? 'Try different filters or search in another city.'
+                  : 'Be the first to post a service request in your area.'}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                    Clear filters
+                  </button>
+                )}
+                <Link
+                  href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl font-bold text-sm"
+                  style={{ backgroundColor: '#CBB57B', color: '#000' }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Post a Deal
+                </Link>
+              </div>
+            </motion.div>
           )}
 
-          {/* Deals Grid */}
-          {!isLoading && !error && (!deals || deals.length === 0) && (
+          {/* Grid */}
+          {!isLoading && !error && deals.length > 0 && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {deals?.map((deal) => (
-                  <HotDealCard key={deal.id} deal={deal} />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {deals.map((deal, index) => (
+                  <HotDealCard key={deal.id} deal={deal} index={index} />
                 ))}
               </div>
 
               {/* Pagination */}
-              {pagination?.totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-8">
+              {pagination.totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-10">
                   <button
                     onClick={() => setFilters((prev) => ({ ...prev, page: (prev.page || 1) - 1 }))}
                     disabled={pagination.page <= 1}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
                   >
-                    {t('previous')}
+                    ← Previous
                   </button>
-                  <span className="px-4 py-2 text-gray-600">
-                    {t('pageOf', { page: pagination?.page, totalPages: pagination?.totalPages })}
+                  <span className="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 font-medium shadow-sm">
+                    {pagination.page} / {pagination.totalPages}
                   </span>
                   <button
                     onClick={() => setFilters((prev) => ({ ...prev, page: (prev.page || 1) + 1 }))}
-                    disabled={pagination?.page >= pagination?.totalPages}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={pagination.page >= pagination.totalPages}
+                    className="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
                   >
-                    {t('next')}
+                    Next →
                   </button>
                 </div>
               )}

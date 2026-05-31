@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 
 interface CountrySelectorProps {
   value: string;
-  onChange: (countryName: string) => void;
+  onChange: (countryCode: string) => void;
   error?: string;
   placeholder?: string;
   className?: string;
@@ -30,25 +30,25 @@ export function CountrySelector({
 
   const defaultPlaceholder = placeholder || t('selectCountry');
 
-  // Get selected country
-  const selectedCountry = countries.find(c => c.name === value);
+  // Get selected country — value is ISO code; fall back to name match for legacy data
+  const selectedCountry =
+    countries.find((c) => c.code === value) ?? countries.find((c) => c.name === value);
 
   // Filter countries based on search
   const filteredCountries = searchQuery.trim()
-    ? countries.filter(country =>
-        country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        country.code.toLowerCase().includes(searchQuery.toLowerCase())
+    ? countries.filter(
+        (country) =>
+          country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          country.code.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : countries;
 
   // Separate popular countries
   const popularFiltered = popularCountries
-    .map(name => countries.find(c => c.name === name))
+    .map((name) => countries.find((c) => c.name === name))
     .filter((c): c is Country => c !== undefined && filteredCountries.includes(c));
 
-  const otherFiltered = filteredCountries.filter(
-    c => !popularCountries.includes(c.name)
-  );
+  const otherFiltered = filteredCountries.filter((c) => !popularCountries.includes(c.name));
 
   // Total items for keyboard navigation
   const allItems = searchQuery.trim() ? filteredCountries : [...popularFiltered, ...otherFiltered];
@@ -86,16 +86,16 @@ export function CountrySelector({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev => Math.min(prev + 1, allItems.length - 1));
+        setHighlightedIndex((prev) => Math.min(prev + 1, allItems.length - 1));
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex(prev => Math.max(prev - 1, 0));
+        setHighlightedIndex((prev) => Math.max(prev - 1, 0));
         break;
       case 'Enter':
         e.preventDefault();
         if (allItems[highlightedIndex]) {
-          onChange(allItems[highlightedIndex].name);
+          onChange(allItems[highlightedIndex].code);
           setIsOpen(false);
           setSearchQuery('');
         }
@@ -134,8 +134,8 @@ export function CountrySelector({
           error
             ? 'border-red-500 focus:border-red-500'
             : isOpen
-            ? 'border-gold'
-            : 'border-neutral-200 focus:border-gold'
+              ? 'border-gold'
+              : 'border-neutral-200 focus:border-gold'
         } ${className}`}
       >
         <span className="flex items-center gap-3">
@@ -229,18 +229,22 @@ export function CountrySelector({
                           key={country.code}
                           type="button"
                           onClick={() => {
-                            onChange(country.name);
+                            onChange(country.code);
                             setIsOpen(false);
                             setSearchQuery('');
                           }}
                           className={`w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-gold/10 transition-colors ${
                             highlightedIndex === index ? 'bg-gold/20' : ''
-                          } ${value === country.name ? 'bg-gold/30 font-semibold' : ''}`}
+                          } ${value === country.code ? 'bg-gold/30 font-semibold' : ''}`}
                         >
                           <span className="text-2xl">{country.flag}</span>
                           <span className="flex-1">{country.name}</span>
-                          {value === country.name && (
-                            <svg className="w-5 h-5 text-gold" fill="currentColor" viewBox="0 0 20 20">
+                          {value === country.code && (
+                            <svg
+                              className="w-5 h-5 text-gold"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
                               <path
                                 fillRule="evenodd"
                                 d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -266,18 +270,22 @@ export function CountrySelector({
                             key={country.code}
                             type="button"
                             onClick={() => {
-                              onChange(country.name);
+                              onChange(country.code);
                               setIsOpen(false);
                               setSearchQuery('');
                             }}
                             className={`w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-gold/10 transition-colors ${
                               highlightedIndex === actualIndex ? 'bg-gold/20' : ''
-                            } ${value === country.name ? 'bg-gold/30 font-semibold' : ''}`}
+                            } ${value === country.code ? 'bg-gold/30 font-semibold' : ''}`}
                           >
                             <span className="text-2xl">{country.flag}</span>
                             <span className="flex-1">{country.name}</span>
-                            {value === country.name && (
-                              <svg className="w-5 h-5 text-gold" fill="currentColor" viewBox="0 0 20 20">
+                            {value === country.code && (
+                              <svg
+                                className="w-5 h-5 text-gold"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
                                 <path
                                   fillRule="evenodd"
                                   d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -295,25 +303,31 @@ export function CountrySelector({
                   {searchQuery.trim() && (
                     <div>
                       <div className="px-4 py-2 bg-neutral-100 text-xs font-semibold text-neutral-600">
-                        {filteredCountries.length === 1 ? t('result', { count: filteredCountries.length }) : t('results', { count: filteredCountries.length })}
+                        {filteredCountries.length === 1
+                          ? t('result', { count: filteredCountries.length })
+                          : t('results', { count: filteredCountries.length })}
                       </div>
                       {filteredCountries.map((country, index) => (
                         <button
                           key={country.code}
                           type="button"
                           onClick={() => {
-                            onChange(country.name);
+                            onChange(country.code);
                             setIsOpen(false);
                             setSearchQuery('');
                           }}
                           className={`w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-gold/10 transition-colors ${
                             highlightedIndex === index ? 'bg-gold/20' : ''
-                          } ${value === country.name ? 'bg-gold/30 font-semibold' : ''}`}
+                          } ${value === country.code ? 'bg-gold/30 font-semibold' : ''}`}
                         >
                           <span className="text-2xl">{country.flag}</span>
                           <span className="flex-1">{country.name}</span>
-                          {value === country.name && (
-                            <svg className="w-5 h-5 text-gold" fill="currentColor" viewBox="0 0 20 20">
+                          {value === country.code && (
+                            <svg
+                              className="w-5 h-5 text-gold"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
                               <path
                                 fillRule="evenodd"
                                 d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"

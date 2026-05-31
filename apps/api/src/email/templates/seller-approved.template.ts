@@ -5,90 +5,114 @@ export const sellerApprovedTemplate = (data: {
   storeName: string;
   creditsUrl: string;
   dashboardUrl: string;
+  frontendUrl?: string;
 }) => {
+  const siteUrl = data.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const supportUrl = `${siteUrl}/contact`;
+
   const content = `
-    <div style="text-align: center;">
-      <div style="width: 56px; height: 56px; background-color: #000000; border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; border: 2px solid #CBB57B;">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2">
-          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      </div>
-    </div>
+    <h1 style="color: #0A0A0A; font-size: 24px; font-weight: 700; margin: 0 0 12px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: -0.3px;">
+      Your seller account is approved
+    </h1>
 
-    <h2 style="color: #000000; font-size: 22px; font-weight: 600; margin-bottom: 16px; text-align: center;">
-      Your Seller Account is Approved
-    </h2>
-
-    <p style="color: #525252; font-size: 15px; line-height: 1.6; margin-bottom: 32px; text-align: center;">
-      Hello ${data.sellerName}, welcome to NextPik as a seller.
+    <p style="color: #4B5563; font-size: 15px; line-height: 1.65; margin: 0 0 28px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Hello ${data.sellerName}, your application has been approved. <strong style="color: #0A0A0A;">${data.storeName}</strong> is now an active NextPik store.
     </p>
 
-    <div style="background-color: #FAFAFA; border-left: 3px solid #10B981; padding: 20px; margin: 32px 0;">
-      <p style="color: #000000; font-size: 16px; font-weight: 600; margin: 0 0 4px 0;">
-        ${data.storeName}
-      </p>
-      <p style="color: #10B981; font-size: 14px; margin: 0;">
-        Your store is now active
-      </p>
-    </div>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 28px 0; background-color: #F9FAFB; border: 1px solid #E5E7EB;">
+      <tr>
+        <td style="padding: 20px 24px 4px;">
+          <p style="color: #0A0A0A; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin: 0 0 20px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Next steps
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 0 24px 4px;">
+          <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+            <tr>
+              <td width="28" valign="top" style="padding-bottom: 18px;">
+                <table cellpadding="0" cellspacing="0" role="presentation">
+                  <tr>
+                    <td width="20" height="20" align="center" valign="middle" style="background-color: #CBB57B; color: #0A0A0A; font-size: 11px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">1</td>
+                  </tr>
+                </table>
+              </td>
+              <td valign="top" style="padding-left: 12px; padding-bottom: 18px;">
+                <p style="color: #0A0A0A; font-size: 14px; font-weight: 600; margin: 0 0 3px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Purchase selling credits</p>
+                <p style="color: #6B7280; font-size: 13px; line-height: 1.5; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Credits activate your product listings. One credit covers one month.</p>
+              </td>
+            </tr>
+            <tr>
+              <td width="28" valign="top" style="padding-bottom: 18px;">
+                <table cellpadding="0" cellspacing="0" role="presentation">
+                  <tr>
+                    <td width="20" height="20" align="center" valign="middle" style="background-color: #CBB57B; color: #0A0A0A; font-size: 11px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">2</td>
+                  </tr>
+                </table>
+              </td>
+              <td valign="top" style="padding-left: 12px; padding-bottom: 18px;">
+                <p style="color: #0A0A0A; font-size: 14px; font-weight: 600; margin: 0 0 3px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">List your products</p>
+                <p style="color: #6B7280; font-size: 13px; line-height: 1.5; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Add products with clear images, descriptions, and pricing.</p>
+              </td>
+            </tr>
+            <tr>
+              <td width="28" valign="top" style="padding-bottom: 24px;">
+                <table cellpadding="0" cellspacing="0" role="presentation">
+                  <tr>
+                    <td width="20" height="20" align="center" valign="middle" style="background-color: #CBB57B; color: #0A0A0A; font-size: 11px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">3</td>
+                  </tr>
+                </table>
+              </td>
+              <td valign="top" style="padding-left: 12px; padding-bottom: 24px;">
+                <p style="color: #0A0A0A; font-size: 14px; font-weight: 600; margin: 0 0 3px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Start receiving orders</p>
+                <p style="color: #6B7280; font-size: 13px; line-height: 1.5; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Manage orders, track earnings, and grow your store from the dashboard.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
 
-    <div style="background-color: #FAFAFA; padding: 24px; margin: 32px 0; border: 1px solid #E5E5E5;">
-      <h3 style="color: #000000; font-size: 16px; font-weight: 600; margin: 0 0 20px 0; text-align: center;">
-        Next Steps
-      </h3>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 12px 0;">
+      <tr>
+        <td align="center" style="background-color: #CBB57B; padding: 16px 28px;">
+          <a href="${data.creditsUrl}" style="color: #0A0A0A; text-decoration: none; font-size: 15px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; letter-spacing: 0.2px; display: block;">
+            Purchase Credits &rarr;
+          </a>
+        </td>
+      </tr>
+    </table>
 
-      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
-        <tr>
-          <td width="40" valign="top" style="padding-bottom: 16px;">
-            <div style="width: 32px; height: 32px; background-color: #CBB57B; color: #000000; font-weight: 600; font-size: 14px; text-align: center; line-height: 32px;">1</div>
-          </td>
-          <td valign="top" style="padding-left: 12px; padding-bottom: 16px;">
-            <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">Purchase Selling Credits</p>
-            <p style="color: #737373; font-size: 13px; line-height: 1.5; margin: 0;">Get monthly credits at $29.99/month to activate your products.</p>
-          </td>
-        </tr>
-        <tr>
-          <td width="40" valign="top" style="padding-bottom: 16px;">
-            <div style="width: 32px; height: 32px; background-color: #CBB57B; color: #000000; font-weight: 600; font-size: 14px; text-align: center; line-height: 32px;">2</div>
-          </td>
-          <td valign="top" style="padding-left: 12px; padding-bottom: 16px;">
-            <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">Create Your First Product</p>
-            <p style="color: #737373; font-size: 13px; line-height: 1.5; margin: 0;">Add products with quality images and descriptions.</p>
-          </td>
-        </tr>
-        <tr>
-          <td width="40" valign="top">
-            <div style="width: 32px; height: 32px; background-color: #CBB57B; color: #000000; font-weight: 600; font-size: 14px; text-align: center; line-height: 32px;">3</div>
-          </td>
-          <td valign="top" style="padding-left: 12px;">
-            <p style="color: #000000; font-size: 14px; font-weight: 600; margin: 0 0 4px 0;">Start Receiving Orders</p>
-            <p style="color: #737373; font-size: 13px; line-height: 1.5; margin: 0;">Manage orders and track sales from your dashboard.</p>
-          </td>
-        </tr>
-      </table>
-    </div>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="margin: 0 0 32px 0;">
+      <tr>
+        <td align="center" style="padding: 8px 0;">
+          <a href="${data.dashboardUrl}" style="color: #6B7280; text-decoration: underline; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Go to seller dashboard
+          </a>
+        </td>
+      </tr>
+    </table>
 
-    <div style="text-align: center; margin: 40px 0;">
-      <a href="${data.creditsUrl}"
-         style="display: inline-block; background-color: #CBB57B; color: #000000; padding: 14px 40px; text-decoration: none; font-weight: 600; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;">
-        Purchase Credits
-      </a>
-      <a href="${data.dashboardUrl}"
-         style="display: inline-block; background-color: #000000; color: #FFFFFF; padding: 14px 32px; text-decoration: none; font-weight: 600; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; margin-left: 12px;">
-        Go to Dashboard
-      </a>
-    </div>
+    <table cellpadding="0" cellspacing="0" role="presentation" width="100%">
+      <tr>
+        <td style="background-color: #F9FAFB; border-left: 3px solid #CBB57B; padding: 14px 18px;">
+          <p style="color: #374151; font-size: 13px; line-height: 1.6; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            Credits are deducted on the 1st of each month. You'll receive a notification when your balance is low.
+          </p>
+        </td>
+      </tr>
+    </table>
 
-    <div style="background-color: #FFFFFF; border-left: 3px solid #CBB57B; padding: 16px 20px; margin-top: 32px;">
-      <p style="color: #525252; font-size: 13px; line-height: 1.6; margin: 0;">
-        <strong style="color: #000000;">Note:</strong> To publish products and start selling, you need to purchase monthly credits. Credits are automatically deducted on the 1st of each month.
-      </p>
-    </div>
-
-    <p style="color: #737373; font-size: 13px; text-align: center; margin-top: 32px; line-height: 1.6;">
-      Questions about selling? <a href="{{SUPPORT_URL}}" style="color: #000000; text-decoration: underline;">Contact support</a>
+    <p style="color: #9CA3AF; font-size: 13px; line-height: 1.6; margin: 24px 0 0 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+      Questions about selling? <a href="${supportUrl}" style="color: #4B5563; text-decoration: underline;">Contact support</a>
     </p>
   `;
 
-  return baseEmailTemplate(content);
+  return baseEmailTemplate(content, {
+    preheader: `Your seller application has been approved. ${data.storeName} is now live.`,
+    frontendUrl: siteUrl,
+    showUnsubscribe: false,
+    footerNote: 'You received this email because you applied to become a NextPik seller.',
+  });
 };

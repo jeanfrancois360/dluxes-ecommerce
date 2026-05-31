@@ -57,7 +57,8 @@ export class GelatoController {
     @Query('category') category?: string,
     @Query('search') search?: string,
     @Query('limit') limit?: string,
-    @Query('offset') offset?: string
+    @Query('offset') offset?: string,
+    @Query('storeId') storeId?: string
   ) {
     const userId = req.user?.id;
     const result = await this.productsService.getCatalog(
@@ -67,16 +68,21 @@ export class GelatoController {
         limit: limit ? parseInt(limit, 10) : 20,
         offset: offset ? parseInt(offset, 10) : 0,
       },
-      userId
+      userId,
+      storeId
     );
     return { success: true, data: result };
   }
 
   @Get('catalog/products/:productUid')
   @Roles('ADMIN', 'SUPER_ADMIN', 'SELLER')
-  async getCatalogProductDetails(@Req() req: any, @Param('productUid') productUid: string) {
+  async getCatalogProductDetails(
+    @Req() req: any,
+    @Param('productUid') productUid: string,
+    @Query('storeId') storeId?: string
+  ) {
     const userId = req.user?.id;
-    const product = await this.productsService.getProductDetails(productUid, userId);
+    const product = await this.productsService.getProductDetails(productUid, userId, storeId);
     return { success: true, data: product };
   }
 
@@ -140,7 +146,8 @@ export class GelatoController {
     @Req() req: any,
     @Param('productUid') productUid: string,
     @Query('quantity') quantity?: string,
-    @Query('country') country?: string
+    @Query('country') country?: string,
+    @Query('storeId') storeId?: string
   ) {
     const userId = req.user?.id;
     const pricing = await this.productsService.calculateProductPrice(
@@ -149,7 +156,8 @@ export class GelatoController {
         quantity: quantity ? parseInt(quantity, 10) : 1,
         country: country || 'US',
       },
-      userId
+      userId,
+      storeId
     );
     return { success: true, data: pricing };
   }

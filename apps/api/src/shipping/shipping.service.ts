@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 import { Decimal } from '@prisma/client/runtime/library';
 
 /**
@@ -14,7 +15,7 @@ export class ShippingService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly settingsService: SettingsService,
+    private readonly settingsService: SettingsService
   ) {}
 
   /**
@@ -208,12 +209,16 @@ export class ShippingService {
    * Calculate shipping fee based on destination
    * NON-DESTRUCTIVE: Returns null if no zone found, allowing fallback to existing logic
    */
-  async calculateShippingFee(destination: {
-    country: string;
-    state?: string;
-    city?: string;
-    postalCode?: string;
-  }, orderTotal: number, weight?: number): Promise<{
+  async calculateShippingFee(
+    destination: {
+      country: string;
+      state?: string;
+      city?: string;
+      postalCode?: string;
+    },
+    orderTotal: number,
+    weight?: number
+  ): Promise<{
     fee: number;
     zone?: any;
     freeShipping: boolean;
@@ -246,8 +251,10 @@ export class ShippingService {
         break;
       }
       // Check for postal code pattern match
-      if (destination.postalCode && zone.postalCodes.some(pattern =>
-        destination.postalCode!.startsWith(pattern))) {
+      if (
+        destination.postalCode &&
+        zone.postalCodes.some((pattern) => destination.postalCode!.startsWith(pattern))
+      ) {
         bestMatch = zone;
         break;
       }
@@ -290,12 +297,16 @@ export class ShippingService {
   /**
    * Get shipping options for checkout (with zone-based rates if available)
    */
-  async getShippingOptions(destination: {
-    country: string;
-    state?: string;
-    city?: string;
-    postalCode?: string;
-  }, orderTotal: number, weight?: number) {
+  async getShippingOptions(
+    destination: {
+      country: string;
+      state?: string;
+      city?: string;
+      postalCode?: string;
+    },
+    orderTotal: number,
+    weight?: number
+  ) {
     const zoneBasedShipping = await this.calculateShippingFee(destination, orderTotal, weight);
 
     if (!zoneBasedShipping) {
@@ -308,23 +319,25 @@ export class ShippingService {
 
     if (rates.length === 0) {
       // No custom rates - use base zone fee
-      return [{
-        id: 'zone-standard',
-        name: 'Standard Shipping',
-        price: zoneBasedShipping.fee,
-        estimatedDays: zoneBasedShipping.estimatedDays,
-        zone: zoneBasedShipping.zone.name,
-      }];
+      return [
+        {
+          id: 'zone-standard',
+          name: 'Standard Shipping',
+          price: zoneBasedShipping.fee,
+          estimatedDays: zoneBasedShipping.estimatedDays,
+          zone: zoneBasedShipping.zone.name,
+        },
+      ];
     }
 
     // Return rates filtered by order value
     return rates
-      .filter(rate => {
+      .filter((rate) => {
         const minOk = !rate.minOrderValue || orderTotal >= rate.minOrderValue.toNumber();
         const maxOk = !rate.maxOrderValue || orderTotal <= rate.maxOrderValue.toNumber();
         return minOk && maxOk;
       })
-      .map(rate => ({
+      .map((rate) => ({
         id: rate.id,
         name: rate.name,
         price: rate.rate.toNumber(),
@@ -348,7 +361,9 @@ export class ShippingService {
       isFreeShipping = orderTotal >= freeShippingThreshold;
 
       if (isFreeShipping) {
-        this.logger.log(`Free shipping applied (order: ${orderTotal} >= threshold: ${freeShippingThreshold})`);
+        this.logger.log(
+          `Free shipping applied (order: ${orderTotal} >= threshold: ${freeShippingThreshold})`
+        );
       }
     }
 
@@ -380,11 +395,14 @@ export class ShippingService {
   async isFreeShippingEnabled(): Promise<boolean> {
     try {
       const setting = await this.settingsService.getSetting('free_shipping_enabled');
-      return setting.value === 'true' || setting.value === true;
-    } catch (error) {
-      this.logger.warn('Free shipping enabled setting not found, defaulting to true');
-      return true;
+      if (setting?.value != null) return setting.value === 'true' || setting.value === true;
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "free_shipping_enabled" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.free_shipping.enabled;
   }
 
   /**
@@ -393,11 +411,14 @@ export class ShippingService {
   async getFreeShippingThreshold(): Promise<number> {
     try {
       const setting = await this.settingsService.getSetting('free_shipping_threshold');
-      return Number(setting.value) || 200;
-    } catch (error) {
-      this.logger.warn('Free shipping threshold not found, using $200');
-      return 200;
+      if (setting?.value != null) return Number(setting.value);
+    } catch {
+      // DB unavailable or setting missing
     }
+    this.logger.warn(
+      'Setting "free_shipping_threshold" missing from database, using fallback default'
+    );
+    return SETTING_DEFAULTS.free_shipping.threshold;
   }
 
   /**

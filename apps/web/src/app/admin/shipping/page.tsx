@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
@@ -94,7 +95,7 @@ function ShippingZonesContent() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await safeJson(response);
         setZones(data);
       }
     } catch (error) {
@@ -142,7 +143,7 @@ function ShippingZonesContent() {
         resetForm();
         fetchZones();
       } else {
-        const error = await response.json();
+        const error = await safeJson(response);
         toast.error(error.message || t('toast.saveError'));
       }
     } catch (error) {

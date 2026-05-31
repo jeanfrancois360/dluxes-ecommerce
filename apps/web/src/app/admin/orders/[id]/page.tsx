@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 /**
  * Admin Order Details Page
@@ -205,7 +206,7 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await safeJson(response);
         setShipments(data.data || []);
       }
     } catch (error) {
@@ -241,7 +242,7 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await safeJson(response);
         setReturnRequests(data.data || []);
       }
     } catch (error) {
@@ -262,7 +263,7 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await safeJson(response);
         setReviews(data.data || []);
       }
     } catch (error) {
@@ -396,7 +397,7 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
         },
       });
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (data.success) {
         const { results } = data.data;

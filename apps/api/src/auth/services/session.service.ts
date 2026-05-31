@@ -10,7 +10,7 @@ export class SessionService {
 
   constructor(
     private prisma: PrismaService,
-    private logger: LoggerService,
+    private logger: LoggerService
   ) {}
 
   /**
@@ -18,10 +18,7 @@ export class SessionService {
    * Used for detecting suspicious session activity
    */
   private generateFingerprint(ipAddress: string, userAgent: string): string {
-    return createHash('sha256')
-      .update(`${ipAddress}:${userAgent}`)
-      .digest('hex')
-      .substring(0, 32); // Truncate to 32 chars for storage
+    return createHash('sha256').update(`${ipAddress}:${userAgent}`).digest('hex').substring(0, 32); // Truncate to 32 chars for storage
   }
 
   /**
@@ -42,50 +39,30 @@ export class SessionService {
     browser: string;
     description: string;
   } {
-    const ua = userAgent.toLowerCase();
+    const deviceType = this.getDeviceType(userAgent);
+    const browser = this.getBrowser(userAgent);
+    const os = this.getOs(userAgent);
 
-    // Detect device type
-    let device = 'Desktop';
-    if (/(iphone|ipod)/i.test(userAgent)) device = 'iPhone';
-    else if (/ipad/i.test(userAgent)) device = 'iPad';
-    else if (/android/i.test(userAgent) && /mobile/i.test(userAgent)) device = 'Android Phone';
-    else if (/android/i.test(userAgent)) device = 'Android Tablet';
-    else if (/(macintosh|mac os x)/i.test(userAgent)) device = 'Mac';
-    else if (/windows/i.test(userAgent)) device = 'Windows PC';
-    else if (/linux/i.test(userAgent)) device = 'Linux PC';
+    const deviceLabel =
+      deviceType === 'mobile' ? 'Mobile' : deviceType === 'tablet' ? 'Tablet' : 'Desktop';
 
-    // Detect OS
-    let os = 'Unknown OS';
-    if (/windows nt 10/i.test(userAgent)) os = 'Windows 10/11';
-    else if (/windows nt 6.3/i.test(userAgent)) os = 'Windows 8.1';
-    else if (/windows nt 6.2/i.test(userAgent)) os = 'Windows 8';
-    else if (/windows nt 6.1/i.test(userAgent)) os = 'Windows 7';
-    else if (/mac os x ([\d_]+)/i.test(userAgent)) {
-      const version = userAgent.match(/mac os x ([\d_]+)/i);
-      os = version ? `macOS ${version[1].replace(/_/g, '.')}` : 'macOS';
-    } else if (/android ([\d.]+)/i.test(userAgent)) {
-      const version = userAgent.match(/android ([\d.]+)/i);
-      os = version ? `Android ${version[1]}` : 'Android';
-    } else if (/iphone os ([\d_]+)/i.test(userAgent)) {
-      const version = userAgent.match(/iphone os ([\d_]+)/i);
-      os = version ? `iOS ${version[1].replace(/_/g, '.')}` : 'iOS';
-    } else if (/ipad.*os ([\d_]+)/i.test(userAgent)) {
-      const version = userAgent.match(/ipad.*os ([\d_]+)/i);
-      os = version ? `iPadOS ${version[1].replace(/_/g, '.')}` : 'iPadOS';
-    } else if (/linux/i.test(userAgent)) os = 'Linux';
+    let description: string;
+    if (browser && os) {
+      description = `${browser} on ${os}`;
+    } else if (browser) {
+      description = browser;
+    } else if (os) {
+      description = `${deviceLabel} on ${os}`;
+    } else {
+      description = deviceLabel;
+    }
 
-    // Detect browser
-    let browser = 'Unknown Browser';
-    if (/edg\//i.test(userAgent)) browser = 'Microsoft Edge';
-    else if (/chrome\//i.test(userAgent) && !/edg\//i.test(userAgent)) browser = 'Google Chrome';
-    else if (/safari\//i.test(userAgent) && !/chrome\//i.test(userAgent)) browser = 'Safari';
-    else if (/firefox\//i.test(userAgent)) browser = 'Firefox';
-    else if (/opera|opr\//i.test(userAgent)) browser = 'Opera';
-
-    // Generate description
-    const description = `${device} - ${browser} on ${os}`;
-
-    return { device, os, browser, description };
+    return {
+      device: deviceLabel,
+      os: os ?? '',
+      browser: browser ?? '',
+      description,
+    };
   }
 
   /**
@@ -95,7 +72,7 @@ export class SessionService {
   private async detectSuspiciousActivity(
     userId: string,
     currentIp: string,
-    currentUserAgent: string,
+    currentUserAgent: string
   ): Promise<string[]> {
     const suspiciousFlags: string[] = [];
 
@@ -153,8 +130,8 @@ export class SessionService {
     userId: string,
     ipAddress: string,
     userAgent: string,
-    rememberMe: boolean,
-  ): Promise<string> {
+    rememberMe: boolean
+  ): Promise<{ token: string; id: string }> {
     const token = randomBytes(32).toString('hex');
     const expiryDuration = rememberMe ? this.SESSION_EXPIRY_REMEMBER : this.SESSION_EXPIRY_DEFAULT;
 
@@ -166,7 +143,7 @@ export class SessionService {
     if (suspiciousFlags.length > 0) {
       // Log suspicious activity (in production, this would trigger alerts/notifications)
       console.warn(
-        `[SECURITY] Suspicious activity detected for user ${userId}: ${suspiciousFlags.join(', ')}`,
+        `[SECURITY] Suspicious activity detected for user ${userId}: ${suspiciousFlags.join(', ')}`
       );
       // In production, you could:
       // - Send email notification to user
@@ -174,19 +151,20 @@ export class SessionService {
       // - Temporarily lock account
     }
 
-    await this.prisma.userSession.create({
+    const session = await this.prisma.userSession.create({
       data: {
         userId,
         token,
         ipAddress,
         deviceType: this.getDeviceType(userAgent),
         browser: this.getBrowser(userAgent),
+        os: this.getOs(userAgent),
         fingerprint,
         expiresAt: new Date(Date.now() + expiryDuration),
       },
     });
 
-    return token;
+    return { token, id: session.id };
   }
 
   /**
@@ -196,7 +174,7 @@ export class SessionService {
   async validateSession(
     sessionToken: string,
     currentIp: string,
-    currentUserAgent: string,
+    currentUserAgent: string
   ): Promise<{ valid: boolean; suspicious?: boolean; session?: any }> {
     const session = await this.prisma.userSession.findUnique({
       where: { token: sessionToken },
@@ -221,7 +199,7 @@ export class SessionService {
           'Session fingerprint mismatch - session invalidated',
           session.userId,
           currentIp,
-          { sessionId: session.id },
+          { sessionId: session.id }
         );
         await this.prisma.userSession.update({
           where: { id: session.id },
@@ -254,18 +232,34 @@ export class SessionService {
       orderBy: { lastActiveAt: 'desc' },
     });
 
-    // Enhance sessions with device info from stored fields
+    // Enhance sessions with clean, human-readable device info
     return sessions.map((session) => {
-      // Construct device info from stored fields
-      const device = session.deviceType || 'Unknown Device';
-      const browser = session.browser || 'Unknown Browser';
-      const os = session.os || 'Unknown OS';
+      const deviceType = session.deviceType || 'desktop';
+      const browser = session.browser || null;
+      const os = session.os || null;
+
+      // Human-readable device label
+      const deviceLabel =
+        deviceType === 'mobile' ? 'Mobile' : deviceType === 'tablet' ? 'Tablet' : 'Desktop';
+
+      // Build description: "Firefox on macOS 10.15", "Chrome on Windows 10/11",
+      // "Firefox" (when OS unknown), "Desktop" (when both unknown)
+      let description: string;
+      if (browser && os) {
+        description = `${browser} on ${os}`;
+      } else if (browser) {
+        description = browser;
+      } else if (os) {
+        description = `${deviceLabel} on ${os}`;
+      } else {
+        description = deviceLabel;
+      }
 
       const deviceInfo = {
-        device: device.charAt(0).toUpperCase() + device.slice(1),
-        os: os,
-        browser: browser,
-        description: `${browser}${os ? ` on ${os}` : ''}`,
+        device: deviceLabel,
+        os: os ?? '',
+        browser: browser ?? '',
+        description,
       };
 
       return {
@@ -320,7 +314,12 @@ export class SessionService {
     await this.revokeAllSessions(userId);
 
     // Create new session
-    const newSessionToken = await this.createSession(userId, ipAddress, userAgent, false);
+    const { token: newSessionToken } = await this.createSession(
+      userId,
+      ipAddress,
+      userAgent,
+      false
+    );
 
     return newSessionToken;
   }
@@ -329,20 +328,62 @@ export class SessionService {
    * Get device type from user agent string
    */
   private getDeviceType(userAgent: string): string {
-    // Simple device type detection
-    if (/mobile/i.test(userAgent)) return 'mobile';
-    if (/tablet/i.test(userAgent)) return 'tablet';
+    if (/(iphone|ipod)/i.test(userAgent)) return 'mobile';
+    if (/ipad/i.test(userAgent)) return 'tablet';
+    if (/android/i.test(userAgent) && /mobile/i.test(userAgent)) return 'mobile';
+    if (/android/i.test(userAgent)) return 'tablet';
     return 'desktop';
   }
 
   /**
-   * Get browser name from user agent string
+   * Get browser name from user agent string.
+   * Order matters: Edge and Opera embed Chrome tokens, Firefox embeds Gecko.
    */
-  private getBrowser(userAgent: string): string {
-    if (/chrome/i.test(userAgent)) return 'Chrome';
-    if (/safari/i.test(userAgent)) return 'Safari';
-    if (/firefox/i.test(userAgent)) return 'Firefox';
-    if (/edge/i.test(userAgent)) return 'Edge';
-    return 'Unknown';
+  private getBrowser(userAgent: string): string | null {
+    if (/edg\//i.test(userAgent)) return 'Edge';
+    if (/opr\/|opera/i.test(userAgent)) return 'Opera';
+    if (/firefox\/[\d.]+/i.test(userAgent)) return 'Firefox';
+    if (/chrome\/[\d.]+/i.test(userAgent)) return 'Chrome';
+    if (/safari\/[\d.]+/i.test(userAgent)) return 'Safari';
+    if (/msie |trident\//i.test(userAgent)) return 'Internet Explorer';
+    return null;
+  }
+
+  /**
+   * Get OS name from user agent string. Returns null when unknown.
+   */
+  private getOs(userAgent: string): string | null {
+    if (/windows nt 10/i.test(userAgent)) return 'Windows 10/11';
+    if (/windows nt 6\.3/i.test(userAgent)) return 'Windows 8.1';
+    if (/windows nt 6\.2/i.test(userAgent)) return 'Windows 8';
+    if (/windows nt 6\.1/i.test(userAgent)) return 'Windows 7';
+    if (/windows/i.test(userAgent)) return 'Windows';
+
+    const macMatch = userAgent.match(/mac os x ([\d_]+)/i);
+    if (macMatch) {
+      const version = macMatch[1].replace(/_/g, '.');
+      // Map legacy 10.x versions reported by Firefox/Chrome to readable macOS names
+      const majorMinor = version.split('.');
+      const major = parseInt(majorMinor[0]);
+      const minor = parseInt(majorMinor[1] || '0');
+      if (major >= 11) return `macOS ${major}`;
+      if (major === 10 && minor >= 16) return 'macOS 11+';
+      return `macOS ${version}`;
+    }
+
+    const androidMatch = userAgent.match(/android ([\d.]+)/i);
+    if (androidMatch) return `Android ${androidMatch[1]}`;
+
+    const iosMatch = userAgent.match(/iphone os ([\d_]+)/i);
+    if (iosMatch) return `iOS ${iosMatch[1].replace(/_/g, '.')}`;
+
+    const ipadMatch = userAgent.match(/ipad.*os ([\d_]+)/i);
+    if (ipadMatch) return `iPadOS ${ipadMatch[1].replace(/_/g, '.')}`;
+
+    if (/(macintosh|mac os x)/i.test(userAgent)) return 'macOS';
+    if (/linux/i.test(userAgent)) return 'Linux';
+    if (/cros/i.test(userAgent)) return 'ChromeOS';
+
+    return null;
   }
 }

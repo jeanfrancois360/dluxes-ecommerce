@@ -280,6 +280,29 @@ export class SellerApprovalService {
       throw new NotFoundException('Store not found');
     }
 
+    // KYC fields are not in the generated Prisma client (schema baseline recovery pending).
+    // Fetch them via raw SQL so they are always returned correctly.
+    const [kycRow] = await this.prisma.$queryRaw<
+      Array<{
+        businessType: string | null;
+        intendedCategories: string[] | null;
+        monthlyVolume: string | null;
+        applicationDocumentUrl: string | null;
+        applicationDocumentType: string | null;
+        applicationNotes: string | null;
+      }>
+    >`
+      SELECT
+        "businessType",
+        "intendedCategories",
+        "monthlyVolume",
+        "applicationDocumentUrl",
+        "applicationDocumentType",
+        "applicationNotes"
+      FROM stores
+      WHERE id = ${storeId}
+    `;
+
     return {
       success: true,
       data: {
@@ -290,6 +313,13 @@ export class SellerApprovalService {
           description: store.description,
           email: store.email,
           phone: store.phone,
+          website: store.website,
+          taxId: store.taxId,
+          address1: store.address1,
+          city: store.city,
+          province: store.province,
+          country: store.country,
+          postalCode: store.postalCode,
           status: store.status,
           verified: store.verified,
           verifiedAt: store.verifiedAt,
@@ -301,6 +331,12 @@ export class SellerApprovalService {
           totalProducts: store.totalProducts,
           createdAt: store.createdAt,
           updatedAt: store.updatedAt,
+          businessType: kycRow?.businessType ?? null,
+          intendedCategories: kycRow?.intendedCategories ?? [],
+          monthlyVolume: kycRow?.monthlyVolume ?? null,
+          applicationDocumentUrl: kycRow?.applicationDocumentUrl ?? null,
+          applicationDocumentType: kycRow?.applicationDocumentType ?? null,
+          applicationNotes: kycRow?.applicationNotes ?? null,
         },
         owner: store.user,
         recentProducts: store.products,
@@ -349,6 +385,7 @@ export class SellerApprovalService {
         where: { id: storeId },
         data: {
           status: StoreStatus.ACTIVE,
+          isActive: true,
           verified: true,
           verifiedAt: now,
         },

@@ -23,6 +23,11 @@ import { ScrollToTop } from '@/components/scroll-to-top';
 import { navigateWithLoading } from '@/lib/navigation';
 import { StructuredData } from '@/components/seo/structured-data';
 import { generateItemListSchema } from '@/lib/seo';
+import useSWR from 'swr';
+import { settingsApi } from '@/lib/api/settings';
+import { useLocale } from '@/contexts/locale-context';
+import { useAffiliatePublicProducts } from '@/hooks/use-affiliate';
+import { AffiliateProductsSection } from '@/components/affiliate/affiliate-products-section';
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -50,6 +55,25 @@ export default function ProductsPage() {
   const { currency } = useSelectedCurrency();
   const currencySymbol = currency?.symbol || '$';
 
+  // Locale for affiliate cards
+  const { language: locale } = useLocale();
+
+  // Public settings (SWR deduplicates with use-currency's identical key)
+  const { data: publicSettings } = useSWR('/settings/public', settingsApi.getPublicSettings, {
+    revalidateOnFocus: false,
+  });
+  const affiliatePageEnabled =
+    (publicSettings?.find((s) => s.key === 'affiliate_products_page_enabled')?.value ?? true) !==
+    false;
+  const affiliateCount = Number(
+    publicSettings?.find((s) => s.key === 'affiliate_products_per_section')?.value ?? 6
+  );
+
+  // Affiliate products for between-grid section
+  const { products: affiliateProducts } = useAffiliatePublicProducts(
+    affiliatePageEnabled ? { limit: affiliateCount, isFeatured: true, locale } : undefined
+  );
+
   // Parse URL parameters
   const [filters, setFilters] = useState<SearchFilters>({
     page: 1,
@@ -62,7 +86,7 @@ export default function ProductsPage() {
       page: parseInt(searchParams.get('page') || '1'),
       limit: parseInt(searchParams.get('limit') || '12'),
       category: searchParams.get('category') || undefined,
-      query: searchParams.get('q') || undefined,
+      search: searchParams.get('q') || undefined,
       sortBy: (searchParams.get('sortBy') as any) || 'relevance',
       minPrice: searchParams.get('minPrice')
         ? parseFloat(searchParams.get('minPrice')!)
@@ -317,8 +341,8 @@ export default function ProductsPage() {
               currency: currency?.currencyCode || 'USD',
             })),
             name: filters.category ? `${filters.category} Products` : 'All Products',
-            description: filters.query
-              ? `Search results for "${filters.query}"`
+            description: filters.search
+              ? `Search results for "${filters.search}"`
               : 'Browse our curated collection of luxury products',
           })}
         />
@@ -1276,6 +1300,13 @@ export default function ProductsPage() {
                   currencySymbol={currencySymbol}
                 />
 
+                {/* Affiliate products — between grid and pagination */}
+                {affiliatePageEnabled && affiliateProducts.length > 0 && (
+                  <div className="mt-10">
+                    <AffiliateProductsSection products={affiliateProducts} locale={locale} />
+                  </div>
+                )}
+
                 {/* Pagination */}
                 {totalPages > 1 && !isLoading && (
                   <motion.div
@@ -1702,6 +1733,10 @@ export default function ProductsPage() {
           outOfStock: tModal('outOfStock'),
           onlyLeftInStock: tModal('onlyLeftInStock', { count: 0 }),
           addToCart: tModal('addToCart'),
+          sendInquiry: tModal('sendInquiry'),
+          alwaysAvailable: tModal('alwaysAvailable'),
+          serviceAvailable: tModal('serviceAvailable'),
+          unavailable: tModal('unavailable'),
           viewFullDetails: tModal('viewFullDetails'),
           reviews: tModal('reviews'),
           review: tModal('review'),

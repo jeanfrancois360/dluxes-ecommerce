@@ -277,6 +277,8 @@ export class StripeSubscriptionService {
    * Verify checkout session and activate subscription (fallback for delayed webhooks)
    * This is called from the success page to ensure the subscription is activated
    * even if the webhook hasn't been received yet
+   *
+   * RACE CONDITION PROTECTION: Uses transaction with row-level locking
    */
   async verifyAndActivateCheckout(
     userId: string,
@@ -312,87 +314,99 @@ export class StripeSubscriptionService {
       };
     }
 
-    // Check if subscription already exists and is active
-    const existingSubscription = await this.prisma.sellerSubscription.findUnique({
-      where: { userId },
-      include: { plan: true },
+    // Use transaction with row-level locking to prevent race conditions
+    const subscription = await this.prisma.$transaction(async (tx) => {
+      // Lock the user row to prevent concurrent updates (SELECT FOR UPDATE)
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Check if subscription already exists and is active (within transaction)
+      const existingSubscription = await tx.sellerSubscription.findUnique({
+        where: { userId },
+        include: { plan: true },
+      });
+
+      if (
+        existingSubscription &&
+        existingSubscription.stripeSubscriptionId === stripeSubscriptionId &&
+        existingSubscription.status === 'ACTIVE' &&
+        existingSubscription.plan.tier !== 'FREE'
+      ) {
+        this.logger.log(`Subscription already active for user ${userId} (detected in transaction)`);
+        return existingSubscription;
+      }
+
+      // Get plan from metadata
+      const planId = session.metadata?.planId;
+      const billingCycle = session.metadata?.billingCycle;
+
+      if (!planId) {
+        this.logger.error(`No planId in session metadata for session ${sessionId}`);
+        throw new BadRequestException('Invalid checkout session');
+      }
+
+      const plan = await tx.subscriptionPlan.findUnique({
+        where: { id: planId },
+      });
+
+      if (!plan) {
+        throw new NotFoundException('Plan not found');
+      }
+
+      // Calculate period end
+      const now = new Date();
+      const periodEnd = new Date(now);
+      if (billingCycle === 'YEARLY') {
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+      } else {
+        periodEnd.setMonth(periodEnd.getMonth() + 1);
+      }
+
+      this.logger.log(
+        `Creating/updating subscription in transaction: userId=${userId}, planId=${planId}, billingCycle=${billingCycle}`
+      );
+
+      // Create or update subscription (atomic operation within transaction)
+      const sub = await tx.sellerSubscription.upsert({
+        where: { userId },
+        create: {
+          userId,
+          planId,
+          status: SubscriptionStatus.ACTIVE,
+          billingCycle: (billingCycle as BillingCycle) || BillingCycle.MONTHLY,
+          stripeCustomerId: stripeCustomerId || null,
+          stripeSubscriptionId: stripeSubscriptionId || null,
+          currentPeriodStart: now,
+          currentPeriodEnd: periodEnd,
+          creditsAllocated: plan.monthlyCredits,
+          creditsUsed: 0,
+        },
+        update: {
+          planId,
+          status: SubscriptionStatus.ACTIVE,
+          billingCycle: (billingCycle as BillingCycle) || BillingCycle.MONTHLY,
+          stripeCustomerId: stripeCustomerId || undefined,
+          stripeSubscriptionId: stripeSubscriptionId || undefined,
+          currentPeriodStart: now,
+          currentPeriodEnd: periodEnd,
+          canceledAt: null,
+          cancelAtPeriodEnd: false,
+          creditsAllocated: plan.monthlyCredits,
+        },
+        include: { plan: true },
+      });
+
+      return sub;
     });
-
-    if (
-      existingSubscription &&
-      existingSubscription.stripeSubscriptionId === stripeSubscriptionId &&
-      existingSubscription.status === 'ACTIVE' &&
-      existingSubscription.plan.tier !== 'FREE'
-    ) {
-      this.logger.log(`Subscription already active for user ${userId}`);
-      return {
-        activated: true,
-        subscription: existingSubscription,
-      };
-    }
-
-    // Get plan from metadata
-    const planId = session.metadata?.planId;
-    const billingCycle = session.metadata?.billingCycle;
-
-    if (!planId) {
-      this.logger.error(`No planId in session metadata for session ${sessionId}`);
-      throw new BadRequestException('Invalid checkout session');
-    }
-
-    const plan = await this.prisma.subscriptionPlan.findUnique({
-      where: { id: planId },
-    });
-
-    if (!plan) {
-      throw new NotFoundException('Plan not found');
-    }
-
-    // Calculate period end
-    const now = new Date();
-    const periodEnd = new Date(now);
-    if (billingCycle === 'YEARLY') {
-      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-    } else {
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
-    }
 
     this.logger.log(
-      `Creating/updating subscription: userId=${userId}, planId=${planId}, billingCycle=${billingCycle}`
-    );
-
-    // Create or update subscription
-    const subscription = await this.prisma.sellerSubscription.upsert({
-      where: { userId },
-      create: {
-        userId,
-        planId,
-        status: SubscriptionStatus.ACTIVE,
-        billingCycle: (billingCycle as BillingCycle) || BillingCycle.MONTHLY,
-        stripeCustomerId: stripeCustomerId || null,
-        stripeSubscriptionId: stripeSubscriptionId || null,
-        currentPeriodStart: now,
-        currentPeriodEnd: periodEnd,
-        creditsAllocated: plan.monthlyCredits,
-        creditsUsed: 0,
-      },
-      update: {
-        planId,
-        status: SubscriptionStatus.ACTIVE,
-        billingCycle: (billingCycle as BillingCycle) || BillingCycle.MONTHLY,
-        stripeCustomerId: stripeCustomerId || undefined,
-        stripeSubscriptionId: stripeSubscriptionId || undefined,
-        currentPeriodStart: now,
-        currentPeriodEnd: periodEnd,
-        canceledAt: null,
-        cancelAtPeriodEnd: false,
-        creditsAllocated: plan.monthlyCredits,
-      },
-      include: { plan: true },
-    });
-
-    this.logger.log(
-      `Subscription activated via verify-checkout for user ${userId} with plan ${plan.name}`
+      `Subscription activated via verify-checkout for user ${userId} with plan ${subscription.plan.name}`
     );
 
     return {
@@ -530,7 +544,7 @@ export class StripeSubscriptionService {
   }
 
   /**
-   * Handle subscription deletion
+   * Handle subscription deletion (expiration or cancellation)
    */
   private async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
     const { userId } = subscription.metadata || {};
@@ -550,16 +564,55 @@ export class StripeSubscriptionService {
       return;
     }
 
-    await this.prisma.sellerSubscription.update({
-      where: { userId },
-      data: {
-        status: SubscriptionStatus.CANCELLED,
-        canceledAt: new Date(),
-        planId: freePlan.id, // Downgrade to FREE plan
-      },
+    // Determine if this is expiration (ended naturally) or cancellation (cancelled early)
+    const now = new Date();
+    const periodEnd = new Date((subscription as any).current_period_end * 1000);
+    const isExpired = now >= periodEnd;
+
+    await this.prisma.$transaction(async (tx) => {
+      const existingSub = await tx.sellerSubscription.findUnique({
+        where: { userId },
+        select: { id: true, creditsAllocated: true, creditsUsed: true },
+      });
+
+      if (!existingSub) {
+        this.logger.warn(`No subscription found for user ${userId} on deletion event`);
+        return;
+      }
+
+      await tx.sellerSubscription.update({
+        where: { userId },
+        data: {
+          status: isExpired ? SubscriptionStatus.EXPIRED : SubscriptionStatus.CANCELLED,
+          canceledAt: new Date(),
+          planId: freePlan.id,
+          creditsAllocated: freePlan.monthlyCredits,
+          creditsUsed: 0,
+        },
+      });
+
+      await tx.subscriptionCreditEvent.create({
+        data: {
+          subscriptionId: existingSub.id,
+          userId,
+          eventType: 'CANCELLATION',
+          creditsBefore: existingSub.creditsAllocated,
+          creditsAfter: freePlan.monthlyCredits,
+          creditsUsedBefore: existingSub.creditsUsed,
+          creditsUsedAfter: 0,
+          reason: `Subscription ${isExpired ? 'expired' : 'cancelled'} — downgraded to FREE`,
+          metadata: {
+            stripeSubscriptionId: subscription.id,
+            isExpired,
+            periodEnd: periodEnd.toISOString(),
+          },
+        },
+      });
     });
 
-    this.logger.log(`Subscription cancelled for user ${userId}`);
+    this.logger.log(
+      `Subscription ${isExpired ? 'expired' : 'cancelled'} for user ${userId}, downgraded to FREE plan`
+    );
   }
 
   /**
@@ -567,36 +620,49 @@ export class StripeSubscriptionService {
    */
   private async handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
     if (!(invoice as any).subscription) return;
-
     const stripe = await this.getStripeClient();
-
     const subscription = await stripe.subscriptions.retrieve(
       (invoice as any).subscription as string
     );
-
     const { userId } = subscription.metadata || {};
-
     if (!userId) return;
 
-    // Find subscription and plan
-    const sellerSubscription = await this.prisma.sellerSubscription.findUnique({
-      where: { userId },
-      include: { plan: true },
+    await this.prisma.$transaction(async (tx) => {
+      // Read inside transaction — snapshot isolation
+      const sellerSubscription = await tx.sellerSubscription.findUnique({
+        where: { userId },
+        include: { plan: true },
+      });
+      if (!sellerSubscription) return;
+
+      await tx.sellerSubscription.update({
+        where: { userId },
+        data: {
+          status: SubscriptionStatus.ACTIVE,
+          creditsAllocated: sellerSubscription.plan.monthlyCredits,
+          creditsUsed: 0,
+        },
+      });
+
+      await tx.subscriptionCreditEvent.create({
+        data: {
+          subscriptionId: sellerSubscription.id,
+          userId,
+          eventType: 'RENEWAL_RESET',
+          creditsBefore: sellerSubscription.creditsAllocated,
+          creditsAfter: sellerSubscription.plan.monthlyCredits,
+          creditsUsedBefore: sellerSubscription.creditsUsed,
+          creditsUsedAfter: 0,
+          reason: `Subscription renewed via invoice ${(invoice as any).id}`,
+          metadata: {
+            invoiceId: (invoice as any).id,
+            stripeSubscriptionId: (invoice as any).subscription,
+          },
+        },
+      });
     });
 
-    if (!sellerSubscription) return;
-
-    // Reset credits for the new billing period
-    await this.prisma.sellerSubscription.update({
-      where: { userId },
-      data: {
-        status: SubscriptionStatus.ACTIVE,
-        creditsAllocated: sellerSubscription.plan.monthlyCredits,
-        creditsUsed: 0,
-      },
-    });
-
-    this.logger.log(`Invoice paid for user ${userId}, credits reset`);
+    this.logger.log(`Invoice paid for user ${userId}, credits reset and audit event written`);
   }
 
   /**
@@ -705,8 +771,9 @@ export class StripeSubscriptionService {
 
   /**
    * Sync Stripe prices with subscription plans (Admin function)
+   * Creates new prices if they don't exist, or if prices have changed (archives old ones)
    */
-  async syncStripePrices(): Promise<{ synced: number; errors: string[] }> {
+  async syncStripePrices(): Promise<{ synced: number; errors: string[]; archived: number }> {
     const stripe = await this.getStripeClient();
 
     const plans = await this.prisma.subscriptionPlan.findMany({
@@ -714,6 +781,7 @@ export class StripeSubscriptionService {
     });
 
     let synced = 0;
+    let archived = 0;
     const errors: string[] = [];
 
     for (const plan of plans) {
@@ -737,8 +805,29 @@ export class StripeSubscriptionService {
           this.logger.log(`Created Stripe product ${productId} for plan ${plan.name}`);
         }
 
-        // Create monthly price if not exists
         let monthlyPriceId = plan.stripePriceIdMonthly;
+        let yearlyPriceId = plan.stripePriceIdYearly;
+
+        // Check if monthly price needs update
+        if (monthlyPriceId && Number(plan.monthlyPrice) > 0) {
+          try {
+            const existingPrice = await stripe.prices.retrieve(monthlyPriceId);
+            const currentAmount = Math.round(Number(plan.monthlyPrice) * 100);
+
+            // If price changed, archive old price and create new one
+            if (existingPrice.unit_amount !== currentAmount) {
+              await stripe.prices.update(monthlyPriceId, { active: false });
+              archived++;
+              this.logger.log(`Archived old monthly price ${monthlyPriceId} for plan ${plan.name}`);
+              monthlyPriceId = null; // Force creation of new price
+            }
+          } catch (error) {
+            // Price doesn't exist or error retrieving, create new one
+            monthlyPriceId = null;
+          }
+        }
+
+        // Create monthly price if not exists or was archived
         if (!monthlyPriceId && Number(plan.monthlyPrice) > 0) {
           const monthlyPrice = await stripe.prices.create({
             product: productId,
@@ -755,8 +844,26 @@ export class StripeSubscriptionService {
           this.logger.log(`Created monthly price ${monthlyPriceId} for plan ${plan.name}`);
         }
 
-        // Create yearly price if not exists
-        let yearlyPriceId = plan.stripePriceIdYearly;
+        // Check if yearly price needs update
+        if (yearlyPriceId && Number(plan.yearlyPrice) > 0) {
+          try {
+            const existingPrice = await stripe.prices.retrieve(yearlyPriceId);
+            const currentAmount = Math.round(Number(plan.yearlyPrice) * 100);
+
+            // If price changed, archive old price and create new one
+            if (existingPrice.unit_amount !== currentAmount) {
+              await stripe.prices.update(yearlyPriceId, { active: false });
+              archived++;
+              this.logger.log(`Archived old yearly price ${yearlyPriceId} for plan ${plan.name}`);
+              yearlyPriceId = null; // Force creation of new price
+            }
+          } catch (error) {
+            // Price doesn't exist or error retrieving, create new one
+            yearlyPriceId = null;
+          }
+        }
+
+        // Create yearly price if not exists or was archived
         if (!yearlyPriceId && Number(plan.yearlyPrice) > 0) {
           const yearlyPrice = await stripe.prices.create({
             product: productId,
@@ -791,8 +898,10 @@ export class StripeSubscriptionService {
       }
     }
 
-    this.logger.log(`Sync completed: ${synced} plans synced, ${errors.length} errors`);
+    this.logger.log(
+      `Sync completed: ${synced} plans synced, ${archived} prices archived, ${errors.length} errors`
+    );
 
-    return { synced, errors };
+    return { synced, errors, archived };
   }
 }

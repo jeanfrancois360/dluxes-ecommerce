@@ -23,6 +23,11 @@ import { useSelectedCurrency } from '@/hooks/use-currency';
 import { toast } from '@/lib/utils/toast';
 import { navigateWithLoading } from '@/lib/navigation';
 import { useTranslations } from 'next-intl';
+import useSWR from 'swr';
+import { settingsApi } from '@/lib/api/settings';
+import { useLocale } from '@/contexts/locale-context';
+import { useAffiliatePublicProducts } from '@/hooks/use-affiliate';
+import { AffiliateProductsSection } from '@/components/affiliate/affiliate-products-section';
 
 // Lazy load heavy components
 const InlineAd = lazy(() => import('@/components/ads').then((m) => ({ default: m.InlineAd })));
@@ -56,6 +61,24 @@ export default function HomeClient() {
   // Get currency symbol
   const { currency } = useSelectedCurrency();
   const currencySymbol = currency?.symbol || '$';
+
+  // Locale for affiliate cards
+  const { language: locale } = useLocale();
+
+  // Public settings (same SWR key as use-currency — deduplicated automatically)
+  const { data: publicSettings } = useSWR('/settings/public', settingsApi.getPublicSettings, {
+    revalidateOnFocus: false,
+  });
+  const affiliateHomeEnabled =
+    (publicSettings?.find((s) => s.key === 'affiliate_homepage_enabled')?.value ?? true) !== false;
+  const affiliateCount = Number(
+    publicSettings?.find((s) => s.key === 'affiliate_products_per_section')?.value ?? 6
+  );
+
+  // Affiliate products for home row (only fetch when enabled)
+  const { products: affiliateProducts } = useAffiliatePublicProducts(
+    affiliateHomeEnabled ? { limit: affiliateCount, isFeatured: true, locale } : undefined
+  );
 
   // Fetch data from API
   const { products: featuredData, isLoading: featuredLoading } = useFeaturedProducts(8);
@@ -482,6 +505,13 @@ export default function HomeClient() {
         />
       </section>
 
+      {/* Affiliate products row — "From our partners" */}
+      {affiliateHomeEnabled && affiliateProducts.length > 0 && (
+        <section className="max-w-[1920px] mx-auto px-4 lg:px-8 py-4">
+          <AffiliateProductsSection products={affiliateProducts} locale={locale} />
+        </section>
+      )}
+
       {/* Sponsored Content - After Trending */}
       <section className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8">
         <Suspense fallback={<div className="h-32 bg-gray-100 animate-pulse rounded-lg" />}>
@@ -553,6 +583,10 @@ export default function HomeClient() {
             outOfStock: tModal('outOfStock'),
             onlyLeftInStock: tModal('onlyLeftInStock', { count: 0 }),
             addToCart: tModal('addToCart'),
+            sendInquiry: tModal('sendInquiry'),
+            alwaysAvailable: tModal('alwaysAvailable'),
+            serviceAvailable: tModal('serviceAvailable'),
+            unavailable: tModal('unavailable'),
             viewFullDetails: tModal('viewFullDetails'),
             reviews: tModal('reviews'),
             review: tModal('review'),

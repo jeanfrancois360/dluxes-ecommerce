@@ -42,6 +42,7 @@ export class GelatoService implements OnModuleInit {
   private catalogBaseUrl: string; // For product catalog API (v3)
   private ecommerceBaseUrl: string; // For ecommerce API (v1) - store products
   private isPlatformConfigured = false;
+  isTestMode = false; // true → orderType: "draft" (no company info required)
 
   // Credentials cache (5-minute TTL)
   private credentialsCache = new Map<string, GelatoCredentials>();
@@ -78,6 +79,12 @@ export class GelatoService implements OnModuleInit {
     this.ecommerceBaseUrl = 'https://ecommerce.gelatoapis.com/v1'; // E-commerce API (store products)
     this.platformStoreId = this.configService.get('GELATO_STORE_ID');
     this.platformWebhookSecret = this.configService.get('GELATO_WEBHOOK_SECRET');
+    this.isTestMode = this.configService.get('GELATO_TEST_MODE', 'false') === 'true';
+    if (this.isTestMode) {
+      this.logger.warn(
+        '⚠️  Gelato running in TEST MODE — orders submitted as drafts (not fulfilled)'
+      );
+    }
 
     // DEBUG: Log loaded configuration
     this.logger.log(`🔧 Gelato Config Loaded:`);
@@ -344,7 +351,8 @@ export class GelatoService implements OnModuleInit {
       offset?: number;
       search?: string;
     },
-    userId?: string
+    userId?: string,
+    storeId?: string
   ): Promise<{ products: GelatoProduct[]; total: number }> {
     let credentials: GelatoCredentials;
     let userRole: string;
@@ -375,21 +383,32 @@ export class GelatoService implements OnModuleInit {
         credentials = sellerCreds;
         this.logger.debug(`Using seller credentials for catalog (user: ${userId})`);
       }
-      // For ADMINS: Use platform credentials (admins browse catalog for all sellers)
+      // For ADMINS: Use seller credentials when storeId provided, else platform
       else if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
-        if (!this.isPlatformConfigured) {
-          throw new HttpException(
-            'Platform Gelato account not configured. Please configure GELATO_API_KEY in .env file.',
-            HttpStatus.SERVICE_UNAVAILABLE
-          );
+        if (storeId) {
+          try {
+            credentials = await this.getSellerCredentials(storeId);
+            this.logger.debug(`Admin using seller credentials for store ${storeId}`);
+          } catch {
+            // Seller credentials unavailable — fall through to platform
+          }
         }
 
-        credentials = {
-          apiKey: this.platformApiKey,
-          storeId: this.platformStoreId,
-          isPlatformFallback: true,
-        };
-        this.logger.debug('Using platform credentials for catalog (admin user)');
+        if (!credentials) {
+          if (!this.isPlatformConfigured) {
+            throw new HttpException(
+              'Platform Gelato account not configured. Please configure GELATO_API_KEY in .env file.',
+              HttpStatus.SERVICE_UNAVAILABLE
+            );
+          }
+
+          credentials = {
+            apiKey: this.platformApiKey,
+            storeId: this.platformStoreId,
+            isPlatformFallback: true,
+          };
+          this.logger.debug('Using platform credentials for catalog (admin user)');
+        }
       }
     }
 
@@ -504,7 +523,7 @@ export class GelatoService implements OnModuleInit {
     };
   }
 
-  async getProduct(productUid: string, userId?: string): Promise<GelatoProduct> {
+  async getProduct(productUid: string, userId?: string, storeId?: string): Promise<GelatoProduct> {
     let credentials: GelatoCredentials;
     let userRole: string;
 
@@ -533,20 +552,30 @@ export class GelatoService implements OnModuleInit {
 
         credentials = sellerCreds;
       }
-      // For ADMINS: Use platform credentials
+      // For ADMINS: Use seller credentials when storeId provided, else platform
       else if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
-        if (!this.isPlatformConfigured) {
-          throw new HttpException(
-            'Platform Gelato account not configured.',
-            HttpStatus.SERVICE_UNAVAILABLE
-          );
+        if (storeId) {
+          try {
+            credentials = await this.getSellerCredentials(storeId);
+          } catch {
+            // Fall through to platform
+          }
         }
 
-        credentials = {
-          apiKey: this.platformApiKey,
-          storeId: this.platformStoreId,
-          isPlatformFallback: true,
-        };
+        if (!credentials) {
+          if (!this.isPlatformConfigured) {
+            throw new HttpException(
+              'Platform Gelato account not configured.',
+              HttpStatus.SERVICE_UNAVAILABLE
+            );
+          }
+
+          credentials = {
+            apiKey: this.platformApiKey,
+            storeId: this.platformStoreId,
+            isPlatformFallback: true,
+          };
+        }
       }
     }
 
@@ -741,11 +770,19 @@ export class GelatoService implements OnModuleInit {
 
     const credentials = await this.getSellerCredentials(storeId);
 
+    const payload = {
+      storeId: credentials.storeId,
+      ...orderData,
+      // In test mode, submit as draft so orders are not fulfilled and
+      // company information in Gelato portal is not required
+      orderType: this.isTestMode ? 'draft' : (orderData.orderType ?? 'order'),
+    };
+
     return this.request<GelatoOrderResponse>(
       '/orders',
       {
         method: 'POST',
-        body: JSON.stringify({ storeId: credentials.storeId, ...orderData }),
+        body: JSON.stringify(payload),
       },
       credentials
     );

@@ -4,9 +4,17 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  InternalServerErrorException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import Stripe from 'stripe';
 import { PrismaService } from '../database/prisma.service';
-import { CreateHotDealDto, HotDealStatus, UrgencyLevel, ContactMethod } from './dto/create-hot-deal.dto';
+import {
+  CreateHotDealDto,
+  HotDealStatus,
+  UrgencyLevel,
+  ContactMethod,
+} from './dto/create-hot-deal.dto';
 import { RespondToDealDto } from './dto/respond-to-deal.dto';
 import { HotDealQueryDto } from './dto/hot-deal-query.dto';
 import { PaymentStatus } from '@prisma/client';
@@ -14,8 +22,50 @@ import { PaymentStatus } from '@prisma/client';
 @Injectable()
 export class HotDealsService {
   private readonly logger = new Logger(HotDealsService.name);
+  private stripe: Stripe | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService
+  ) {}
+
+  private getStripe(): Stripe {
+    if (!this.stripe) {
+      const key = this.configService.get<string>('STRIPE_SECRET_KEY');
+      if (!key) {
+        throw new InternalServerErrorException('Stripe is not configured');
+      }
+      this.stripe = new Stripe(key, { apiVersion: '2025-10-29.clover' });
+    }
+    return this.stripe;
+  }
+
+  /**
+   * Create a Stripe Payment Intent for the $1 hot deal posting fee
+   */
+  async createPaymentIntent(hotDealId: string, userId: string) {
+    const deal = await this.hotDeal.findUnique({ where: { id: hotDealId } });
+
+    if (!deal) {
+      throw new NotFoundException('Hot deal not found');
+    }
+    if (deal.userId !== userId) {
+      throw new ForbiddenException('Not authorized');
+    }
+    if (deal.status !== HotDealStatus.PENDING) {
+      throw new BadRequestException('This hot deal has already been paid for or cancelled');
+    }
+
+    const stripe = this.getStripe();
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 100, // $1.00 in cents
+      currency: 'usd',
+      description: `Hot Deal posting fee — ${deal.title}`,
+      metadata: { hotDealId, userId },
+    });
+
+    return { clientSecret: paymentIntent.client_secret };
+  }
 
   // Type assertion helper for HotDeal model (until migration is run)
   private get hotDeal() {
@@ -25,6 +75,39 @@ export class HotDealsService {
   // Type assertion helper for HotDealResponse model (until migration is run)
   private get hotDealResponse() {
     return (this.prisma as any).hotDealResponse;
+  }
+
+  /**
+   * Attach raw fields (images JSONB, budget, budget_type) invisible to stale Prisma client.
+   * Uses individual IN placeholders to avoid uuid[] cast issues with CUID primary keys.
+   */
+  private async attachImages<T extends { id: string }>(
+    deals: T[]
+  ): Promise<(T & { images: string[]; budget: number | null; budgetType: string | null })[]> {
+    if (deals.length === 0)
+      return deals.map((d) => ({ ...d, images: [], budget: null, budgetType: null }));
+    const ids = deals.map((d) => d.id);
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
+    const rows = await this.prisma.$queryRawUnsafe<
+      { id: string; images: string[]; budget: string | null; budget_type: string | null }[]
+    >(
+      `SELECT id, images, budget, budget_type FROM hot_deals WHERE id IN (${placeholders})`,
+      ...ids
+    );
+    const map = new Map(
+      rows.map((r) => [
+        r.id,
+        {
+          images: r.images ?? [],
+          budget: r.budget !== null ? parseFloat(r.budget) : null,
+          budgetType: r.budget_type,
+        },
+      ])
+    );
+    return deals.map((d) => {
+      const raw = map.get(d.id) ?? { images: [], budget: null, budgetType: null };
+      return { ...d, ...raw };
+    });
   }
 
   /**
@@ -64,8 +147,22 @@ export class HotDealsService {
       },
     });
 
+    // Store raw fields (images, budget) via raw SQL — Prisma client not regenerated yet
+    const hasImages = dto.images && dto.images.length > 0;
+    const hasBudget = dto.budget !== undefined;
+    if (hasImages || hasBudget || dto.budgetType) {
+      await this.prisma.$executeRawUnsafe(
+        `UPDATE hot_deals SET images = $1::jsonb, budget = $2, budget_type = $3 WHERE id = $4`,
+        hasImages ? JSON.stringify(dto.images) : null,
+        hasBudget ? dto.budget : null,
+        dto.budgetType ?? null,
+        hotDeal.id
+      );
+    }
+
     this.logger.log(`Hot deal created: ${hotDeal.id} by user ${userId}`);
-    return hotDeal;
+    const [dealWithImages] = await this.attachImages([hotDeal]);
+    return dealWithImages;
   }
 
   /**
@@ -118,8 +215,10 @@ export class HotDealsService {
       this.hotDeal.count({ where }),
     ]);
 
+    const dealsWithImages = await this.attachImages(deals);
+
     return {
-      deals,
+      deals: dealsWithImages,
       pagination: {
         total,
         page,
@@ -169,12 +268,11 @@ export class HotDealsService {
 
     // Filter responses: only show to owner or if user responded
     if (requestingUserId && requestingUserId !== deal.userId) {
-      deal.responses = deal.responses.filter(
-        (r) => r.userId === requestingUserId,
-      );
+      deal.responses = deal.responses.filter((r) => r.userId === requestingUserId);
     }
 
-    return deal;
+    const [dealWithImages] = await this.attachImages([deal]);
+    return dealWithImages;
   }
 
   /**
@@ -193,17 +291,13 @@ export class HotDealsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return deals;
+    return this.attachImages(deals);
   }
 
   /**
    * Respond to a hot deal
    */
-  async respondToDeal(
-    hotDealId: string,
-    userId: string,
-    dto: RespondToDealDto,
-  ) {
+  async respondToDeal(hotDealId: string, userId: string, dto: RespondToDealDto) {
     const deal = await this.hotDeal.findUnique({
       where: { id: hotDealId },
     });
@@ -254,9 +348,7 @@ export class HotDealsService {
       },
     });
 
-    this.logger.log(
-      `Response created for hot deal ${hotDealId} by user ${userId}`,
-    );
+    this.logger.log(`Response created for hot deal ${hotDealId} by user ${userId}`);
     return response;
   }
 

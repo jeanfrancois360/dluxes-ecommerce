@@ -1,4 +1,5 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 /**
  * Security Settings Page
@@ -92,7 +93,7 @@ export default function SecurityPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch sessions');
       }
-      return response.json();
+      return safeJson(response);
     },
     { revalidateOnFocus: false }
   );
@@ -223,7 +224,7 @@ export default function SecurityPage() {
         body: JSON.stringify({ password: deletePassword }),
       });
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (data.success) {
         // Clear local storage and redirect
@@ -254,7 +255,7 @@ export default function SecurityPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (response.ok) {
         toast.success(t('deviceLoggedOut'));
@@ -285,7 +286,7 @@ export default function SecurityPage() {
         }
       );
 
-      const data = await response.json();
+      const data = await safeJson(response);
 
       if (response.ok) {
         toast.success(t('allOtherLoggedOut'));

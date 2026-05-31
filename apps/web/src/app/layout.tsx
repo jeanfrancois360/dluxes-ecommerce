@@ -7,7 +7,6 @@ import { CartProvider } from '@/contexts/cart-context';
 import { WishlistProvider } from '@/contexts/wishlist-context';
 import { LocaleProvider } from '@/contexts/locale-context';
 import { RouteLoadingProvider } from '@/components/providers/route-loading-provider';
-import { ToastListener } from '@/components/toast-listener';
 import { WhatsAppChat } from '@/components/whatsapp-chat';
 import { VersionChecker } from '@/components/version-checker';
 import { Toaster } from 'sonner';
@@ -108,7 +107,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang={locale}
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={`${poppins.variable} overflow-x-hidden`}
+      className={`${poppins.variable} [overflow-x:clip]`}
     >
       <head>
         {/* Preconnect to critical origins */}
@@ -127,7 +126,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="dns-prefetch" href="https://js.stripe.com" />
         <link rel="dns-prefetch" href="https://m.stripe.com" />
       </head>
-      <body className="font-sans antialiased bg-white text-black overflow-x-hidden">
+      <body
+        className="font-sans antialiased bg-white text-black overflow-x-hidden"
+        suppressHydrationWarning
+      >
         <NextIntlClientProvider locale={locale} messages={messages}>
           <RouteLoadingProvider>
             <LocaleProvider>

@@ -1,6 +1,7 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
@@ -47,6 +48,10 @@ import {
   Download,
   DollarSign,
   Clock,
+  ChevronDown,
+  Check,
+  Loader2,
+  Tag,
 } from 'lucide-react';
 import { formatCurrencyAmount, formatNumber } from '@/lib/utils/number-format';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -84,6 +89,342 @@ interface Category {
   id: string;
   name: string;
   slug: string;
+}
+
+// ─── Seller searchable combobox ───────────────────────────────────────────────
+function SellerCombobox({
+  value,
+  displayValue,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  displayValue: string;
+  onChange: (id: string, email: string) => void;
+  disabled?: boolean;
+}) {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [sellers, setSellers] = useState<
+    Array<{ id: string; email: string; firstName: string; lastName: string }>
+  >([]);
+  const [loading, setLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const debouncedQuery = useDebounce(query, 300);
+
+  // Fetch sellers: load 5 by default on open, filter when query is provided
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    const param = debouncedQuery.trim()
+      ? `search=${encodeURIComponent(debouncedQuery)}`
+      : 'pageSize=5';
+    fetch(`/api/admin/users?${param}&role=SELLER`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` },
+    })
+      .then((r) => r.json())
+      .then((data) =>
+        setSellers((Array.isArray(data) ? data : []).slice(0, debouncedQuery.trim() ? 10 : 5))
+      )
+      .catch(() => setSellers([]))
+      .finally(() => setLoading(false));
+  }, [debouncedQuery, isOpen]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const displayName = value ? displayValue || 'Selected seller' : '';
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Trigger */}
+      <div
+        className={`flex items-center gap-2 w-full px-3 py-2.5 border-2 rounded-lg cursor-text transition-all text-sm font-medium ${
+          isOpen
+            ? 'border-blue-500 ring-3 ring-blue-500/15 bg-white shadow-sm'
+            : 'border-gray-300 bg-white hover:border-gray-400'
+        } ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none bg-gray-50' : ''}`}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen(true);
+            setTimeout(() => inputRef.current?.focus(), 0);
+          }
+        }}
+      >
+        <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
+        <input
+          ref={inputRef}
+          type="text"
+          disabled={disabled}
+          value={isOpen ? query : displayName}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => !disabled && setIsOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setIsOpen(false);
+              setQuery('');
+            }
+          }}
+          placeholder={value ? displayName : 'Search by name or email…'}
+          className="flex-1 outline-none bg-transparent placeholder:text-gray-400 text-gray-900 min-w-0 disabled:cursor-not-allowed"
+          autoComplete="off"
+        />
+        {value && !disabled && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange('', '');
+              setQuery('');
+            }}
+            className="text-gray-400 hover:text-gray-600 flex-none p-0.5 rounded hover:bg-gray-100 transition-colors"
+            tabIndex={-1}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <ChevronDown
+          className={`w-4 h-4 text-gray-400 flex-none transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </div>
+
+      {/* Dropdown */}
+      {isOpen && !disabled && (
+        <div className="absolute z-[9999] mt-1 w-full bg-white border-2 border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50">
+            <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <span className="text-xs text-gray-500">
+              {query ? `Searching for "${query}"` : 'Recent sellers — type to filter'}
+            </span>
+            {loading && <Loader2 className="w-3 h-3 text-gray-400 animate-spin ml-auto" />}
+          </div>
+
+          <div className="max-h-60 overflow-y-auto">
+            {loading && sellers.length === 0 && (
+              <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-400">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading sellers…
+              </div>
+            )}
+            {!loading && sellers.length === 0 && (
+              <div className="py-6 text-sm text-gray-400 text-center">
+                {query ? `No sellers found for "${query}"` : 'No sellers available'}
+              </div>
+            )}
+            {sellers.map((s) => {
+              const initials =
+                ((s.firstName?.[0] ?? '') + (s.lastName?.[0] ?? '')).toUpperCase() || '?';
+              const isSelected = value === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                    isSelected
+                      ? 'bg-blue-50 border-l-2 border-l-blue-500'
+                      : 'hover:bg-gray-50 border-l-2 border-l-transparent'
+                  }`}
+                  onClick={() => {
+                    onChange(s.id, s.email);
+                    setIsOpen(false);
+                    setQuery('');
+                  }}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      isSelected ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+                    }`}
+                  >
+                    {initials}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`text-sm font-semibold truncate ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}
+                    >
+                      {s.firstName} {s.lastName}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">{s.email}</p>
+                  </div>
+                  {isSelected && <Check className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Footer hint */}
+          {!query && sellers.length > 0 && (
+            <div className="px-3 py-1.5 border-t border-gray-100 bg-gray-50 text-xs text-gray-400 text-center">
+              Showing first {sellers.length} sellers · type to search all
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Category searchable combobox ─────────────────────────────────────────────
+function CategoryComboboxField({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: Array<{ id: string; name: string; slug: string }>;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selected = categories.find((c) => c.id === value);
+  // Show first 5 by default; filter when query is provided
+  const filtered = query.trim()
+    ? categories.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()))
+    : categories.slice(0, 5);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Trigger */}
+      <div
+        className={`flex items-center gap-2 w-full px-3 py-2.5 border-2 rounded-lg cursor-text transition-all text-sm font-medium ${
+          isOpen
+            ? 'border-blue-500 ring-3 ring-blue-500/15 bg-white shadow-sm'
+            : 'border-gray-300 bg-white hover:border-gray-400'
+        }`}
+        onClick={() => {
+          setIsOpen(true);
+          setTimeout(() => inputRef.current?.focus(), 0);
+        }}
+      >
+        <Tag className="w-4 h-4 text-gray-400 flex-shrink-0" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={isOpen ? query : (selected?.name ?? '')}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setIsOpen(false);
+              setQuery('');
+            }
+          }}
+          placeholder={selected ? selected.name : 'All categories (or search…)'}
+          className="flex-1 outline-none bg-transparent placeholder:text-gray-400 text-gray-900 min-w-0 text-sm"
+          autoComplete="off"
+        />
+        {selected && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange('');
+              setQuery('');
+            }}
+            className="text-gray-400 hover:text-gray-600 flex-none p-0.5 rounded hover:bg-gray-100 transition-colors"
+            tabIndex={-1}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <ChevronDown
+          className={`w-4 h-4 text-gray-400 flex-none transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </div>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute z-[9999] mt-1 w-full bg-white border-2 border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50">
+            <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <span className="text-xs text-gray-500">
+              {query
+                ? `${filtered.length} result${filtered.length !== 1 ? 's' : ''} for "${query}"`
+                : `${Math.min(categories.length, 5)} of ${categories.length} categories · type to search`}
+            </span>
+          </div>
+
+          <div className="max-h-56 overflow-y-auto py-1">
+            {/* All categories option */}
+            <button
+              type="button"
+              className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left transition-colors ${
+                !value
+                  ? 'bg-blue-50 border-l-2 border-l-blue-500 font-semibold text-blue-700'
+                  : 'hover:bg-gray-50 border-l-2 border-l-transparent text-gray-600'
+              }`}
+              onClick={() => {
+                onChange('');
+                setIsOpen(false);
+                setQuery('');
+              }}
+            >
+              <span className="flex-1">All categories</span>
+              {!value && <Check className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+            </button>
+
+            {filtered.map((c) => {
+              const isSelected = value === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left transition-colors ${
+                    isSelected
+                      ? 'bg-blue-50 border-l-2 border-l-blue-500 font-semibold text-blue-700'
+                      : 'hover:bg-gray-50 border-l-2 border-l-transparent text-gray-900'
+                  }`}
+                  onClick={() => {
+                    onChange(c.id);
+                    setIsOpen(false);
+                    setQuery('');
+                  }}
+                >
+                  <span className="flex-1 truncate">{c.name}</span>
+                  {isSelected && <Check className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                </button>
+              );
+            })}
+
+            {filtered.length === 0 && (
+              <p className="px-3 py-4 text-sm text-gray-400 text-center">
+                No results for &ldquo;{query}&rdquo;
+              </p>
+            )}
+          </div>
+
+          {!query && categories.length > 5 && (
+            <div className="px-3 py-1.5 border-t border-gray-100 bg-gray-50 text-xs text-gray-400 text-center">
+              Showing first 5 · type to search all {categories.length}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CommissionOverridesContent() {
@@ -132,7 +473,7 @@ function CommissionOverridesContent() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await safeJson(response);
         setOverrides(data);
       }
     } catch (error) {
@@ -145,9 +486,9 @@ function CommissionOverridesContent() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/categories`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories`);
       if (response.ok) {
-        const result = await response.json();
+        const result = await safeJson(response);
         // Backend wraps data in {success: true, data: [...]}
         const data = result.success ? result.data : result;
         setCategories(data);
@@ -307,16 +648,42 @@ function CommissionOverridesContent() {
 
   const handleBulkActivate = async () => {
     if (!confirm(t('bulkActions.confirmActivate', { count: selectedIds.size }))) return;
-    // Implement bulk activate
-    toast.success(t('bulkActions.activateSuccess', { count: selectedIds.size }));
+    let success = 0;
+    for (const id of selectedIds) {
+      try {
+        const res = await fetch(`/api/admin/commission/overrides/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+          body: JSON.stringify({ isActive: true }),
+        });
+        if (res.ok) success++;
+      } catch {}
+    }
+    toast.success(t('bulkActions.activateSuccess', { count: success }));
     setSelectedIds(new Set());
     fetchOverrides();
   };
 
   const handleBulkDeactivate = async () => {
     if (!confirm(t('bulkActions.confirmDeactivate', { count: selectedIds.size }))) return;
-    // Implement bulk deactivate
-    toast.success(t('bulkActions.deactivateSuccess', { count: selectedIds.size }));
+    let success = 0;
+    for (const id of selectedIds) {
+      try {
+        const res = await fetch(`/api/admin/commission/overrides/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+          body: JSON.stringify({ isActive: false }),
+        });
+        if (res.ok) success++;
+      } catch {}
+    }
+    toast.success(t('bulkActions.deactivateSuccess', { count: success }));
     setSelectedIds(new Set());
     fetchOverrides();
   };
@@ -353,29 +720,8 @@ function CommissionOverridesContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Find seller by email if provided
-    let sellerId = formData.sellerId;
-    if (formData.sellerEmail) {
-      try {
-        const response = await fetch(`/api/admin/users?email=${formData.sellerEmail}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-          },
-        });
-        if (response.ok) {
-          const users = await response.json();
-          if (users.length > 0) {
-            sellerId = users[0].id;
-          } else {
-            toast.error(t('toast.invalidSellerEmail'));
-            return;
-          }
-        }
-      } catch (error) {
-        toast.error(t('toast.findSellerError'));
-        return;
-      }
-    }
+    // sellerId is set directly by SellerCombobox — no runtime email lookup needed
+    const sellerId = formData.sellerId || null;
 
     // Validate: At least one of seller or category must be selected
     const categoryId =
@@ -421,7 +767,7 @@ function CommissionOverridesContent() {
         resetForm();
         fetchOverrides();
       } else {
-        const error = await response.json();
+        const error = await safeJson(response);
         toast.error(error.message || t('toast.saveError'));
       }
     } catch (error) {
@@ -948,16 +1294,15 @@ function CommissionOverridesContent() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="sellerEmail">
-                    {t('dialog.sellerEmail')}{' '}
-                    <span className="text-muted-foreground text-xs">(optional)</span>
+                  <Label>
+                    Seller <span className="text-muted-foreground text-xs">(optional)</span>
                   </Label>
-                  <Input
-                    id="sellerEmail"
-                    type="email"
-                    placeholder="seller@example.com (leave blank for all sellers)"
-                    value={formData.sellerEmail}
-                    onChange={(e) => setFormData({ ...formData, sellerEmail: e.target.value })}
+                  <SellerCombobox
+                    value={formData.sellerId}
+                    displayValue={formData.sellerEmail}
+                    onChange={(id, email) =>
+                      setFormData({ ...formData, sellerId: id, sellerEmail: email })
+                    }
                     disabled={!!editingOverride}
                   />
                 </div>
@@ -1005,25 +1350,14 @@ function CommissionOverridesContent() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="categoryId">
+                  <Label>
                     Category <span className="text-muted-foreground text-xs">(optional)</span>
                   </Label>
-                  <Select
-                    value={formData.categoryId}
-                    onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category (or leave blank for all)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CategoryComboboxField
+                    categories={categories}
+                    value={formData.categoryId === 'all' ? '' : formData.categoryId}
+                    onChange={(id) => setFormData({ ...formData, categoryId: id })}
+                  />
                 </div>
 
                 <div className="space-y-2">

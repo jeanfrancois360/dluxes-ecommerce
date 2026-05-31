@@ -30,6 +30,10 @@ export class AuthController {
       password: string;
       firstName: string;
       lastName: string;
+      role?: string;
+      storeName?: string;
+      storeDescription?: string;
+      referralCode?: string;
       sessionId?: string;
     }
   ) {

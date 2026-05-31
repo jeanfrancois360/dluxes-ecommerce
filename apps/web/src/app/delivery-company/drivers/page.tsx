@@ -1,16 +1,9 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  User,
-  Phone,
-  Mail,
-  Package,
-  CheckCircle,
-  Star,
-  Truck,
-} from 'lucide-react';
+import { User, Phone, Mail, Package, CheckCircle, Star, Truck } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -63,7 +56,7 @@ export default function DriversPage() {
         throw new Error('Failed to fetch drivers');
       }
 
-      const data = await response.json();
+      const data = await safeJson(response);
       setDrivers(data.data);
       setProvider(data.provider);
     } catch (err) {
@@ -121,9 +114,7 @@ export default function DriversPage() {
           <div className="text-center py-12 text-white/60">
             <User className="w-16 h-16 mx-auto mb-4 opacity-40" />
             <p>No drivers found</p>
-            <p className="text-sm mt-2">
-              Contact admin to add delivery partners to your company
-            </p>
+            <p className="text-sm mt-2">Contact admin to add delivery partners to your company</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -179,18 +170,14 @@ export default function DriversPage() {
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-2 mb-1">
                       <Truck className="w-4 h-4 text-orange-500" />
-                      <span className="text-2xl font-bold">
-                        {driver.stats.activeDeliveries}
-                      </span>
+                      <span className="text-2xl font-bold">{driver.stats.activeDeliveries}</span>
                     </div>
                     <p className="text-xs text-white/60">Active</p>
                   </div>
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-2 mb-1">
                       <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-2xl font-bold">
-                        {driver.stats.deliveredCount}
-                      </span>
+                      <span className="text-2xl font-bold">{driver.stats.deliveredCount}</span>
                     </div>
                     <p className="text-xs text-white/60">Delivered</p>
                   </div>
@@ -205,15 +192,10 @@ export default function DriversPage() {
                 {/* Active Deliveries List */}
                 {driver.deliveryAssignments.length > 0 && (
                   <div className="mb-4 pt-4 border-t border-gray-200">
-                    <p className="text-xs font-semibold text-white/80 mb-2">
-                      Current Deliveries:
-                    </p>
+                    <p className="text-xs font-semibold text-white/80 mb-2">Current Deliveries:</p>
                     <div className="space-y-1">
                       {driver.deliveryAssignments.slice(0, 3).map((delivery) => (
-                        <div
-                          key={delivery.id}
-                          className="text-xs text-white/60 font-mono"
-                        >
+                        <div key={delivery.id} className="text-xs text-white/60 font-mono">
                           {delivery.trackingNumber}
                         </div>
                       ))}
@@ -228,11 +210,7 @@ export default function DriversPage() {
 
                 {/* Actions */}
                 <button
-                  onClick={() =>
-                    router.push(
-                      `/delivery-company/deliveries?driver=${driver.id}`
-                    )
-                  }
+                  onClick={() => router.push(`/delivery-company/deliveries?driver=${driver.id}`)}
                   className="w-full px-4 py-2 bg-[#DDC36C] hover:bg-[#DDC36C]/90 text-black font-medium rounded-lg transition"
                 >
                   View Deliveries

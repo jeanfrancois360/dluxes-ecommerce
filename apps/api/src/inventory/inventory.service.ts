@@ -28,21 +28,27 @@ export class InventoryService {
   }) {
     return this.prisma.$transaction(async (prisma) => {
       // Get current inventory with row lock to prevent race conditions
-      const currentInventory = data.variantId
-        ? await prisma.productVariant.findUnique({
-            where: { id: data.variantId },
-            select: { inventory: true, previousStock: true },
-          })
-        : await prisma.product.findUnique({
-            where: { id: data.productId },
-            select: { inventory: true, previousStock: true },
-          });
+      let previousQuantity: number;
 
-      if (!currentInventory) {
-        throw new BadRequestException('Product or variant not found');
+      if (data.variantId) {
+        // Lock variant row
+        const locked = await prisma.$queryRaw<Array<{ inventory: number; previousStock: number }>>`
+          SELECT inventory, "previousStock" FROM product_variants WHERE id = ${data.variantId} FOR UPDATE
+        `;
+        if (!locked || locked.length === 0) {
+          throw new BadRequestException('Product variant not found');
+        }
+        previousQuantity = locked[0].inventory;
+      } else {
+        // Lock product row
+        const locked = await prisma.$queryRaw<Array<{ inventory: number; previousStock: number }>>`
+          SELECT inventory, "previousStock" FROM products WHERE id = ${data.productId} FOR UPDATE
+        `;
+        if (!locked || locked.length === 0) {
+          throw new BadRequestException('Product not found');
+        }
+        previousQuantity = locked[0].inventory;
       }
-
-      const previousQuantity = currentInventory.inventory;
       const newQuantity = previousQuantity + data.quantity;
 
       // Prevent negative inventory
@@ -108,12 +114,15 @@ export class InventoryService {
   /**
    * Bulk update inventory (for restocking)
    */
-  async bulkRestock(items: Array<{
-    productId: string;
-    variantId?: string;
-    quantity: number;
-    notes?: string;
-  }>, userId: string) {
+  async bulkRestock(
+    items: Array<{
+      productId: string;
+      variantId?: string;
+      quantity: number;
+      notes?: string;
+    }>,
+    userId: string
+  ) {
     const results = [];
 
     for (const item of items) {
@@ -171,6 +180,7 @@ export class InventoryService {
         select: {
           inventory: true,
           status: true,
+          fulfillmentType: true,
         },
       });
 
@@ -178,10 +188,22 @@ export class InventoryService {
         throw new BadRequestException('Product not found');
       }
 
+      // Print-on-demand products have unlimited inventory — never block checkout
+      if (product.fulfillmentType === 'GELATO_POD') {
+        return {
+          quantity: 999999,
+          isLowStock: false,
+          isOutOfStock: false,
+          isUnlimited: true,
+          status: product.status,
+        };
+      }
+
       return {
         quantity: product.inventory,
         isLowStock: product.inventory <= this.LOW_STOCK_THRESHOLD,
         isOutOfStock: product.inventory === 0,
+        isUnlimited: false,
         status: product.status,
       };
     }
@@ -200,7 +222,23 @@ export class InventoryService {
     const page = filters?.page || 1;
     const limit = filters?.limit || 20;
     const skip = (page - 1) * limit;
-    const threshold = filters?.threshold || this.LOW_STOCK_THRESHOLD;
+    // Read threshold from system settings; fall back to the class constant if unavailable
+    let settingThreshold = this.LOW_STOCK_THRESHOLD;
+    try {
+      const setting = await this.prisma.systemSetting.findUnique({
+        where: { key: 'inventory.low_stock_threshold' },
+      });
+      if (
+        setting?.value !== null &&
+        setting?.value !== undefined &&
+        typeof setting.value === 'number'
+      ) {
+        settingThreshold = setting.value as number;
+      }
+    } catch {
+      // Use fallback silently
+    }
+    const threshold = filters?.threshold !== undefined ? filters.threshold : settingThreshold;
 
     const where: any = {
       inventory: { lte: threshold, gt: 0 },
@@ -378,10 +416,7 @@ export class InventoryService {
   /**
    * Get inventory statistics for dashboard
    */
-  async getInventoryStatistics(filters?: {
-    storeId?: string;
-    categoryId?: string;
-  }) {
+  async getInventoryStatistics(filters?: { storeId?: string; categoryId?: string }) {
     const where: any = {
       status: { not: ProductStatus.ARCHIVED },
       ...(filters?.storeId && { storeId: filters.storeId }),

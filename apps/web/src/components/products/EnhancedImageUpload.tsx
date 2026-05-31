@@ -48,10 +48,14 @@ export default function EnhancedImageUpload({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevInitialImagesRef = useRef<string[]>([]);
+  // Track URLs we last sent to the parent so we can ignore self-triggered prop changes
+  const lastSentUrlsRef = useRef<string[]>([]);
 
-  // Sync internal state when initialImages prop changes (e.g., from Gelato auto-fill)
+  // Sync internal state when initialImages prop changes (e.g., from Gelato auto-fill).
+  // Skip the reset when the change was caused by our own onImagesChange callback —
+  // otherwise an in-progress multi-image upload gets wiped out as soon as the first
+  // image finishes and updates formData.images → initialImages.
   useEffect(() => {
-    // Deep compare URLs to prevent infinite loop
     const currentUrls = prevInitialImagesRef.current;
     const newUrls = initialImages;
 
@@ -59,16 +63,27 @@ export default function EnhancedImageUpload({
       currentUrls.length !== newUrls.length ||
       currentUrls.some((url, index) => url !== newUrls[index]);
 
-    if (hasChanged) {
-      const newImages = initialImages.map((url, index) => ({
+    if (!hasChanged) return;
+
+    // If the new URLs exactly match what we last emitted, this change was caused by
+    // our own upload completing (parent reflected it back). Don't reset internal state.
+    const isSelfTriggered =
+      newUrls.length === lastSentUrlsRef.current.length &&
+      newUrls.every((url, i) => url === lastSentUrlsRef.current[i]);
+
+    prevInitialImagesRef.current = newUrls;
+
+    if (isSelfTriggered) return;
+
+    // External change (e.g. Gelato auto-fill, loading existing product) — reset state
+    setImages(
+      initialImages.map((url, index) => ({
         url,
-        id: `initial-${index}-${Date.now()}`, // Unique ID to avoid conflicts
+        id: `initial-${index}-${Date.now()}`,
         uploading: false,
         isPrimary: index === 0,
-      }));
-      setImages(newImages);
-      prevInitialImagesRef.current = initialImages;
-    }
+      }))
+    );
   }, [initialImages]);
 
   // Check if Supabase is configured
@@ -91,6 +106,7 @@ export default function EnhancedImageUpload({
         return 0;
       });
       const urls = sortedImages.filter((img) => !img.uploading && !img.error).map((img) => img.url);
+      lastSentUrlsRef.current = urls;
       onImagesChange(urls);
     },
     [onImagesChange]

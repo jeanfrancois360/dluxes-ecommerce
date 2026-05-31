@@ -23,19 +23,20 @@ export class GelatoProductsService {
       offset?: number;
       search?: string;
     },
-    userId?: string
+    userId?: string,
+    storeId?: string
   ) {
-    return this.gelatoService.getProducts(params, userId);
+    return this.gelatoService.getProducts(params, userId, storeId);
   }
 
   async getCategories(userId?: string) {
     return this.gelatoService.getProductCategories(userId);
   }
 
-  async getProductDetails(productUid: string, userId?: string) {
+  async getProductDetails(productUid: string, userId?: string, storeId?: string) {
     // Try to fetch from Gelato API
     try {
-      const gelatoProduct = await this.gelatoService.getProduct(productUid, userId);
+      const gelatoProduct = await this.gelatoService.getProduct(productUid, userId, storeId);
 
       // Check if we have a local product with this gelatoProductUid
       const localProduct = await this.prisma.product.findFirst({
@@ -435,7 +436,8 @@ export class GelatoProductsService {
   async calculateProductPrice(
     productUid: string,
     params: { quantity: number; country: string },
-    userId?: string
+    userId?: string,
+    storeId?: string
   ) {
     this.logger.log(
       `Fetching price for Gelato product ${productUid} (quantity: ${params.quantity}, country: ${params.country})`
@@ -443,12 +445,17 @@ export class GelatoProductsService {
 
     // First, try to get the product details to check if it has pricing information
     try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        include: { store: true },
-      });
+      // Admin can pass storeId directly; sellers look it up via userId
+      let resolvedStoreId = storeId;
+      if (!resolvedStoreId && userId) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          include: { store: true },
+        });
+        resolvedStoreId = user?.store?.id;
+      }
 
-      if (user?.store?.id) {
+      if (resolvedStoreId) {
         const productDetails = await this.gelatoService.getProduct(productUid, userId);
         this.logger.log(
           `Product details fetched. Has ${productDetails.variants?.length || 0} variants`
@@ -474,14 +481,14 @@ export class GelatoProductsService {
     }
 
     try {
-      // Get user's store ID if seller
-      let storeId: string | undefined;
-      if (userId) {
+      // Resolve storeId: admin passes it directly; seller looks it up via userId
+      let resolvedStoreIdForQuote = storeId;
+      if (!resolvedStoreIdForQuote && userId) {
         const user = await this.prisma.user.findUnique({
           where: { id: userId },
           include: { store: true },
         });
-        storeId = user?.store?.id;
+        resolvedStoreIdForQuote = user?.store?.id;
       }
 
       const pricing = await this.gelatoService.calculatePrice(
@@ -489,7 +496,7 @@ export class GelatoProductsService {
           items: [{ productUid, quantity: params.quantity }],
           country: params.country,
         },
-        storeId
+        resolvedStoreIdForQuote
       );
 
       if (pricing.items && pricing.items.length > 0) {
@@ -581,14 +588,6 @@ export class GelatoProductsService {
         return 0;
       }
 
-      // Delete existing cached Gelato images for this product
-      await this.prisma.productImage.deleteMany({
-        where: {
-          productId,
-          alt: 'gelato-cached',
-        },
-      });
-
       // Process images in batches of 5 to avoid overwhelming the system
       const batchSize = 5;
       const createdImages = [];
@@ -598,7 +597,7 @@ export class GelatoProductsService {
 
         const batchResults = await Promise.allSettled(
           batch.map(async (img) => {
-            // Check if permanent URL already exists
+            // Check if a permanent (non-S3) URL already exists for this slot
             const existing = await this.prisma.productImage.findFirst({
               where: {
                 productId,
@@ -651,9 +650,11 @@ export class GelatoProductsService {
                 size: buffer.length,
               } as Express.Multer.File;
 
-              // Upload to Supabase
+              // Upload to Supabase (skipSizeCheck: internal op, Gelato images can exceed 5MB)
               this.logger.debug(`Uploading to Supabase: ${folder}/${filename}`);
-              const uploadResult = await this.uploadService.uploadFile(file, folder);
+              const uploadResult = await this.uploadService.uploadFile(file, folder, {
+                skipSizeCheck: true,
+              });
 
               // Store in database with permanent Supabase URL
               const created = await this.prisma.productImage.create({
@@ -708,6 +709,16 @@ export class GelatoProductsService {
           }
         });
       }
+
+      // Remove any remaining temporary S3 URL records that were not replaced by permanent uploads
+      // (permanent URLs were either pre-existing or just uploaded above)
+      await this.prisma.productImage.deleteMany({
+        where: {
+          productId,
+          alt: 'gelato-cached',
+          url: { contains: 'amazonaws.com' },
+        },
+      });
 
       this.logger.log(
         `✅ Cached ${createdImages.length} images for product ${productId} (Gelato: ${gelatoProduct.uid || 'unknown'})`
@@ -958,7 +969,9 @@ export class GelatoProductsService {
                 size: buffer.length,
               } as Express.Multer.File;
 
-              const uploadResult = await this.uploadService.uploadFile(file, folder);
+              const uploadResult = await this.uploadService.uploadFile(file, folder, {
+                skipSizeCheck: true,
+              });
 
               // Update database with new URL
               await this.prisma.productImage.update({

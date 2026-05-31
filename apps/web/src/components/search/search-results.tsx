@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ProductCard } from '@nextpik/ui';
 import { useSearch } from '@/hooks/use-search';
-import { FiltersSidebar } from '@/components/filters-sidebar';
+import { FiltersSidebar, FilterState } from '@/components/filters-sidebar';
 import { Product } from '@/lib/api/types';
 import { SearchResultsAd } from '@/components/ads';
 import { useTranslations } from 'next-intl';
@@ -24,20 +25,55 @@ const sortOptions = [
 
 export function SearchResults({ initialQuery, initialCategory }: SearchResultsProps) {
   const tCard = useTranslations('productCard');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState(initialCategory);
-  const [sortBy, setSortBy] = useState('relevance');
-  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState(() => searchParams.get('sortBy') || 'relevance');
+  const [page, setPage] = useState(() => parseInt(searchParams.get('page') || '1'));
   const [filters, setFilters] = useState({
-    minPrice: undefined as number | undefined,
-    maxPrice: undefined as number | undefined,
+    minPrice: searchParams.get('minPrice')
+      ? Number(searchParams.get('minPrice'))
+      : (undefined as number | undefined),
+    maxPrice: searchParams.get('maxPrice')
+      ? Number(searchParams.get('maxPrice'))
+      : (undefined as number | undefined),
     brands: [] as string[],
-    tags: [] as string[],
-    inStock: undefined as boolean | undefined,
-    onSale: undefined as boolean | undefined,
+    tags: searchParams.get('tags') ? searchParams.get('tags')!.split(',') : ([] as string[]),
+    inStock: searchParams.get('inStock') === 'true' ? true : (undefined as boolean | undefined),
+    onSale: searchParams.get('onSale') === 'true' ? true : (undefined as boolean | undefined),
   });
 
   const { data, isLoading, error, search } = useSearch();
+
+  // Sidebar uses its own FilterState shape; we bridge it to the search filter format
+  const defaultSidebarFilters: FilterState = {
+    categories: [],
+    priceRange: [0, 5000],
+    brands: [],
+    ratings: [],
+    availability: 'all',
+  };
+  const [sidebarFilters, setSidebarFilters] = useState<FilterState>(defaultSidebarFilters);
+
+  // Push URL params so search is bookmarkable / shareable
+  const syncUrl = useCallback(
+    (q: string, sort: string, pg: number, f: typeof filters, cat?: string) => {
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (cat) params.set('category', cat);
+      if (sort && sort !== 'relevance') params.set('sortBy', sort);
+      if (pg > 1) params.set('page', String(pg));
+      if (f.minPrice !== undefined) params.set('minPrice', String(f.minPrice));
+      if (f.maxPrice !== undefined) params.set('maxPrice', String(f.maxPrice));
+      if (f.tags.length) params.set('tags', f.tags.join(','));
+      if (f.inStock) params.set('inStock', 'true');
+      if (f.onSale) params.set('onSale', 'true');
+      router.replace(`/search?${params.toString()}`, { scroll: false });
+    },
+    [router]
+  );
 
   // Perform search when params change
   useEffect(() => {
@@ -50,10 +86,11 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
         limit: 24,
         ...filters,
       });
+      syncUrl(query, sortBy, page, filters, category);
     }
   }, [query, category, sortBy, page, filters]);
 
-  // Update when initial query changes
+  // Update when initial query changes (navigation)
   useEffect(() => {
     setQuery(initialQuery);
     setPage(1);
@@ -64,12 +101,22 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
     setPage(1);
   }, [initialCategory]);
 
-  const handleFilterChange = (newFilters: any) => {
-    setFilters(newFilters);
+  const handleFilterChange = (newSidebarFilters: FilterState) => {
+    setSidebarFilters(newSidebarFilters);
+    // Translate FilterState → search filter format
+    setFilters((prev) => ({
+      ...prev,
+      minPrice: newSidebarFilters.priceRange[0] > 0 ? newSidebarFilters.priceRange[0] : undefined,
+      maxPrice:
+        newSidebarFilters.priceRange[1] < 5000 ? newSidebarFilters.priceRange[1] : undefined,
+      brands: newSidebarFilters.brands,
+      inStock: newSidebarFilters.availability === 'in-stock' ? true : undefined,
+    }));
     setPage(1);
   };
 
   const handleClearAll = () => {
+    setSidebarFilters(defaultSidebarFilters);
     setFilters({
       minPrice: undefined,
       maxPrice: undefined,
@@ -137,8 +184,8 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
             className="text-gray-600"
           >
             {isLoading
-              ? 'Searching...'
-              : `${data.total} ${data.total === 1 ? 'result' : 'results'} found`}
+              ? 'Searching…'
+              : `${data.total.toLocaleString()} ${data.total === 1 ? 'result' : 'results'} found${'processingTimeMs' in data && data.processingTimeMs ? ` (${data.processingTimeMs}ms)` : ''}`}
           </motion.p>
         )}
       </div>
@@ -148,7 +195,7 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
         <aside className="lg:w-64 flex-shrink-0">
           <div className="sticky top-32">
             <FiltersSidebar
-              filters={filters as any}
+              filters={sidebarFilters}
               onFiltersChange={handleFilterChange}
               onClearAll={handleClearAll}
             />
@@ -157,6 +204,73 @@ export function SearchResults({ initialQuery, initialCategory }: SearchResultsPr
 
         {/* Results Area */}
         <div className="flex-1">
+          {/* Active filter chips */}
+          {(filters.inStock ||
+            filters.onSale ||
+            filters.minPrice ||
+            filters.maxPrice ||
+            filters.tags.length > 0) && (
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="text-xs font-medium text-gray-500">Active filters:</span>
+              {filters.inStock && (
+                <button
+                  onClick={() => {
+                    setFilters((f) => ({ ...f, inStock: undefined }));
+                    setPage(1);
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-[#CBB57B]/10 text-[#CBB57B] rounded-full text-xs font-medium hover:bg-[#CBB57B]/20 transition-colors"
+                >
+                  In Stock <span>×</span>
+                </button>
+              )}
+              {filters.onSale && (
+                <button
+                  onClick={() => {
+                    setFilters((f) => ({ ...f, onSale: undefined }));
+                    setPage(1);
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-[#CBB57B]/10 text-[#CBB57B] rounded-full text-xs font-medium hover:bg-[#CBB57B]/20 transition-colors"
+                >
+                  On Sale <span>×</span>
+                </button>
+              )}
+              {(filters.minPrice !== undefined || filters.maxPrice !== undefined) && (
+                <button
+                  onClick={() => {
+                    setFilters((f) => ({ ...f, minPrice: undefined, maxPrice: undefined }));
+                    setPage(1);
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-[#CBB57B]/10 text-[#CBB57B] rounded-full text-xs font-medium hover:bg-[#CBB57B]/20 transition-colors"
+                >
+                  {filters.minPrice !== undefined && filters.maxPrice !== undefined
+                    ? `$${filters.minPrice}–$${filters.maxPrice}`
+                    : filters.minPrice !== undefined
+                      ? `$${filters.minPrice}+`
+                      : `Up to $${filters.maxPrice}`}
+                  <span>×</span>
+                </button>
+              )}
+              {filters.tags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => {
+                    setFilters((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }));
+                    setPage(1);
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-[#CBB57B]/10 text-[#CBB57B] rounded-full text-xs font-medium hover:bg-[#CBB57B]/20 transition-colors"
+                >
+                  #{tag} <span>×</span>
+                </button>
+              ))}
+              <button
+                onClick={handleClearAll}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors underline"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
+
           {/* Sort and View Options */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">

@@ -3,11 +3,23 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown, Building2, User } from 'lucide-react';
 import { cn } from '@nextpik/ui';
 import type { CartItem } from '@/contexts/cart-context';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { useSelectedCurrency, useCurrencyConverter, useCurrencyRates } from '@/hooks/use-currency';
 import { useTranslations } from 'next-intl';
+
+interface SellerTaxBreakdownItem {
+  storeId: string;
+  storeName: string;
+  businessType: string | null;
+  taxHandling: 'NEXTPIK_COLLECTS' | 'PRICE_INCLUSIVE';
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  jurisdiction: string;
+}
 
 interface OrderSummaryProps {
   items: CartItem[];
@@ -15,15 +27,28 @@ interface OrderSummaryProps {
   shipping: number;
   tax: number;
   total: number;
-  cartCurrency?: string; // 🔒 Cart's locked currency
+  cartCurrency?: string;
   shippingMethod?: {
     name: string;
     price: number;
+    estimatedDays?: number;
   };
   promoCode?: string;
   discount?: number;
+  couponDiscount?: number;
+  appliedCouponCode?: string;
+  onApplyCoupon?: (
+    code: string
+  ) => Promise<{ success: boolean; discount?: number; message?: string }>;
+  onRemoveCoupon?: () => void;
   className?: string;
-  hasShippingAddress?: boolean; // Track if shipping address is entered
+  hasShippingAddress?: boolean;
+  isLoadingShipping?: boolean;
+  taxBreakdown?: {
+    sellerBreakdown: SellerTaxBreakdownItem[];
+    hasTaxInclusiveItems: boolean;
+    hasTaxableItems: boolean;
+  };
 }
 
 export function OrderSummary({
@@ -32,19 +57,28 @@ export function OrderSummary({
   shipping,
   tax,
   total,
-  cartCurrency = 'USD', // 🔒 Default to USD if not provided
+  cartCurrency = 'USD',
   shippingMethod,
   promoCode,
   discount = 0,
+  couponDiscount = 0,
+  appliedCouponCode,
+  onApplyCoupon,
+  onRemoveCoupon,
   className,
-  hasShippingAddress = false, // Default to false if not provided
+  hasShippingAddress = false,
+  isLoadingShipping = false,
+  taxBreakdown,
 }: OrderSummaryProps) {
   const t = useTranslations('components.orderSummary');
   const [isSticky, setIsSticky] = useState(false);
   const [showPromo, setShowPromo] = useState(false);
   const [promoInput, setPromoInput] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState(promoCode || '');
+  const [appliedPromo, setAppliedPromo] = useState(appliedCouponCode || promoCode || '');
   const [promoError, setPromoError] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [showAllItems, setShowAllItems] = useState(false);
+  const [showTaxBreakdown, setShowTaxBreakdown] = useState(false);
 
   // Use currency from the selected currency context
   const { currency } = useSelectedCurrency();
@@ -60,25 +94,38 @@ export function OrderSummary({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleApplyPromo = () => {
+  const handleApplyPromo = async () => {
     if (!promoInput.trim()) {
       setPromoError(t('pleaseEnterPromoCode'));
       return;
     }
 
-    // Here you would validate the promo code with your API
-    // For now, we'll just simulate success
-    setAppliedPromo(promoInput.toUpperCase());
-    setPromoError('');
-    setShowPromo(false);
+    if (onApplyCoupon) {
+      setIsApplyingCoupon(true);
+      setPromoError('');
+      const result = await onApplyCoupon(promoInput.trim().toUpperCase());
+      setIsApplyingCoupon(false);
+      if (result.success) {
+        setAppliedPromo(promoInput.trim().toUpperCase());
+        setShowPromo(false);
+      } else {
+        setPromoError(result.message || 'Invalid coupon code.');
+      }
+    } else {
+      // Fallback: local-only (no API)
+      setAppliedPromo(promoInput.toUpperCase());
+      setPromoError('');
+      setShowPromo(false);
+    }
   };
 
   const handleRemovePromo = () => {
     setAppliedPromo('');
     setPromoInput('');
+    onRemoveCoupon?.();
   };
 
-  const finalTotal = total - discount;
+  const finalTotal = total - discount - couponDiscount;
 
   // Helper function to format prices with cart's locked currency
   // 🔒 UPDATED: Uses cartCurrency to prevent double conversion of locked totals
@@ -106,6 +153,10 @@ export function OrderSummary({
     return `${formatted} ${currencyToUse.symbol}`;
   };
 
+  const ITEMS_PREVIEW_COUNT = 3;
+  const visibleItems = showAllItems ? items : items.slice(0, ITEMS_PREVIEW_COUNT);
+  const hiddenCount = items.length - ITEMS_PREVIEW_COUNT;
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -127,7 +178,7 @@ export function OrderSummary({
 
       {/* Items List */}
       <div className="max-h-64 overflow-y-auto p-6 space-y-4">
-        {items.map((item, index) => (
+        {visibleItems.map((item, index) => (
           <motion.div
             key={item.id}
             initial={{ opacity: 0, y: 10 }}
@@ -168,6 +219,40 @@ export function OrderSummary({
             </div>
           </motion.div>
         ))}
+
+        {/* Show more / less toggle */}
+        {items.length > ITEMS_PREVIEW_COUNT && (
+          <button
+            onClick={() => setShowAllItems(!showAllItems)}
+            className="w-full pt-2 text-sm text-neutral-500 hover:text-black transition-colors font-medium flex items-center justify-center gap-1"
+          >
+            {showAllItems ? (
+              <>
+                Show less
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 15l7-7 7 7"
+                  />
+                </svg>
+              </>
+            ) : (
+              <>
+                Show {hiddenCount} more {hiddenCount === 1 ? 'item' : 'items'}
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Promo Code Section */}
@@ -234,9 +319,10 @@ export function OrderSummary({
                     />
                     <button
                       onClick={handleApplyPromo}
-                      className="flex-shrink-0 px-6 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors whitespace-nowrap"
+                      disabled={isApplyingCoupon}
+                      className="flex-shrink-0 px-6 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors whitespace-nowrap disabled:opacity-60"
                     >
-                      {t('apply')}
+                      {isApplyingCoupon ? '...' : t('apply')}
                     </button>
                   </div>
                   {promoError && <p className="text-xs text-red-500 mt-1 px-1">{promoError}</p>}
@@ -292,62 +378,215 @@ export function OrderSummary({
       <div className="p-6 border-t border-neutral-200 space-y-3">
         {/* Subtotal */}
         <div className="flex justify-between text-sm">
-          <span className="text-neutral-600">{t('subtotal')}</span>
-          <span className="font-medium text-black">{formatWithCurrency(subtotal, false)}</span>
+          <span className="text-neutral-500">
+            {t('subtotal')}{' '}
+            <span className="text-neutral-400">
+              ({items.length} {items.length === 1 ? t('item') : t('items')})
+            </span>
+          </span>
+          <span className="font-medium text-neutral-900">
+            {formatWithCurrency(subtotal, false)}
+          </span>
         </div>
 
         {/* Shipping */}
         <div className="flex justify-between text-sm">
-          <div className="flex items-center gap-1">
-            <span className="text-neutral-600">{t('shipping')}</span>
-            {shippingMethod && (
-              <span className="text-xs text-neutral-500">({shippingMethod.name})</span>
+          <div className="min-w-0 flex-1 pr-2">
+            <span className="text-neutral-500">{t('shipping')}</span>
+            {hasShippingAddress && shippingMethod && (
+              <p className="text-[11px] text-neutral-400 mt-0.5 leading-tight truncate">
+                {shippingMethod.name}
+                {shippingMethod.estimatedDays != null && (
+                  <span> · {shippingMethod.estimatedDays}d est.</span>
+                )}
+              </p>
             )}
           </div>
-          <span className="font-medium text-black">
-            {!hasShippingAddress ? (
+          <span className="font-medium flex-shrink-0">
+            {isLoadingShipping ? (
+              <span className="inline-block w-14 h-4 bg-neutral-200 rounded animate-pulse" />
+            ) : !hasShippingAddress ? (
               <span className="text-neutral-400 text-xs">{t('calculatedAtNextStep')}</span>
             ) : shipping === 0 ? (
-              <span className="text-green-600 font-semibold">{t('free')}</span>
+              <span className="text-emerald-600 font-semibold">{t('free')}</span>
             ) : (
-              formatWithCurrency(shipping, false)
+              <span className="text-neutral-900">{formatWithCurrency(shipping, false)}</span>
             )}
           </span>
         </div>
 
-        {/* Tax */}
-        <div className="flex justify-between text-sm">
-          <span className="text-neutral-600">{t('taxEstimated')}</span>
-          <span className="font-medium text-black">
-            {!hasShippingAddress ? (
-              <span className="text-neutral-400 text-xs">{t('calculatedAtNextStep')}</span>
-            ) : (
-              formatWithCurrency(tax, false)
+        {/* Tax — expandable per-seller breakdown */}
+        <div>
+          <button
+            type="button"
+            onClick={() => hasShippingAddress && taxBreakdown && setShowTaxBreakdown((v) => !v)}
+            className={cn(
+              'w-full flex items-center justify-between text-sm',
+              hasShippingAddress && taxBreakdown && 'cursor-pointer group'
             )}
-          </span>
+          >
+            <span className="flex items-center gap-1.5 text-neutral-500">
+              {hasShippingAddress ? 'Tax' : t('taxEstimated')}
+              {hasShippingAddress && taxBreakdown && (
+                <>
+                  {taxBreakdown.hasTaxInclusiveItems && taxBreakdown.hasTaxableItems && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                      Mixed
+                    </span>
+                  )}
+                  {taxBreakdown.hasTaxInclusiveItems && !taxBreakdown.hasTaxableItems && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                      Included
+                    </span>
+                  )}
+                  {taxBreakdown.sellerBreakdown.length > 0 && (
+                    <ChevronDown
+                      className={cn(
+                        'w-3.5 h-3.5 text-neutral-400 transition-transform duration-200',
+                        showTaxBreakdown && 'rotate-180'
+                      )}
+                    />
+                  )}
+                </>
+              )}
+            </span>
+            <span className="font-medium">
+              {isLoadingShipping ? (
+                <span className="inline-block w-12 h-4 bg-neutral-200 rounded animate-pulse" />
+              ) : !hasShippingAddress ? (
+                <span className="text-neutral-400 text-xs">{t('calculatedAtNextStep')}</span>
+              ) : tax === 0 &&
+                taxBreakdown?.hasTaxInclusiveItems &&
+                !taxBreakdown.hasTaxableItems ? (
+                <span className="text-emerald-600 font-semibold text-xs">Included</span>
+              ) : (
+                <span className="text-neutral-900">{formatWithCurrency(tax, false)}</span>
+              )}
+            </span>
+          </button>
+
+          {/* Per-seller tax breakdown accordion */}
+          <AnimatePresence>
+            {hasShippingAddress && showTaxBreakdown && taxBreakdown && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-2 space-y-1.5 pl-1">
+                  {taxBreakdown.sellerBreakdown.map((seller) => (
+                    <div
+                      key={seller.storeId}
+                      className={cn(
+                        'flex items-start justify-between gap-2 px-3 py-2 rounded-lg text-xs border',
+                        seller.taxHandling === 'PRICE_INCLUSIVE'
+                          ? 'bg-emerald-50 border-emerald-100'
+                          : 'bg-amber-50 border-amber-100'
+                      )}
+                    >
+                      <div className="flex items-start gap-2 min-w-0">
+                        {seller.taxHandling === 'PRICE_INCLUSIVE' ? (
+                          <Building2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <User className="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-medium text-neutral-800 truncate">
+                            {seller.storeName}
+                          </p>
+                          {seller.taxHandling === 'PRICE_INCLUSIVE' ? (
+                            <p className="text-emerald-700 mt-0.5">Tax included in price</p>
+                          ) : (
+                            <p className="text-amber-700 mt-0.5">
+                              {(seller.taxRate * 100).toFixed(0)}% · {seller.jurisdiction}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 text-right">
+                        {seller.taxHandling === 'PRICE_INCLUSIVE' ? (
+                          <span className="text-emerald-600 font-semibold text-[10px] uppercase tracking-wide">
+                            Incl.
+                          </span>
+                        ) : (
+                          <span className="text-amber-800 font-semibold">
+                            {formatWithCurrency(seller.taxAmount, false)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-neutral-400 pl-1 pt-0.5">
+                    Tax on non-registered seller items is collected by NextPik
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Discount */}
+        {/* Store credit / discount */}
         {discount > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex justify-between text-sm"
           >
-            <span className="text-green-600">{t('discount')}</span>
-            <span className="font-medium text-green-600">
-              -{formatWithCurrency(discount, false)}
+            <span className="text-emerald-600 flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              Store credit
+            </span>
+            <span className="font-semibold text-emerald-600">
+              −{formatWithCurrency(discount, false)}
+            </span>
+          </motion.div>
+        )}
+
+        {/* Coupon discount */}
+        {couponDiscount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-between text-sm"
+          >
+            <span className="text-emerald-600 flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                />
+              </svg>
+              Coupon
+            </span>
+            <span className="font-semibold text-emerald-600">
+              −{formatWithCurrency(couponDiscount, false)}
             </span>
           </motion.div>
         )}
 
         {/* Total */}
-        <div className="pt-3 border-t border-neutral-200">
+        <div className="pt-4 mt-1 border-t-2 border-neutral-200">
           <div className="flex justify-between items-center">
-            <span className="text-lg font-serif font-bold text-black">{t('total')}</span>
+            <div>
+              <span className="text-base font-bold text-neutral-900">{t('total')}</span>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                {cartCurrency !== 'USD' ? `All amounts in ${cartCurrency}` : 'Including all taxes'}
+              </p>
+            </div>
             <div className="text-right">
-              {discount > 0 && (
-                <p className="text-sm text-neutral-500 line-through">
+              {(discount > 0 || couponDiscount > 0) && (
+                <p className="text-xs text-neutral-400 line-through mb-0.5">
                   {formatWithCurrency(total, false)}
                 </p>
               )}
@@ -358,31 +597,58 @@ export function OrderSummary({
           </div>
         </div>
 
-        {/* Free Shipping Info */}
-        {shipping > 0 && subtotal < 200 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-3 bg-blue-50 border border-blue-200 rounded-lg"
-          >
-            <p className="text-xs text-blue-900">
-              Add <strong className="font-semibold">{formatWithCurrency(200 - subtotal)}</strong>{' '}
-              more for <strong className="font-semibold text-gold">free shipping</strong>
-            </p>
-          </motion.div>
-        )}
-
-        {/* Security Info */}
-        <div className="pt-3 flex items-center justify-center gap-2 text-xs text-neutral-500">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-            />
-          </svg>
-          <span>Secure checkout with SSL encryption</span>
+        {/* Trust row */}
+        <div className="pt-4 border-t border-neutral-100">
+          <div className="flex items-center justify-center gap-5">
+            <div className="flex items-center gap-1.5 text-neutral-500">
+              <svg
+                className="w-4 h-4 text-emerald-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                />
+              </svg>
+              <span className="text-[11px]">Buyer Protection</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-neutral-500">
+              <svg
+                className="w-4 h-4 text-neutral-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+              <span className="text-[11px]">SSL Secure</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-neutral-500">
+              <svg
+                className="w-4 h-4 text-neutral-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span className="text-[11px]">Easy Returns</span>
+            </div>
+          </div>
         </div>
       </div>
     </motion.div>

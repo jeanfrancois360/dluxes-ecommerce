@@ -23,6 +23,7 @@ import { generalSettingsSchema, type GeneralSettings } from '@/lib/validations/s
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 const TIMEZONES = [
   'America/New_York',
@@ -104,6 +105,7 @@ export function GeneralSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (

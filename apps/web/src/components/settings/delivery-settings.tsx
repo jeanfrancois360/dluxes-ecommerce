@@ -12,6 +12,7 @@ import { deliverySettingsSchema, type DeliverySettings } from '@/lib/validations
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 export function DeliverySettingsSection() {
   const { settings, loading, refetch } = useSettings('delivery');
@@ -63,6 +64,7 @@ export function DeliverySettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (
@@ -87,11 +89,10 @@ export function DeliverySettingsSection() {
           <div className="flex gap-2">
             <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-blue-900 ">
-                Escrow Integration
-              </p>
+              <p className="text-sm font-medium text-blue-900 ">Escrow Integration</p>
               <p className="text-sm text-blue-700 ">
-                When delivery is confirmed, escrow hold period starts automatically. Payment releases after hold period expires.
+                When delivery is confirmed, escrow hold period starts automatically. Payment
+                releases after hold period expires.
               </p>
             </div>
           </div>
@@ -101,7 +102,9 @@ export function DeliverySettingsSection() {
           label="Delivery Confirmation"
           description="Require delivery confirmation before releasing escrow (Required)"
           checked={form.watch('delivery_confirmation_required')}
-          onCheckedChange={(checked) => form.setValue('delivery_confirmation_required', checked, { shouldDirty: true })}
+          onCheckedChange={(checked) =>
+            form.setValue('delivery_confirmation_required', checked, { shouldDirty: true })
+          }
           disabled={true}
           tooltip="This setting is required and cannot be disabled for security reasons"
         />
@@ -110,7 +113,9 @@ export function DeliverySettingsSection() {
           label="Auto-Assign Delivery Partners"
           description="Automatically assign orders to available delivery partners"
           checked={form.watch('delivery_auto_assign')}
-          onCheckedChange={(checked) => form.setValue('delivery_auto_assign', checked, { shouldDirty: true })}
+          onCheckedChange={(checked) =>
+            form.setValue('delivery_auto_assign', checked, { shouldDirty: true })
+          }
           tooltip="When enabled, orders will be automatically assigned to available delivery partners based on location and availability"
         />
 

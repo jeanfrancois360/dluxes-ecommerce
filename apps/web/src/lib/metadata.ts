@@ -172,6 +172,14 @@ export const forgotPasswordMetadata: Metadata = generateSeoMetadata({
   noFollow: true,
 });
 
+export const resetPasswordMetadata: Metadata = generateSeoMetadata({
+  title: 'Set New Password',
+  description: 'Set a new password for your NextPik account.',
+  url: '/auth/reset-password',
+  noIndex: true,
+  noFollow: true,
+});
+
 // Account Pages Metadata
 export const accountMetadata: Metadata = generateSeoMetadata({
   title: 'My Account',
@@ -264,14 +272,6 @@ export const sellerDashboardMetadata: Metadata = generateSeoMetadata({
 });
 
 // Static Pages Metadata
-export const aboutMetadata: Metadata = generateSeoMetadata({
-  title: 'About Us',
-  description:
-    'Learn about NextPik, our mission, and commitment to providing the finest curated products from verified sellers worldwide.',
-  keywords: ['about nextpik', 'company', 'multi-vendor marketplace', 'luxury shopping platform'],
-  url: '/about',
-});
-
 export const contactMetadata: Metadata = generateSeoMetadata({
   title: 'Contact Us',
   description:
@@ -370,4 +370,48 @@ export const trackOrderMetadata: Metadata = generateSeoMetadata({
   description: 'Track your order status and delivery.',
   url: '/track-order',
   noIndex: true,
+});
+
+export const magicLinkMetadata: Metadata = generateSeoMetadata({
+  title: 'Magic Link Sign In',
+  description: 'Sign in to your NextPik account using a magic link.',
+  url: '/auth/magic-link',
+  noIndex: true,
+  noFollow: true,
+});
+
+export const verifyEmailMetadata: Metadata = generateSeoMetadata({
+  title: 'Verify Email',
+  description: 'Verify your NextPik account email address.',
+  url: '/auth/verify-email',
+  noIndex: true,
+  noFollow: true,
+});
+
+export const callbackMetadata: Metadata = generateSeoMetadata({
+  title: 'Signing In',
+  description: 'Completing your sign in to NextPik.',
+  url: '/auth/callback',
+  noIndex: true,
+  noFollow: true,
+});
+
+export const blogMetadata: Metadata = generateSeoMetadata({
+  title: 'Blog',
+  description: 'Latest news, tips, and insights from the NextPik team.',
+  url: '/blog',
+});
+
+export const affiliateMetadata: Metadata = generateSeoMetadata({
+  title: 'Affiliate Products',
+  description: 'Browse our curated selection of affiliate products from top brands.',
+  url: '/affiliate',
+});
+
+export const cookiePolicyMetadata: Metadata = generateSeoMetadata({
+  title: 'Cookie Policy',
+  description:
+    'Learn how NextPik uses cookies and similar technologies to enhance your browsing experience and comply with GDPR.',
+  keywords: ['cookie policy', 'GDPR', 'cookies', 'privacy', 'tracking'],
+  url: '/cookie-policy',
 });

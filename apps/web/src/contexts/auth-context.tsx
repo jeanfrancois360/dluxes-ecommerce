@@ -17,7 +17,7 @@ import {
   storeUser,
   clearAllAuthData,
   setTokenExpiry,
-  isTokenExpired,
+  isJwtExpired,
   startSessionTimer,
   resetSessionTimer,
   clearSessionTimer,
@@ -141,25 +141,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return;
         }
 
-        // Check if token is expired
-        if (isTokenExpired()) {
-          // Try to refresh token
-          try {
-            await authApi.refreshToken();
-          } catch (error: any) {
-            // Refresh failed, clear auth data
-            // Don't log 401 errors - they're expected for expired refresh tokens
-            const is401 = error?.status === 401 || error?.response?.status === 401;
-            if (!is401) {
-              console.error('Error refreshing token:', error);
-            }
-            clearAllAuthData();
-            setUser(null);
-            setIsInitialized(true);
-            setIsLoading(false);
-            return;
-          }
+        // Check if the JWT itself is expired (reads the token's own exp claim).
+        // There is no refresh endpoint — if expired, clear auth and stop.
+        if (isJwtExpired(token)) {
+          clearAllAuthData();
+          setUser(null);
+          setIsInitialized(true);
+          setIsLoading(false);
+          return;
         }
+
+        // Re-sync the cookie from localStorage so the middleware can read it.
+        // The cookie may have been cleared (browser restart, expiry, private browsing)
+        // while localStorage still holds a valid non-expired token.
+        TokenManager.setAccessToken(token);
 
         // Try to get stored user first (for faster initial render)
         const storedUser = getStoredUser();
@@ -179,10 +174,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Failed to fetch user, use stored user or clear auth
           // Don't log 401 errors - they're expected for expired tokens
           const is401 = error?.status === 401 || error?.response?.status === 401;
+          const errorMessage: string = error?.message || error?.response?.data?.message || '';
+          const isRevokedSession =
+            is401 &&
+            (errorMessage.includes('Session has been revoked') ||
+              errorMessage.includes('session') ||
+              errorMessage.includes('revoked'));
 
-          if (!storedUser) {
+          // Clear auth for revoked sessions or genuine 401s (invalid/expired token).
+          // For transient network errors (non-401), preserve the stored user so the
+          // login-page redirect useEffect can still fire and send the user back to
+          // their intended destination once the backend recovers.
+          if (isRevokedSession || is401) {
             clearAllAuthData();
             setUser(null);
+
+            // For explicitly revoked sessions, dispatch logout event to trigger redirect
+            if (isRevokedSession && typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('api:logout'));
+            }
           }
 
           // Only log unexpected errors (not authentication failures)
@@ -269,6 +279,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           };
         }
 
+        // Check if Email OTP 2FA is required
+        if (response && (response as any).requiresEmailOTP) {
+          return {
+            requiresEmailOTP: true,
+            userId: (response as any).userId,
+          };
+        }
+
         // Validate response structure for normal login
         if (!response || !response.user) {
           throw new Error('Invalid response from server. Please try again.');
@@ -293,8 +311,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(userData);
         storeUser(userData);
 
-        // Set token expiry if available (default to 24 hours if not provided)
-        const expiresIn = response.expiresIn || 24 * 60 * 60 * 1000;
+        // Set token expiry — backend JWT lasts 7 days; use that as the default.
+        // setTokenExpiry expects seconds, not milliseconds.
+        const expiresIn = response.expiresIn || 7 * 24 * 60 * 60;
         setTokenExpiry(expiresIn);
 
         // Start session timer
@@ -352,8 +371,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(userData);
         storeUser(userData);
 
-        // Set token expiry if available (default to 24 hours if not provided)
-        const expiresIn = response.expiresIn || 24 * 60 * 60 * 1000;
+        // Set token expiry — backend JWT lasts 7 days; use that as the default.
+        // setTokenExpiry expects seconds, not milliseconds.
+        const expiresIn = response.expiresIn || 7 * 24 * 60 * 60;
         setTokenExpiry(expiresIn);
 
         // Start session timer
@@ -361,8 +381,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         standardToasts.auth.registerSuccess();
 
-        // Redirect to account page
-        router.push('/account');
+        // Redirect unverified users directly to the email prompt — skip the /account bounce
+        if (!userData.emailVerified && userData.authProvider !== 'GOOGLE') {
+          router.push('/auth/verify-email-prompt');
+        } else {
+          router.push('/account');
+        }
       } catch (error: any) {
         const errorMessage =
           error.response?.data?.message ||

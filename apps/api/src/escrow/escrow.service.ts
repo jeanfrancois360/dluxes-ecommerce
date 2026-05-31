@@ -373,19 +373,15 @@ export class EscrowService {
         },
       });
 
-      // Update order status
-      await prisma.order.update({
-        where: { id: escrow.orderId },
-        data: {
-          status: 'COMPLETED' as any,
-        },
-      });
+      // Update order status — use raw SQL because COMPLETED is in the DB enum
+      // but not yet in the generated Prisma client (schema baseline pending)
+      await prisma.$executeRaw`UPDATE orders SET status = 'DELIVERED'::"OrderStatus" WHERE id = ${escrow.orderId}`;
 
       // Create order timeline entry
       await prisma.orderTimeline.create({
         data: {
           orderId: escrow.orderId,
-          status: 'COMPLETED' as any,
+          status: 'DELIVERED' as any,
           title: 'Payment Released to Sellers',
           description: `Escrow funds released to ${escrow.splitAllocations.length} seller(s)`,
           icon: 'check-circle',
@@ -468,19 +464,15 @@ export class EscrowService {
         },
       });
 
-      // Update order status if needed
-      await prisma.order.update({
-        where: { id: escrow.orderId },
-        data: {
-          status: 'COMPLETED' as any,
-        },
-      });
+      // Update order status — use raw SQL because COMPLETED is in the DB enum
+      // but not yet in the generated Prisma client (schema baseline pending)
+      await prisma.$executeRaw`UPDATE orders SET status = 'DELIVERED'::"OrderStatus" WHERE id = ${escrow.orderId}`;
 
       // Create order timeline entry
       await prisma.orderTimeline.create({
         data: {
           orderId: escrow.orderId,
-          status: 'COMPLETED' as any,
+          status: 'DELIVERED' as any,
           title: 'Payment Released to Seller',
           description: `Escrow funds of ${escrow.sellerAmount} ${escrow.currency} released to seller`,
           icon: 'check-circle',

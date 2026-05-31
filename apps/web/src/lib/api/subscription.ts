@@ -55,15 +55,16 @@ export interface SellerSubscription {
 }
 
 export interface SubscriptionInfo {
-  subscription: SellerSubscription;
-  plan: SubscriptionPlan;
-  tier: string;
+  subscription: SellerSubscription | null;
+  plan: SubscriptionPlan | null;
+  tier: string | null;
   isActive: boolean;
 }
 
 export interface CanListProductTypeResponse {
   canList: boolean;
   reasons: {
+    storeApproved: boolean;
     productTypeAllowed: boolean;
     meetsTierRequirement: boolean;
     hasListingCapacity: boolean;
@@ -113,6 +114,40 @@ export const subscriptionApi = {
   },
 
   /**
+   * Get unified credit summary (Store Credits + Subscription Credits)
+   */
+  async getSellerCreditSummary(): Promise<{
+    storeCredits: {
+      balance: number;
+      expiresAt: Date | null;
+      graceEndsAt: Date | null;
+      inGracePeriod: boolean;
+      canListPhysical: boolean;
+    };
+    subscriptionCredits: {
+      allocated: number;
+      used: number;
+      remaining: number;
+      resetDate: Date;
+      planName: string;
+      planTier: string;
+      allowedTypes: string[];
+      canListService: boolean;
+      canListRealEstate: boolean;
+      canListVehicle: boolean;
+      canListRental: boolean;
+    };
+    subscription: {
+      status: string;
+      planName: string;
+      nextBillingDate: Date | null;
+      cancelAtPeriodEnd: boolean;
+    };
+  }> {
+    return api.get('/subscription/seller/credit-summary');
+  },
+
+  /**
    * Check if seller can list a specific product type
    */
   async canListProductType(productType: string): Promise<CanListProductTypeResponse> {
@@ -126,7 +161,10 @@ export const subscriptionApi = {
   /**
    * Create Stripe checkout session for subscription purchase
    */
-  async createCheckout(planId: string, billingCycle: 'MONTHLY' | 'YEARLY'): Promise<{ sessionId: string; url: string }> {
+  async createCheckout(
+    planId: string,
+    billingCycle: 'MONTHLY' | 'YEARLY'
+  ): Promise<{ sessionId: string; url: string }> {
     const response = await api.post('/subscription/create-checkout', { planId, billingCycle });
     return response.data || response;
   },

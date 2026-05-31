@@ -22,6 +22,7 @@ import { transformSettingsToForm } from '@/lib/settings-utils';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 export function CommissionSettingsSection() {
   const { settings, loading, refetch } = useSettings('commission');
@@ -81,6 +82,7 @@ export function CommissionSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (

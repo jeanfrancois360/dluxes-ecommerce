@@ -33,7 +33,7 @@ export function useMySubscription() {
   return {
     subscription: data?.subscription || null,
     plan: data?.plan || null,
-    tier: data?.tier || 'FREE',
+    tier: data?.tier || null,
     isActive: data?.isActive ?? false,
     isLoading,
     error,
@@ -80,7 +80,7 @@ export function useCreditPackages() {
 export function useCanListProductType(productType: string | null) {
   const { data, error, isLoading } = useSWR(
     productType ? `/subscription/can-list/${productType}` : null,
-    () => productType ? subscriptionApi.canListProductType(productType) : null,
+    () => (productType ? subscriptionApi.canListProductType(productType) : null),
     {
       revalidateOnFocus: true,
     }
@@ -89,6 +89,7 @@ export function useCanListProductType(productType: string | null) {
   return {
     canList: data?.canList ?? false,
     reasons: data?.reasons || {
+      storeApproved: false,
       productTypeAllowed: false,
       meetsTierRequirement: false,
       hasListingCapacity: false,

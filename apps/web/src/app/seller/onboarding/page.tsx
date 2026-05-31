@@ -1,18 +1,18 @@
 'use client';
+import { safeJson } from '@/lib/safe-fetch';
 
-import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
   CheckCircle,
   Clock,
-  CreditCard,
-  Package,
   ArrowRight,
   AlertCircle,
   Loader2,
-  Store,
   Calendar,
+  ShieldAlert,
+  Lock,
 } from 'lucide-react';
 import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
@@ -30,52 +30,16 @@ const fetcher = async (url: string) => {
     },
   });
   if (!res.ok) throw new Error('Failed to fetch');
-  const data = await res.json();
+  const data = await safeJson(res);
   return data.data || data;
 };
 
-interface OnboardingStatus {
-  storeStatus: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED' | 'INACTIVE';
-  storeCreatedAt: string;
-  approvedAt?: string;
-  creditsBalance: number;
-  totalProducts: number;
-  canPublish: boolean;
-}
-
-const STEPS = [
-  {
-    id: 1,
-    title: 'Application Submitted',
-    description: 'Your seller application is under review',
-    icon: Store,
-  },
-  {
-    id: 2,
-    title: 'Account Approved',
-    description: 'Admin has approved your seller account',
-    icon: CheckCircle,
-  },
-  {
-    id: 3,
-    title: 'Purchase Credits',
-    description: 'Get credits to activate your products',
-    icon: CreditCard,
-  },
-  {
-    id: 4,
-    title: 'Create Products',
-    description: 'Add your first product to start selling',
-    icon: Package,
-  },
-];
+type StepStatus = 'done' | 'active' | 'waiting' | 'locked' | 'blocked';
 
 export default function SellerOnboardingPage() {
   const router = useRouter();
   const t = useTranslations('sellerOnboarding');
-  const [currentStep, setCurrentStep] = useState(1);
 
-  // Fetch seller dashboard data
   const {
     data: dashboardData,
     error,
@@ -85,69 +49,83 @@ export default function SellerOnboardingPage() {
     shouldRetryOnError: false,
   });
 
-  // Fetch credit status
   const { data: creditsData } = useSWR(`${API_URL}/seller/credits`, fetcher, {
     refreshInterval: 10000,
     shouldRetryOnError: false,
   });
 
+  const { data: appStatus } = useSWR(`${API_URL}/seller/application-status`, fetcher, {
+    refreshInterval: 15000,
+    shouldRetryOnError: false,
+  });
+
+  // Payout settings — tells us if step 2 is complete
+  const { data: payoutData } = useSWR(`${API_URL}/seller/payout-settings`, fetcher, {
+    shouldRetryOnError: false,
+    onErrorRetry: () => {}, // don't retry on auth errors
+  });
+
   const store = dashboardData?.store;
   const credits = creditsData;
   const products = dashboardData?.products;
+  const kycComplete = appStatus?.kycComplete !== false;
+  // hasPayout = settings exist (id is non-null) and a method is configured
+  const hasPayout = !!(payoutData && payoutData.id !== null && payoutData.paymentMethod);
 
-  // Calculate current step based on status
-  useEffect(() => {
-    if (!store) return;
-
-    if (store.status === 'REJECTED') {
-      setCurrentStep(1); // Stuck at step 1
-    } else if (store.status === 'PENDING') {
-      setCurrentStep(1);
-    } else if (store.status === 'ACTIVE' || store.status === 'SUSPENDED') {
-      // Approved
-      if (products?.total > 0) {
-        setCurrentStep(4); // Has products
-      } else if (credits?.creditsBalance > 0) {
-        setCurrentStep(3); // Has credits but no products
-      } else {
-        setCurrentStep(2); // Approved but no credits
-      }
+  // Each step resolves its own status independently — no linear currentStep
+  const getStatus = (id: number): StepStatus => {
+    if (!store) return 'locked';
+    switch (id) {
+      case 1:
+        if (store.status === 'REJECTED') return 'blocked';
+        if (store.status === 'PENDING' && !kycComplete) return 'active';
+        if (store.status === 'PENDING') return 'waiting';
+        return 'done';
+      case 2:
+        return hasPayout ? 'done' : 'active';
+      case 3:
+        if (store.status === 'REJECTED') return 'blocked';
+        return store.status === 'ACTIVE' ? 'done' : 'waiting';
+      case 4:
+        if (store.status !== 'ACTIVE') return 'locked';
+        return (credits?.creditsBalance ?? 0) > 0 ? 'done' : 'active';
+      case 5:
+        if (store.status !== 'ACTIVE') return 'locked';
+        if (!((credits?.creditsBalance ?? 0) > 0)) return 'locked';
+        return (products?.total ?? 0) > 0 ? 'done' : 'active';
+      default:
+        return 'locked';
     }
-  }, [store, credits, products]);
-
-  const getStepStatus = (stepId: number) => {
-    if (store?.status === 'REJECTED' && stepId > 1) return 'blocked';
-    if (stepId < currentStep) return 'completed';
-    if (stepId === currentStep) return 'current';
-    return 'upcoming';
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+  const doneCount = [1, 2, 3, 4, 5].filter((id) => getStatus(id) === 'done').length;
+  const progress = Math.round((doneCount / 5) * 100);
+
+  const fmt = (d: string) =>
+    new Date(d).toLocaleDateString('en-US', {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     });
-  };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-        <Loader2 className="w-12 h-12 animate-spin text-[#CBB57B]" />
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-neutral-400" />
       </div>
     );
   }
 
   if (error || !store) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4">
-        <div className="text-center max-w-md">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('errorTitle')}</h2>
-          <p className="text-gray-600 mb-6">{t('errorMessage')}</p>
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center max-w-sm">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-neutral-900 mb-2">{t('errorTitle')}</h2>
+          <p className="text-neutral-600 mb-6">{t('errorMessage')}</p>
           <button
             onClick={() => router.push('/auth/login')}
-            className="px-6 py-3 bg-[#CBB57B] text-white rounded-lg font-semibold hover:bg-[#A89968] transition-colors"
+            className="px-5 py-2.5 bg-black text-white rounded-lg font-semibold hover:bg-neutral-800 transition-colors"
           >
             {t('goToLogin')}
           </button>
@@ -155,8 +133,6 @@ export default function SellerOnboardingPage() {
       </div>
     );
   }
-
-  const progressPercentage = (currentStep / STEPS.length) * 100;
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -169,270 +145,272 @@ export default function SellerOnboardingPage() {
         ]}
       />
 
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Progress Bar */}
+      <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6">
+        {/* Progress summary */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
-          className="mb-12"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10"
         >
-          <div className="bg-gray-200 rounded-full h-3 overflow-hidden">
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-sm font-medium text-neutral-600">
+              {doneCount} of 5 steps complete
+            </span>
+            <span className="text-sm font-bold text-neutral-900">{progress}%</span>
+          </div>
+          <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: `${progressPercentage}%` }}
+              animate={{ width: `${progress}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-[#CBB57B] to-[#A89968] rounded-full"
+              className="h-full bg-black rounded-full"
             />
-          </div>
-          <div className="flex justify-between mt-2 px-1">
-            {STEPS.map((step) => (
-              <span
-                key={step.id}
-                className={`text-sm font-medium ${
-                  getStepStatus(step.id) === 'completed' || getStepStatus(step.id) === 'current'
-                    ? 'text-[#CBB57B]'
-                    : 'text-gray-400'
-                }`}
-              >
-                {Math.round((step.id / STEPS.length) * 100)}%
-              </span>
-            ))}
           </div>
         </motion.div>
 
-        {/* Steps */}
-        <div className="space-y-6">
-          {STEPS.map((step, index) => {
-            const status = getStepStatus(step.id);
-            const Icon = step.icon;
-
-            return (
-              <motion.div
-                key={step.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 + index * 0.1 }}
-                className={`
-                  bg-white rounded-2xl shadow-lg p-6 border-2 transition-all
-                  ${status === 'completed' ? 'border-green-500' : ''}
-                  ${status === 'current' ? 'border-[#CBB57B] shadow-xl' : ''}
-                  ${status === 'upcoming' ? 'border-gray-200' : ''}
-                  ${status === 'blocked' ? 'border-red-300 bg-red-50/30' : ''}
-                `}
-              >
-                <div className="flex items-start gap-6">
-                  {/* Icon */}
-                  <div
-                    className={`
-                      flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center
-                      ${status === 'completed' ? 'bg-green-100' : ''}
-                      ${status === 'current' ? 'bg-[#CBB57B]/10' : ''}
-                      ${status === 'upcoming' ? 'bg-gray-100' : ''}
-                      ${status === 'blocked' ? 'bg-red-100' : ''}
-                    `}
-                  >
-                    {status === 'completed' ? (
-                      <CheckCircle className="w-8 h-8 text-green-600" />
-                    ) : status === 'current' ? (
-                      <Icon className="w-8 h-8 text-[#CBB57B]" />
-                    ) : status === 'blocked' ? (
-                      <AlertCircle className="w-8 h-8 text-red-500" />
-                    ) : (
-                      <Clock className="w-8 h-8 text-gray-400" />
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-xl font-bold text-gray-900">{step.title}</h3>
-                      {status === 'completed' && (
-                        <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                          Completed
-                        </span>
-                      )}
-                      {status === 'current' && (
-                        <span className="px-3 py-1 bg-[#CBB57B]/20 text-[#A89968] text-xs font-semibold rounded-full">
-                          Current Step
-                        </span>
-                      )}
-                      {status === 'blocked' && (
-                        <span className="px-3 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full">
-                          Action Required
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-gray-600 mb-4">{step.description}</p>
-
-                    {/* Step-specific content */}
-                    {step.id === 1 && (
-                      <div className="space-y-3">
-                        {store.status === 'PENDING' && (
-                          <div className="flex items-start gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <Clock className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="font-semibold text-yellow-900">Under Review</p>
-                              <p className="text-sm text-yellow-700">
-                                Your application is being reviewed by our team. Expected time: 24-48
-                                hours.
-                              </p>
-                              <p className="text-xs text-yellow-600 mt-2 flex items-center gap-2">
-                                <Calendar className="w-4 h-4" />
-                                Applied on {formatDate(store.createdAt)}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        {store.status === 'REJECTED' && (
-                          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="font-semibold text-red-900">Application Rejected</p>
-                              <p className="text-sm text-red-700">
-                                Unfortunately, your seller application was not approved. Please
-                                contact support for more information.
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                        {store.status === 'ACTIVE' && (
-                          <div className="flex items-center gap-2 text-green-600">
-                            <CheckCircle className="w-5 h-5" />
-                            <span className="font-medium">
-                              Application submitted on {formatDate(store.createdAt)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {step.id === 2 && store.status === 'ACTIVE' && (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-green-600">
-                          <CheckCircle className="w-5 h-5" />
-                          <span className="font-medium">
-                            Approved on{' '}
-                            {store.verifiedAt ? formatDate(store.verifiedAt) : 'Recently'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          Congratulations! Your seller account has been approved by our team.
-                        </p>
-                      </div>
-                    )}
-
-                    {step.id === 3 && (
-                      <div className="space-y-3">
-                        {credits?.creditsBalance > 0 ? (
-                          <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="font-semibold text-green-900">Credits Active</p>
-                              <p className="text-sm text-green-700">
-                                You have {credits.creditsBalance} month
-                                {credits.creditsBalance !== 1 ? 's' : ''} of credits
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => router.push('/seller/selling-credits')}
-                              className="text-sm text-[#CBB57B] hover:text-[#A89968] font-medium"
-                            >
-                              View Details
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="text-sm text-gray-600">
-                              Purchase credits to activate your products and start selling. Credits
-                              are $29.99/month.
-                            </p>
-                            <button
-                              onClick={() => router.push('/seller/selling-credits')}
-                              disabled={store.status !== 'ACTIVE'}
-                              className="inline-flex items-center gap-2 px-6 py-3 bg-[#CBB57B] text-white rounded-lg font-semibold hover:bg-[#A89968] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                            >
-                              Purchase Credits
-                              <ArrowRight className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    {step.id === 4 && (
-                      <div className="space-y-3">
-                        {products?.total > 0 ? (
-                          <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="font-semibold text-green-900">Products Created</p>
-                              <p className="text-sm text-green-700">
-                                You have {products.total} product{products.total !== 1 ? 's' : ''} (
-                                {products.active} active)
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => router.push('/seller/products')}
-                              className="text-sm text-[#CBB57B] hover:text-[#A89968] font-medium"
-                            >
-                              Manage Products
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="text-sm text-gray-600">
-                              Create your first product to start selling. Add images, descriptions,
-                              pricing, and inventory.
-                            </p>
-                            <button
-                              onClick={() => router.push('/seller/products/new')}
-                              disabled={!credits?.canPublish}
-                              className="inline-flex items-center gap-2 px-6 py-3 bg-[#CBB57B] text-white rounded-lg font-semibold hover:bg-[#A89968] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                            >
-                              Create First Product
-                              <ArrowRight className="w-4 h-4" />
-                            </button>
-                            {!credits?.canPublish && (
-                              <p className="text-xs text-red-600">
-                                Purchase credits first to create products
-                              </p>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
+        {/* Step timeline */}
+        <div>
+          {/* Step 1 — Application */}
+          <Step
+            id={1}
+            status={getStatus(1)}
+            title="Application Submitted"
+            description="Submit your seller details for review"
+            index={0}
+            isLast={false}
+          >
+            {getStatus(1) === 'active' && (
+              <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                <ShieldAlert className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-amber-900">Application incomplete</p>
+                  <p className="text-sm text-amber-700 mt-0.5">
+                    Complete your business details and verification documents.
+                  </p>
                 </div>
-              </motion.div>
-            );
-          })}
+                <button
+                  onClick={() => router.push('/become-seller')}
+                  className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 bg-black text-white rounded-lg text-xs font-semibold hover:bg-neutral-800 transition-colors"
+                >
+                  Complete <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+            {getStatus(1) === 'waiting' && (
+              <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                <Clock className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-900">Under Review</p>
+                  <p className="text-sm text-amber-700 mt-0.5">
+                    Being reviewed by our team. Expected: 24–48 hours.
+                  </p>
+                  <p className="text-xs text-amber-600 mt-2 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" /> Applied {fmt(store.createdAt)}
+                  </p>
+                </div>
+              </div>
+            )}
+            {getStatus(1) === 'done' && (
+              <p className="mt-2 text-sm text-neutral-500">Submitted {fmt(store.createdAt)}</p>
+            )}
+            {getStatus(1) === 'blocked' && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-red-900">Application Rejected</p>
+                  <p className="text-sm text-red-700 mt-0.5">Update your details and resubmit.</p>
+                </div>
+                <button
+                  onClick={() => router.push('/become-seller')}
+                  className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 bg-black text-white rounded-lg text-xs font-semibold hover:bg-neutral-800 transition-colors"
+                >
+                  Resubmit <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </Step>
+
+          {/* Step 2 — Payout */}
+          <Step
+            id={2}
+            status={getStatus(2)}
+            title="Set Up Payout Details"
+            description="Add your bank account to receive earnings"
+            index={1}
+            isLast={false}
+          >
+            {getStatus(2) === 'active' && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-neutral-600">
+                  Do this now while you wait for approval — no payout fires until your store goes
+                  live.
+                </p>
+                <button
+                  onClick={() => router.push('/seller/payout-settings')}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-semibold hover:bg-neutral-800 transition-colors"
+                >
+                  Set Up Payouts <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {getStatus(2) === 'done' && (
+              <p className="mt-2 text-sm text-neutral-500">
+                <span className="capitalize">{payoutData?.paymentMethod?.replace('_', ' ')}</span>{' '}
+                configured &middot;{' '}
+                <button
+                  onClick={() => router.push('/seller/payout-settings')}
+                  className="text-xs underline hover:text-neutral-700"
+                >
+                  Edit
+                </button>
+              </p>
+            )}
+          </Step>
+
+          {/* Step 3 — Approval */}
+          <Step
+            id={3}
+            status={getStatus(3)}
+            title="Account Approved"
+            description="Our team reviews and approves your store"
+            index={2}
+            isLast={false}
+          >
+            {getStatus(3) === 'waiting' && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
+                <Clock className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">Awaiting Approval</p>
+                  <p className="text-sm text-blue-700 mt-0.5">
+                    Typically 24–48 hours. You&apos;ll receive an email once a decision is made.
+                  </p>
+                </div>
+              </div>
+            )}
+            {getStatus(3) === 'done' && (
+              <p className="mt-2 text-sm text-neutral-500">
+                Approved {store.verifiedAt ? fmt(store.verifiedAt) : 'recently'} — your store is
+                live.
+              </p>
+            )}
+            {getStatus(3) === 'blocked' && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-sm font-semibold text-red-900">Not approved</p>
+                <p className="text-sm text-red-700 mt-0.5">
+                  Complete your application to be reconsidered.
+                </p>
+              </div>
+            )}
+          </Step>
+
+          {/* Step 4 — Credits */}
+          <Step
+            id={4}
+            status={getStatus(4)}
+            title="Purchase Credits"
+            description="Buy credits to activate your product listings"
+            index={3}
+            isLast={false}
+          >
+            {getStatus(4) === 'active' && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-neutral-600">
+                  Credits activate your listings. $29.99/month — cancel anytime.
+                </p>
+                <button
+                  onClick={() => router.push('/seller/selling-credits')}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-semibold hover:bg-neutral-800 transition-colors"
+                >
+                  Purchase Credits <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {getStatus(4) === 'done' && (
+              <p className="mt-2 text-sm text-neutral-500">
+                {credits?.creditsBalance} month{credits?.creditsBalance !== 1 ? 's' : ''} active
+                &middot;{' '}
+                <button
+                  onClick={() => router.push('/seller/selling-credits')}
+                  className="text-xs underline hover:text-neutral-700"
+                >
+                  View details
+                </button>
+              </p>
+            )}
+            {getStatus(4) === 'locked' && (
+              <p className="mt-2 text-sm text-neutral-400">
+                Available after your store is approved
+              </p>
+            )}
+          </Step>
+
+          {/* Step 5 — Products */}
+          <Step
+            id={5}
+            status={getStatus(5)}
+            title="Create Products"
+            description="List your first product and start selling"
+            index={4}
+            isLast={true}
+          >
+            {getStatus(5) === 'active' && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-neutral-600">
+                  Add images, descriptions, pricing, and inventory to go live.
+                </p>
+                <button
+                  onClick={() => router.push('/seller/products/new')}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-semibold hover:bg-neutral-800 transition-colors"
+                >
+                  Create First Product <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {getStatus(5) === 'done' && (
+              <p className="mt-2 text-sm text-neutral-500">
+                {products?.total} product{products?.total !== 1 ? 's' : ''} ({products?.active}{' '}
+                active) &middot;{' '}
+                <button
+                  onClick={() => router.push('/seller/products')}
+                  className="text-xs underline hover:text-neutral-700"
+                >
+                  Manage
+                </button>
+              </p>
+            )}
+            {getStatus(5) === 'locked' && (
+              <p className="mt-2 text-sm text-neutral-400">
+                {store.status !== 'ACTIVE'
+                  ? 'Available after your store is approved'
+                  : 'Purchase credits first to list products'}
+              </p>
+            )}
+          </Step>
         </div>
 
-        {/* Completion Message */}
-        {currentStep >= 4 && products?.total > 0 && (
+        {/* All-done banner */}
+        {doneCount === 5 && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="mt-12 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl shadow-2xl p-8 text-white text-center"
+            transition={{ delay: 0.4 }}
+            className="mt-10 p-8 bg-black text-white rounded-2xl text-center"
           >
-            <CheckCircle className="w-16 h-16 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold mb-3">Onboarding Complete! 🎉</h2>
-            <p className="text-lg mb-6 opacity-90">
-              You're all set to start selling on NextPik. Manage your products, track orders, and
-              grow your business.
+            <div className="text-4xl mb-3">🎉</div>
+            <h2 className="text-2xl font-bold mb-2">You&apos;re all set!</h2>
+            <p className="text-neutral-400 text-sm mb-6">
+              Your store is live. Manage products, track orders, and grow your business.
             </p>
-            <div className="flex flex-wrap gap-4 justify-center">
+            <div className="flex flex-wrap gap-3 justify-center">
               <button
                 onClick={() => router.push('/seller/products')}
-                className="px-6 py-3 bg-white text-green-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+                className="px-5 py-2.5 bg-white text-black rounded-lg font-semibold hover:bg-neutral-100 transition-colors text-sm"
               >
                 View Products
               </button>
               <button
                 onClick={() => router.push('/seller')}
-                className="px-6 py-3 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-800 transition-colors"
+                className="px-5 py-2.5 bg-neutral-800 text-white rounded-lg font-semibold hover:bg-neutral-700 transition-colors text-sm"
               >
                 Go to Dashboard
               </button>
@@ -441,5 +419,127 @@ export default function SellerOnboardingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Step sub-component
+// ---------------------------------------------------------------------------
+
+interface StepProps {
+  id: number;
+  status: StepStatus;
+  title: string;
+  description: string;
+  index: number;
+  isLast: boolean;
+  children?: ReactNode;
+}
+
+function Step({ id, status, title, description, index, isLast, children }: StepProps) {
+  const done = status === 'done';
+  const active = status === 'active';
+  const waiting = status === 'waiting';
+  const locked = status === 'locked';
+  const blocked = status === 'blocked';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.08 + index * 0.06 }}
+      className="flex gap-4"
+    >
+      {/* Timeline indicator */}
+      <div className="flex flex-col items-center w-10 flex-shrink-0">
+        <div
+          className={`
+            w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 flex-shrink-0 z-10
+            ${done ? 'bg-emerald-500 border-emerald-500 text-white' : ''}
+            ${active ? 'bg-black border-black text-white' : ''}
+            ${waiting ? 'bg-amber-50 border-amber-400 text-amber-600' : ''}
+            ${locked ? 'bg-neutral-100 border-neutral-300 text-neutral-400' : ''}
+            ${blocked ? 'bg-red-50 border-red-400 text-red-500' : ''}
+          `}
+        >
+          {done && <CheckCircle className="w-5 h-5" />}
+          {blocked && <AlertCircle className="w-5 h-5" />}
+          {locked && <Lock className="w-4 h-4" />}
+          {waiting && <Clock className="w-4 h-4" />}
+          {active && <span>{id}</span>}
+        </div>
+        {!isLast && (
+          <div
+            className={`w-0.5 flex-1 mt-1 ${done ? 'bg-emerald-300' : 'bg-neutral-200'}`}
+            style={{ minHeight: '1.5rem' }}
+          />
+        )}
+      </div>
+
+      {/* Card */}
+      <div
+        className={`
+          flex-1 mb-5 p-5 rounded-2xl border bg-white transition-all duration-200
+          ${done ? 'border-emerald-200' : ''}
+          ${active ? 'border-black shadow-[0_0_0_1px_rgba(0,0,0,1)]' : ''}
+          ${waiting ? 'border-neutral-200' : ''}
+          ${locked ? 'border-neutral-200 opacity-50' : ''}
+          ${blocked ? 'border-red-200' : ''}
+        `}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3
+              className={`font-bold text-base leading-tight ${locked ? 'text-neutral-400' : 'text-neutral-900'}`}
+            >
+              {title}
+            </h3>
+            <p className={`text-sm mt-0.5 ${locked ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              {description}
+            </p>
+          </div>
+
+          {/* Status badge */}
+          <span
+            className={`
+              flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap
+              ${done ? 'bg-emerald-100 text-emerald-700' : ''}
+              ${active ? 'bg-black text-white' : ''}
+              ${waiting ? 'bg-amber-100 text-amber-700' : ''}
+              ${locked ? 'bg-neutral-100 text-neutral-400' : ''}
+              ${blocked ? 'bg-red-100 text-red-700' : ''}
+            `}
+          >
+            {done && (
+              <>
+                <CheckCircle className="w-3 h-3" /> Done
+              </>
+            )}
+            {active && (
+              <>
+                <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Action needed
+              </>
+            )}
+            {waiting && (
+              <>
+                <Clock className="w-3 h-3" /> In progress
+              </>
+            )}
+            {locked && (
+              <>
+                <Lock className="w-3 h-3" /> Locked
+              </>
+            )}
+            {blocked && (
+              <>
+                <AlertCircle className="w-3 h-3" /> Action required
+              </>
+            )}
+          </span>
+        </div>
+
+        {children}
+      </div>
+    </motion.div>
   );
 }

@@ -1,11 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { ShoppingCart, MessageSquare, Package, Building, Car, Briefcase, Calendar, Download } from 'lucide-react';
+import {
+  ShoppingCart,
+  MessageSquare,
+  Package,
+  Building,
+  Car,
+  Briefcase,
+  Calendar,
+  Download,
+} from 'lucide-react';
 import { Button } from '@nextpik/ui';
 import { Badge } from '@nextpik/ui';
 import ProductInquiryForm from './ProductInquiryForm';
 import { useTranslations } from 'next-intl';
+import { getProductAvailability } from '@/lib/utils/product-availability';
 
 export type ProductType = 'PHYSICAL' | 'REAL_ESTATE' | 'VEHICLE' | 'SERVICE' | 'RENTAL' | 'DIGITAL';
 export type PurchaseType = 'INSTANT' | 'INQUIRY';
@@ -19,7 +29,9 @@ interface ProductActionButtonProps {
     productType?: ProductType;
     purchaseType?: PurchaseType;
     contactRequired?: boolean;
-    inventory?: number;
+    inventory?: number | null;
+    fulfillmentType?: string | null;
+    isAvailable?: boolean | null;
   };
   sellerId?: string;
   onAddToCart?: () => void;
@@ -51,7 +63,15 @@ export default function ProductActionButton({
   const purchaseType = product.purchaseType || 'INSTANT';
   const productType = product.productType || 'PHYSICAL';
   const isInquiryBased = purchaseType === 'INQUIRY' || product.contactRequired;
-  const isOutOfStock = product.inventory !== undefined && product.inventory <= 0;
+
+  const availability = getProductAvailability({
+    productType,
+    fulfillmentType: product.fulfillmentType,
+    inventory: product.inventory,
+    isAvailable: product.isAvailable,
+  });
+  const isOutOfStock = !isInquiryBased && !availability.inStock;
+
   const typeConfig = PRODUCT_TYPE_CONFIG[productType];
   const TypeIcon = typeConfig?.icon || Package;
 
@@ -83,8 +103,8 @@ export default function ProductActionButton({
             isInquiryBased
               ? 'bg-[#6B5840] hover:bg-black text-white font-bold'
               : isOutOfStock
-              ? 'bg-black/20 text-black/40 cursor-not-allowed'
-              : 'bg-black hover:bg-[#6B5840] text-white font-bold'
+                ? 'bg-black/20 text-black/40 cursor-not-allowed'
+                : 'bg-black hover:bg-[#6B5840] text-white font-bold'
           } ${className}`}
         >
           {isOutOfStock && !isInquiryBased ? (
@@ -113,9 +133,7 @@ export default function ProductActionButton({
         )}
 
         {isOutOfStock && !isInquiryBased && (
-          <p className="text-xs text-red-600 text-center">
-            {t('currentlyUnavailable')}
-          </p>
+          <p className="text-xs text-red-600 text-center">{t('currentlyUnavailable')}</p>
         )}
       </div>
 

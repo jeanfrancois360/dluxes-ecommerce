@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { getProductMetadata } from '@/lib/metadata';
+import { safeJson } from '@/lib/safe-fetch';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -13,7 +14,7 @@ async function getProduct(slug: string) {
       return null;
     }
 
-    return await response.json();
+    return safeJson(response);
   } catch (error) {
     console.error('Error fetching product for metadata:', error);
     return null;

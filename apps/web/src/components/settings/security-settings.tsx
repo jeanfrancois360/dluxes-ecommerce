@@ -24,6 +24,7 @@ import { securitySettingsSchema, type SecuritySettings } from '@/lib/validations
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 const COMMON_FILE_TYPES = [
   'image/jpeg',
@@ -92,6 +93,7 @@ export function SecuritySettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   const addFileType = () => {
     const current = form.watch('allowed_file_types') || [];
@@ -401,7 +403,7 @@ export function SecuritySettingsSection() {
       {/* Footer with Reset and Save buttons */}
       <SettingsFooter
         onReset={() => form.reset()}
-        onSave={() => {}} // Form submission handled by form onSubmit
+        onSave={() => form.handleSubmit(onSubmit)()}
         isLoading={updating}
         isDirty={isDirty}
       />

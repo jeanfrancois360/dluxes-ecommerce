@@ -4,9 +4,9 @@ import { PrismaService } from '../database/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { CurrencyService } from '../currency/currency.service';
 import { ConfigService } from '@nestjs/config';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import Stripe from 'stripe';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentStatus, UserRole } from '@prisma/client';
 
 /**
  * Payment Service Unit Tests
@@ -52,6 +52,7 @@ describe('PaymentService', () => {
       findFirst: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       count: jest.fn(),
       aggregate: jest.fn(),
     },
@@ -160,31 +161,25 @@ describe('PaymentService', () => {
     it('should validate supported currency', async () => {
       mockCurrencyService.validateCurrency.mockResolvedValue(true);
 
-      await expect(
-        service['validateCurrency']('USD')
-      ).resolves.not.toThrow();
+      await expect(service['validateCurrency']('USD')).resolves.not.toThrow();
     });
 
     it('should reject unsupported system currency', async () => {
       mockCurrencyService.validateCurrency.mockResolvedValue(false);
 
-      await expect(
-        service['validateCurrency']('XYZ')
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service['validateCurrency']('XYZ')
-      ).rejects.toThrow('Currency XYZ is not supported');
+      await expect(service['validateCurrency']('XYZ')).rejects.toThrow(BadRequestException);
+      await expect(service['validateCurrency']('XYZ')).rejects.toThrow(
+        'Currency XYZ is not supported'
+      );
     });
 
     it('should reject currency not supported by Stripe', async () => {
       mockCurrencyService.validateCurrency.mockResolvedValue(true);
 
-      await expect(
-        service['validateCurrency']('INVALID')
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service['validateCurrency']('INVALID')
-      ).rejects.toThrow('not supported by Stripe');
+      await expect(service['validateCurrency']('INVALID')).rejects.toThrow(BadRequestException);
+      await expect(service['validateCurrency']('INVALID')).rejects.toThrow(
+        'not supported by Stripe'
+      );
     });
 
     it('should validate all major Stripe currencies', async () => {
@@ -192,9 +187,7 @@ describe('PaymentService', () => {
       mockCurrencyService.validateCurrency.mockResolvedValue(true);
 
       for (const currency of majorCurrencies) {
-        await expect(
-          service['validateCurrency'](currency)
-        ).resolves.not.toThrow();
+        await expect(service['validateCurrency'](currency)).resolves.not.toThrow();
       }
     });
   });
@@ -202,7 +195,7 @@ describe('PaymentService', () => {
   describe('Zero-Decimal Currency Conversion', () => {
     it('should convert standard currency to cents', () => {
       expect(service['convertToSmallestUnit'](100, 'USD')).toBe(10000);
-      expect(service['convertToSmallestUnit'](50.50, 'EUR')).toBe(5050);
+      expect(service['convertToSmallestUnit'](50.5, 'EUR')).toBe(5050);
       expect(service['convertToSmallestUnit'](25.99, 'GBP')).toBe(2599);
     });
 
@@ -225,11 +218,25 @@ describe('PaymentService', () => {
 
     it('should handle all zero-decimal currencies', () => {
       const zeroDecimalCurrencies = [
-        'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW',
-        'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'
+        'BIF',
+        'CLP',
+        'DJF',
+        'GNF',
+        'JPY',
+        'KMF',
+        'KRW',
+        'MGA',
+        'PYG',
+        'RWF',
+        'UGX',
+        'VND',
+        'VUV',
+        'XAF',
+        'XOF',
+        'XPF',
       ];
 
-      zeroDecimalCurrencies.forEach(currency => {
+      zeroDecimalCurrencies.forEach((currency) => {
         expect(service['convertToSmallestUnit'](1000, currency)).toBe(1000);
       });
     });
@@ -244,6 +251,7 @@ describe('PaymentService', () => {
         orderNumber: 'ORD-001',
         total: 100,
         status: 'PENDING',
+        currency: 'USD',
         userId,
         items: [],
       };
@@ -270,7 +278,7 @@ describe('PaymentService', () => {
 
       const result = await service.createPaymentIntent(
         { amount: 100, orderId, currency: 'USD' },
-        userId
+        { id: userId, email: 'buyer@test.com', role: UserRole.BUYER }
       );
 
       expect(result).toHaveProperty('clientSecret', 'secret_123');
@@ -282,8 +290,11 @@ describe('PaymentService', () => {
       mockPrismaService.order.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.createPaymentIntent({ amount: 100, orderId: 'invalid', currency: 'USD' }, 'user-123')
-      ).rejects.toThrow(BadRequestException);
+        service.createPaymentIntent(
+          { amount: 100, orderId: 'invalid', currency: 'USD' },
+          { id: 'user-123', email: 'buyer@test.com', role: UserRole.BUYER }
+        )
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw error for order belonging to different user', async () => {
@@ -291,11 +302,15 @@ describe('PaymentService', () => {
         id: 'order-123',
         userId: 'other-user',
         total: 100,
+        items: [],
       });
 
       await expect(
-        service.createPaymentIntent({ amount: 100, orderId: 'order-123', currency: 'USD' }, 'user-123')
-      ).rejects.toThrow(BadRequestException);
+        service.createPaymentIntent(
+          { amount: 100, orderId: 'order-123', currency: 'USD' },
+          { id: 'user-123', email: 'buyer@test.com', role: UserRole.BUYER }
+        )
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should use correct currency conversion for zero-decimal currencies', async () => {
@@ -303,7 +318,9 @@ describe('PaymentService', () => {
         id: 'order-123',
         orderNumber: 'ORD-001',
         total: 10000,
+        currency: 'JPY',
         userId: 'user-123',
+        items: [],
       };
 
       mockPrismaService.order.findUnique.mockResolvedValue(mockOrder);
@@ -327,7 +344,7 @@ describe('PaymentService', () => {
 
       await service.createPaymentIntent(
         { amount: 10000, orderId: 'order-123', currency: 'JPY' },
-        'user-123'
+        { id: 'user-123', email: 'buyer@test.com', role: UserRole.BUYER }
       );
 
       expect(mockStripe.paymentIntents.create).toHaveBeenCalledWith(
@@ -342,7 +359,9 @@ describe('PaymentService', () => {
   describe('getSupportedPaymentCurrencies', () => {
     it('should return list of supported currencies', async () => {
       // Mock currency service responses
-      mockCurrencyService.getSupportedCurrencies = jest.fn().mockResolvedValue(['USD', 'EUR', 'GBP', 'JPY']);
+      mockCurrencyService.getSupportedCurrencies = jest
+        .fn()
+        .mockResolvedValue(['USD', 'EUR', 'GBP', 'JPY']);
       mockCurrencyService.getRateByCode = jest.fn().mockImplementation((code) =>
         Promise.resolve({
           currencyCode: code,
@@ -362,7 +381,9 @@ describe('PaymentService', () => {
     });
 
     it('should include major currencies', async () => {
-      mockCurrencyService.getSupportedCurrencies = jest.fn().mockResolvedValue(['USD', 'EUR', 'GBP', 'JPY']);
+      mockCurrencyService.getSupportedCurrencies = jest
+        .fn()
+        .mockResolvedValue(['USD', 'EUR', 'GBP', 'JPY']);
       mockCurrencyService.getRateByCode = jest.fn().mockImplementation((code) =>
         Promise.resolve({
           currencyCode: code,
@@ -376,7 +397,7 @@ describe('PaymentService', () => {
       );
 
       const currencies = await service.getSupportedPaymentCurrencies();
-      const currencyCodes = currencies.map(c => c.code);
+      const currencyCodes = currencies.map((c) => c.code);
 
       expect(currencyCodes).toContain('USD');
       expect(currencyCodes).toContain('EUR');
@@ -400,8 +421,8 @@ describe('PaymentService', () => {
 
       const currencies = await service.getSupportedPaymentCurrencies();
 
-      const usd = currencies.find(c => c.code === 'USD');
-      const jpy = currencies.find(c => c.code === 'JPY');
+      const usd = currencies.find((c) => c.code === 'USD');
+      const jpy = currencies.find((c) => c.code === 'JPY');
 
       expect(usd?.decimalDigits).toBe(2);
       expect(jpy?.decimalDigits).toBe(0);
@@ -481,9 +502,7 @@ describe('PaymentService', () => {
     it('should throw error for non-existent payment', async () => {
       mockPrismaService.order.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.getPaymentStatus('invalid-order')
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.getPaymentStatus('invalid-order')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -531,6 +550,7 @@ describe('PaymentService', () => {
         amount: 10000,
         status: 'succeeded',
       });
+      mockStripe.paymentIntents.retrieve.mockResolvedValue({ status: 'succeeded' });
 
       // Set stripe client directly on service
       service['stripe'] = mockStripe as any;
@@ -588,6 +608,7 @@ describe('PaymentService', () => {
         amount: 5000,
         status: 'succeeded',
       });
+      mockStripe.paymentIntents.retrieve.mockResolvedValue({ status: 'succeeded' });
 
       // Set stripe client directly on service
       service['stripe'] = mockStripe as any;
@@ -612,9 +633,7 @@ describe('PaymentService', () => {
 
       mockPrismaService.order.findUnique.mockResolvedValue(mockOrder);
 
-      await expect(
-        service.createRefund('order-123')
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.createRefund('order-123')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -637,13 +656,121 @@ describe('PaymentService', () => {
     it('should be case-insensitive for currency codes', async () => {
       mockCurrencyService.validateCurrency.mockResolvedValue(true);
 
-      await expect(
-        service['validateCurrency']('usd')
-      ).resolves.not.toThrow();
+      await expect(service['validateCurrency']('usd')).resolves.not.toThrow();
+
+      await expect(service['validateCurrency']('USD')).resolves.not.toThrow();
+    });
+  });
+
+  describe('getPaymentHealthMetrics - disputed count', () => {
+    it('should include disputed transactions count', async () => {
+      mockPrismaService.paymentTransaction.count
+        .mockResolvedValueOnce(200) // total
+        .mockResolvedValueOnce(150) // successful
+        .mockResolvedValueOnce(30) // failed
+        .mockResolvedValueOnce(5); // disputed
+      mockPrismaService.paymentTransaction.aggregate.mockResolvedValue({
+        _sum: { amount: 15000 },
+        _avg: { amount: 100 },
+      });
+      mockPrismaService.paymentTransaction.findMany.mockResolvedValue([]);
+
+      const metrics = await service.getPaymentHealthMetrics(30);
+
+      expect(metrics.transactions.disputed).toBe(5);
+      expect(metrics.transactions.disputed).not.toBe(0);
+    });
+
+    it('should query with DISPUTED status filter', async () => {
+      mockPrismaService.paymentTransaction.count.mockResolvedValue(0);
+      mockPrismaService.paymentTransaction.aggregate.mockResolvedValue({
+        _sum: { amount: null },
+        _avg: { amount: null },
+      });
+      mockPrismaService.paymentTransaction.findMany.mockResolvedValue([]);
+
+      await service.getPaymentHealthMetrics(30);
+
+      // Verify that count was called with DISPUTED status at some point
+      const countCalls = mockPrismaService.paymentTransaction.count.mock.calls;
+      const disputedCall = countCalls.find((call: any[]) => call[0]?.where?.status === 'DISPUTED');
+      expect(disputedCall).toBeDefined();
+    });
+  });
+
+  describe('handlePaymentFailed - email notification', () => {
+    it('should update order and transaction status on payment failure', async () => {
+      const orderId = 'order-failed-123';
+      const mockOrder = {
+        id: orderId,
+        orderNumber: 'ORD-FAILED-001',
+        total: 99.99,
+        currency: 'USD',
+        user: { email: 'buyer@test.com', firstName: 'John', lastName: 'Doe' },
+      };
+
+      mockPrismaService.paymentTransaction.updateMany.mockResolvedValue({ count: 1 });
+      mockPrismaService.order.update.mockResolvedValue({ ...mockOrder, paymentStatus: 'FAILED' });
+      mockPrismaService.order.findUnique.mockResolvedValue(mockOrder);
+
+      const mockPaymentIntent = {
+        id: 'pi_failed_123',
+        metadata: { orderId },
+        last_payment_error: { code: 'card_declined', message: 'Your card was declined.' },
+      };
+
+      // Should not throw even if email fails (no RESEND_API_KEY in test env)
+      await expect(service['handlePaymentFailed'](mockPaymentIntent as any)).resolves.not.toThrow();
+
+      expect(mockPrismaService.paymentTransaction.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { stripePaymentIntentId: 'pi_failed_123' },
+          data: expect.objectContaining({ status: 'FAILED' }),
+        })
+      );
+      expect(mockPrismaService.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: orderId },
+          data: expect.objectContaining({ paymentStatus: 'FAILED' }),
+        })
+      );
+    });
+  });
+
+  describe('handlePaymentCanceled - email notification', () => {
+    it('should update order status and attempt buyer notification', async () => {
+      const orderId = 'order-cancelled-123';
+      const mockOrder = {
+        id: orderId,
+        orderNumber: 'ORD-CANCELLED-001',
+        total: 150.0,
+        currency: 'USD',
+        user: { email: 'buyer@test.com' },
+      };
+
+      mockPrismaService.paymentTransaction.updateMany.mockResolvedValue({ count: 1 });
+      mockPrismaService.order.update.mockResolvedValue({
+        ...mockOrder,
+        paymentStatus: 'CANCELLED',
+      });
+      mockPrismaService.orderTimeline.create.mockResolvedValue({ id: 'tl-1' });
+      mockPrismaService.order.findUnique.mockResolvedValue(mockOrder);
+
+      const mockPaymentIntent = {
+        id: 'pi_cancelled_123',
+        metadata: { orderId },
+      };
 
       await expect(
-        service['validateCurrency']('USD')
+        service['handlePaymentCanceled'](mockPaymentIntent as any)
       ).resolves.not.toThrow();
+
+      expect(mockPrismaService.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: orderId },
+          data: expect.objectContaining({ paymentStatus: 'CANCELLED' }),
+        })
+      );
     });
   });
 });

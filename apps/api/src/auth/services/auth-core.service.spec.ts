@@ -3,7 +3,6 @@ import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthCoreService } from './auth-core.service';
 import { PrismaService } from '../../database/prisma.service';
-import { EmailService } from '../../email/email.service';
 import { SessionService } from './session.service';
 import { EmailVerificationService } from './email-verification.service';
 import { TwoFactorService } from './two-factor.service';
@@ -22,7 +21,6 @@ describe('AuthCoreService', () => {
   let service: AuthCoreService;
   let prismaService: MockedPrismaService;
   let jwtService: jest.Mocked<JwtService>;
-  let emailService: jest.Mocked<EmailService>;
   let sessionService: jest.Mocked<SessionService>;
   let emailVerificationService: jest.Mocked<EmailVerificationService>;
   let twoFactorService: jest.Mocked<TwoFactorService>;
@@ -54,10 +52,6 @@ describe('AuthCoreService', () => {
       sign: jest.fn(),
     };
 
-    const mockEmailService = {
-      sendWelcomeEmail: jest.fn().mockResolvedValue(true),
-    };
-
     const mockSessionService = {
       createSession: jest.fn().mockResolvedValue('session-token-123'),
     };
@@ -83,7 +77,6 @@ describe('AuthCoreService', () => {
         AuthCoreService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: JwtService, useValue: mockJwtService },
-        { provide: EmailService, useValue: mockEmailService },
         { provide: SessionService, useValue: mockSessionService },
         { provide: EmailVerificationService, useValue: mockEmailVerificationService },
         { provide: TwoFactorService, useValue: mockTwoFactorService },
@@ -94,7 +87,6 @@ describe('AuthCoreService', () => {
     service = module.get<AuthCoreService>(AuthCoreService);
     prismaService = module.get(PrismaService);
     jwtService = module.get(JwtService);
-    emailService = module.get(EmailService);
     sessionService = module.get(SessionService);
     emailVerificationService = module.get(EmailVerificationService);
     twoFactorService = module.get(TwoFactorService);
@@ -130,12 +122,12 @@ describe('AuthCoreService', () => {
         mockUser.id,
         '127.0.0.1',
         'Mozilla/5.0',
-        false,
+        false
       );
       expect(loggerService.logAuthEvent).toHaveBeenCalledWith(
         'register',
         mockUser.id,
-        expect.objectContaining({ email: mockUser.email, role: 'BUYER' }),
+        expect.objectContaining({ email: mockUser.email, role: 'BUYER' })
       );
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('sessionToken');
@@ -160,7 +152,6 @@ describe('AuthCoreService', () => {
       const result = await service.register(sellerDto, '127.0.0.1', 'Mozilla/5.0');
 
       expect(prismaService.store.create).toHaveBeenCalled();
-      expect(emailService.sendWelcomeEmail).toHaveBeenCalled();
       expect(result.store).toEqual({
         id: mockStore.id,
         name: mockStore.name,
@@ -172,9 +163,9 @@ describe('AuthCoreService', () => {
     it('should throw ConflictException if email already exists', async () => {
       prismaService.user.findUnique.mockResolvedValue(mockUser);
 
-      await expect(
-        service.register(registerDto, '127.0.0.1', 'Mozilla/5.0'),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.register(registerDto, '127.0.0.1', 'Mozilla/5.0')).rejects.toThrow(
+        ConflictException
+      );
 
       expect(prismaService.user.create).not.toHaveBeenCalled();
     });
@@ -223,7 +214,7 @@ describe('AuthCoreService', () => {
       expect(loggerService.logAuthEvent).toHaveBeenCalledWith(
         'login',
         mockUser.id,
-        expect.objectContaining({ email: mockUser.email }),
+        expect.objectContaining({ email: mockUser.email })
       );
       expect(result).toHaveProperty('accessToken', 'jwt-token-123');
       expect(result).toHaveProperty('sessionToken', 'session-token-123');
@@ -233,15 +224,15 @@ describe('AuthCoreService', () => {
     it('should throw UnauthorizedException if user not found', async () => {
       prismaService.user.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.login(loginDto, '127.0.0.1', 'Mozilla/5.0'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto, '127.0.0.1', 'Mozilla/5.0')).rejects.toThrow(
+        UnauthorizedException
+      );
 
       expect(loggerService.logSuspiciousActivity).toHaveBeenCalledWith(
         'Failed login - user not found',
         null,
         '127.0.0.1',
-        expect.objectContaining({ email: loginDto.email }),
+        expect.objectContaining({ email: loginDto.email })
       );
     });
 
@@ -249,32 +240,32 @@ describe('AuthCoreService', () => {
       prismaService.user.findUnique.mockResolvedValue(mockUser);
       bcrypt.compare.mockResolvedValue(false);
 
-      await expect(
-        service.login(loginDto, '127.0.0.1', 'Mozilla/5.0'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto, '127.0.0.1', 'Mozilla/5.0')).rejects.toThrow(
+        UnauthorizedException
+      );
 
       expect(loggerService.logSuspiciousActivity).toHaveBeenCalledWith(
         'Failed login - invalid password',
         mockUser.id,
         '127.0.0.1',
-        expect.objectContaining({ email: loginDto.email }),
+        expect.objectContaining({ email: loginDto.email })
       );
     });
 
     it('should throw UnauthorizedException if account is suspended', async () => {
       prismaService.user.findUnique.mockResolvedValue({ ...mockUser, isSuspended: true });
 
-      await expect(
-        service.login(loginDto, '127.0.0.1', 'Mozilla/5.0'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto, '127.0.0.1', 'Mozilla/5.0')).rejects.toThrow(
+        UnauthorizedException
+      );
     });
 
     it('should throw UnauthorizedException if account is inactive', async () => {
       prismaService.user.findUnique.mockResolvedValue({ ...mockUser, isActive: false });
 
-      await expect(
-        service.login(loginDto, '127.0.0.1', 'Mozilla/5.0'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto, '127.0.0.1', 'Mozilla/5.0')).rejects.toThrow(
+        UnauthorizedException
+      );
     });
 
     it('should require 2FA code when 2FA is enabled', async () => {
@@ -315,9 +306,9 @@ describe('AuthCoreService', () => {
       bcrypt.compare.mockResolvedValue(true);
       twoFactorService.verify2FA.mockResolvedValue(false);
 
-      await expect(
-        service.login(loginWith2FA, '127.0.0.1', 'Mozilla/5.0'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginWith2FA, '127.0.0.1', 'Mozilla/5.0')).rejects.toThrow(
+        UnauthorizedException
+      );
     });
   });
 
@@ -337,9 +328,9 @@ describe('AuthCoreService', () => {
 
       prismaService.loginAttempt.findMany.mockResolvedValue(failedAttempts);
 
-      await expect(
-        service.login(loginDto, '127.0.0.1', 'Mozilla/5.0'),
-      ).rejects.toThrow('Too many failed login attempts');
+      await expect(service.login(loginDto, '127.0.0.1', 'Mozilla/5.0')).rejects.toThrow(
+        'Too many failed login attempts'
+      );
     });
 
     it('should allow login if failed attempts are old', async () => {

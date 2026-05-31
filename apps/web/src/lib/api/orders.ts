@@ -68,6 +68,7 @@ export interface CalculateTotalsRequest {
   shippingMethod?: string;
   currency?: string;
   couponCode?: string;
+  useStoreCredit?: boolean;
 }
 
 export interface ShippingOption {
@@ -76,6 +77,10 @@ export interface ShippingOption {
   price: number;
   estimatedDays: number;
   carrier?: string;
+  /** Provider tier that supplied this rate (easypost | sendcloud | easyship | dhl | zone | manual | gelato) */
+  source?: string;
+  /** True when the carrier requires a service point selection (e.g. DPD Shop, bpost @bpack) */
+  requiresServicePoint?: boolean;
 }
 
 export interface OrderCalculationResponse {
@@ -104,6 +109,24 @@ export interface OrderCalculationResponse {
     discount: number;
     type: 'PERCENTAGE' | 'FIXED';
   } | null;
+  storeCredit?: {
+    available: number;
+    applied: number;
+  };
+  taxBreakdown?: {
+    sellerBreakdown: Array<{
+      storeId: string;
+      storeName: string;
+      businessType: string | null;
+      taxHandling: 'NEXTPIK_COLLECTS' | 'PRICE_INCLUSIVE';
+      subtotal: number;
+      taxRate: number;
+      taxAmount: number;
+      jurisdiction: string;
+    }>;
+    hasTaxInclusiveItems: boolean;
+    hasTaxableItems: boolean;
+  };
   total: number;
   currency: string;
   breakdown: {
@@ -111,27 +134,42 @@ export interface OrderCalculationResponse {
     shipping: number;
     tax: number;
     discount: number;
+    storeCredit?: number;
     total: number;
   };
   warnings?: string[];
 }
 
+// Pickup-related types (v2.10.0)
+export interface PickupStore {
+  id: string;
+  name: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
+  phone?: string | null;
+  pickupAddress?: string | null;
+  pickupInstructions?: string | null;
+  pickupHours?: Record<string, string> | null;
+  pickupEstimatedMinutes?: number | null;
+}
+
 export const ordersAPI = {
-  getAll: () =>
-    api.get<Order[]>('/orders'),
+  getAll: () => api.get<Order[]>('/orders'),
 
-  getById: (id: string) =>
-    api.get<Order>(`/orders/${id}`),
+  getById: (id: string) => api.get<Order>(`/orders/${id}`),
 
-  create: (data: CreateOrderData) =>
-    api.post<Order>('/orders', data),
+  create: (data: CreateOrderData) => api.post<Order>('/orders', data),
 
-  cancel: (id: string) =>
-    api.post<Order>(`/orders/${id}/cancel`),
+  cancel: (id: string) => api.post<Order>(`/orders/${id}/cancel`),
 
-  track: (id: string) =>
-    api.get(`/orders/${id}/tracking`),
+  track: (id: string) => api.get(`/orders/${id}/tracking`),
 
   calculateTotals: (data: CalculateTotalsRequest) =>
     api.post<OrderCalculationResponse>('/orders/calculate-totals', data),
+
+  // Pickup-related endpoints (v2.10.0)
+  getAvailablePickupStores: (productIds: string[]) =>
+    api.post<PickupStore[]>('/orders/available-pickup-stores', { productIds }),
 };

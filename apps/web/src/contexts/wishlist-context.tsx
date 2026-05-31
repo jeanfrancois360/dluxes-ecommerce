@@ -14,7 +14,9 @@ interface WishlistProduct {
   compareAtPrice?: number;
   heroImage: string;
   isAvailable?: boolean;
-  inventory?: number;
+  inventory?: number | null;
+  productType?: string | null;
+  fulfillmentType?: string | null;
   rating?: number;
   reviewCount?: number;
 }
@@ -80,7 +82,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Failed to fetch wishlist');
       }
 
-      const responseData = await response.json();
+      const text = await response.text();
+      const responseData = text ? JSON.parse(text) : {};
 
       // Handle API response format
       let wishlistItems: WishlistItem[] = [];
@@ -141,78 +144,85 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   // Add to wishlist with optimistic update
-  const addToWishlist = useCallback(async (productId: string) => {
-    if (!user) {
-      throw new Error('Please log in to add items to your wishlist');
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const response = await fetch(`${API_BASE_URL}/wishlist`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({ productId }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to add to wishlist');
+  const addToWishlist = useCallback(
+    async (productId: string) => {
+      if (!user) {
+        throw new Error('Please log in to add items to your wishlist');
       }
 
-      // Refresh to get the updated wishlist with full product data
-      await refreshWishlist();
-    } catch (err) {
-      console.error('Error adding to wishlist:', err);
-      setError(err instanceof Error ? err.message : 'Failed to add to wishlist');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, refreshWishlist]);
+      try {
+        setIsLoading(true);
+        setError(null);
 
-  // Remove from wishlist with optimistic update
-  const removeFromWishlist = useCallback(async (productId: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
+        const response = await fetch(`${API_BASE_URL}/wishlist`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify({ productId }),
+        });
 
-      // Optimistic update
-      setItems((prev) => {
-        const updated = prev.filter((item) => item.productId !== productId);
-        setTotal(updated.length);
-
-        // Sync to localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('wishlist_items', JSON.stringify(updated));
-          localStorage.setItem('wishlist_total', updated.length.toString());
+        if (!response.ok) {
+          const errText = await response.text();
+          const errorData = errText ? JSON.parse(errText) : {};
+          throw new Error(errorData.message || 'Failed to add to wishlist');
         }
 
-        return updated;
-      });
-
-      const response = await fetch(`${API_BASE_URL}/wishlist/${productId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to remove from wishlist');
+        // Refresh to get the updated wishlist with full product data
+        await refreshWishlist();
+      } catch (err) {
+        console.error('Error adding to wishlist:', err);
+        setError(err instanceof Error ? err.message : 'Failed to add to wishlist');
+        throw err;
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Error removing from wishlist:', err);
-      setError(err instanceof Error ? err.message : 'Failed to remove from wishlist');
-      // Revert optimistic update by refreshing
-      await refreshWishlist();
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [refreshWishlist]);
+    },
+    [user, refreshWishlist]
+  );
+
+  // Remove from wishlist with optimistic update
+  const removeFromWishlist = useCallback(
+    async (productId: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Optimistic update
+        setItems((prev) => {
+          const updated = prev.filter((item) => item.productId !== productId);
+          setTotal(updated.length);
+
+          // Sync to localStorage
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('wishlist_items', JSON.stringify(updated));
+            localStorage.setItem('wishlist_total', updated.length.toString());
+          }
+
+          return updated;
+        });
+
+        const response = await fetch(`${API_BASE_URL}/wishlist/${productId}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to remove from wishlist');
+        }
+      } catch (err) {
+        console.error('Error removing from wishlist:', err);
+        setError(err instanceof Error ? err.message : 'Failed to remove from wishlist');
+        // Revert optimistic update by refreshing
+        await refreshWishlist();
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [refreshWishlist]
+  );
 
   // Clear wishlist
   const clearWishlist = useCallback(async () => {
@@ -250,9 +260,12 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   }, [refreshWishlist]);
 
   // Check if product is in wishlist
-  const isInWishlist = useCallback((productId: string) => {
-    return items.some((item) => item.productId === productId);
-  }, [items]);
+  const isInWishlist = useCallback(
+    (productId: string) => {
+      return items.some((item) => item.productId === productId);
+    },
+    [items]
+  );
 
   // Load wishlist on mount and when user changes
   useEffect(() => {

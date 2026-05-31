@@ -253,6 +253,7 @@ export interface SellerOrderDetail {
       name: string;
       slug: string;
       heroImage: string | null;
+      weight?: number | null; // kg — may be present if backend includes it
     };
   }>;
   shippingAddress: {
@@ -281,6 +282,29 @@ export interface SellerOrderDetail {
       name: string;
       contactPhone: string | null;
     } | null;
+  } | null;
+  // Pickup fields (v2.10.0)
+  isPickup?: boolean;
+  pickupStoreId?: string | null;
+  pickupCode?: string | null;
+  pickupInstructions?: string | null;
+  pickupScheduledAt?: string | null;
+  pickupCompletedAt?: string | null;
+  pickupStore?: {
+    id: string;
+    name: string;
+    pickupAddress?: string | null;
+  } | null;
+  // Shipping provider — persisted from checkout cascade selection
+  shippingProvider?: string | null;
+  shippingProviderData?: {
+    source?: string;
+    serviceCode?: string; // provider rate/method ID saved at checkout
+    carrier?: string;
+    name?: string;
+    price?: number;
+    estimatedDays?: string | number;
+    rateId?: string;
   } | null;
 }
 
@@ -439,6 +463,13 @@ export const sellerAPI = {
     return api.post(`/seller/orders/${id}/upload-proof`, formData);
   },
 
+  // Pickup Orders (v2.10.0)
+  markReadyForPickup: (id: string, notes?: string) =>
+    api.post(`/seller/orders/${id}/mark-ready-pickup`, { notes }),
+
+  confirmPickup: (id: string, pickupCode: string, notes?: string) =>
+    api.post(`/seller/orders/${id}/confirm-pickup`, { pickupCode, notes }),
+
   // Commissions
   getCommissions: (params?: {
     page?: number;
@@ -462,13 +493,13 @@ export const sellerAPI = {
 
   // Payouts
   getPayouts: (params?: { page?: number; limit?: number; status?: string }) =>
-    api.get<{ data: Payout[]; total: number }>('/seller/payouts', {
+    api.get<{ data: Payout[]; total: number }>('/payouts/seller/history', {
       params,
     } as any),
 
-  getPayout: (id: string) => api.get<Payout>(`/seller/payouts/${id}`),
+  getPayout: (id: string) => api.get<Payout>(`/payouts/seller/history`),
 
-  requestPayout: () => api.post('/seller/payouts/request'),
+  requestPayout: () => api.post('/payouts/seller/request'),
 
   // Store
   getStore: () => api.get('/seller/store'),

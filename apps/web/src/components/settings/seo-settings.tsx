@@ -14,6 +14,7 @@ import { seoSettingsSchema, type SeoSettings } from '@/lib/validations/settings'
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 
 export function SeoSettingsSection() {
   const { settings, loading, refetch } = useSettings('seo');
@@ -61,6 +62,7 @@ export function SeoSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (
@@ -93,7 +95,9 @@ export function SeoSettingsSection() {
         >
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className={`text-xs ${titleLength > 60 ? 'text-destructive' : 'text-muted-foreground'}`}>
+              <span
+                className={`text-xs ${titleLength > 60 ? 'text-destructive' : 'text-muted-foreground'}`}
+              >
                 {titleLength}/60
               </span>
             </div>
@@ -116,7 +120,9 @@ export function SeoSettingsSection() {
         >
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className={`text-xs ${descriptionLength > 160 ? 'text-destructive' : 'text-muted-foreground'}`}>
+              <span
+                className={`text-xs ${descriptionLength > 160 ? 'text-destructive' : 'text-muted-foreground'}`}
+              >
                 {descriptionLength}/160
               </span>
             </div>
@@ -152,20 +158,17 @@ export function SeoSettingsSection() {
               <p className="text-lg text-blue-600 font-medium line-clamp-1">
                 {form.watch('seo_meta_title') || 'Your page title will appear here'}
               </p>
-              <p className="text-xs text-green-700 ">
-                https://yourdomain.com
-              </p>
+              <p className="text-xs text-green-700 ">https://yourdomain.com</p>
             </div>
             <p className="text-sm text-muted-foreground line-clamp-2">
-              {form.watch('seo_meta_description') || 'Your meta description will appear here. This helps users understand what your page is about before clicking.'}
+              {form.watch('seo_meta_description') ||
+                'Your meta description will appear here. This helps users understand what your page is about before clicking.'}
             </p>
           </div>
         </div>
 
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 ">
-          <p className="text-sm font-medium text-blue-900 mb-2">
-            SEO Best Practices
-          </p>
+          <p className="text-sm font-medium text-blue-900 mb-2">SEO Best Practices</p>
           <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
             <li>Keep titles under 60 characters to avoid truncation</li>
             <li>Write compelling descriptions (150-160 characters)</li>
@@ -185,7 +188,9 @@ export function SeoSettingsSection() {
           label="Analytics Tracking"
           description="Enable Google Analytics or similar tracking scripts"
           checked={form.watch('analytics_enabled')}
-          onCheckedChange={(checked) => form.setValue('analytics_enabled', checked, { shouldDirty: true })}
+          onCheckedChange={(checked) =>
+            form.setValue('analytics_enabled', checked, { shouldDirty: true })
+          }
           tooltip="When enabled, analytics tracking scripts will be loaded on all pages"
         />
       </SettingsCard>

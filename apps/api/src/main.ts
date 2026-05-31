@@ -7,6 +7,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import compression from 'compression';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
@@ -19,6 +20,22 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
   console.log('[BOOTSTRAP] Step 3: Got ConfigService');
+
+  // Warn if shipping webhook secrets are not configured.
+  // These are optional so the app starts, but missing secrets mean HMAC
+  // verification is skipped and any caller can spoof shipping events.
+  const shippingWebhookSecrets: [string, string][] = [
+    ['EASYPOST_WEBHOOK_SECRET', 'EasyPost'],
+    ['SENDCLOUD_WEBHOOK_SECRET', 'SendCloud'],
+    ['EASYSHIP_WEBHOOK_SECRET', 'EasyShip'],
+  ];
+  for (const [envKey, provider] of shippingWebhookSecrets) {
+    if (!configService.get<string>(envKey)) {
+      console.warn(
+        `[SECURITY WARNING] ${envKey} is not set. ${provider} webhook signature verification is DISABLED — spoofed tracking events will be accepted.`
+      );
+    }
+  }
 
   // Security headers with Helmet
   console.log('[BOOTSTRAP] Step 3.5: Configuring security headers...');
@@ -44,6 +61,9 @@ async function bootstrap() {
     })
   );
   console.log('[BOOTSTRAP] Step 3.6: Security headers configured with Helmet');
+
+  // Parse cookies (needed for JWT cookie fallback)
+  app.use(cookieParser());
 
   // Enable compression for responses
   app.use(compression());

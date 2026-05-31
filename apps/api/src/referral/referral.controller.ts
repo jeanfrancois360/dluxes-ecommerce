@@ -1,0 +1,351 @@
+import {
+  Patch,
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+  BadRequestException,
+} from '@nestjs/common';
+import { ReferralService } from './referral.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import {
+  GetReferralHistoryDto,
+  GetAllReferralsDto,
+  UpdatePreferredRewardTypeDto,
+} from './dto/referral.dto';
+import { ReferralPayoutStatus } from '@prisma/client';
+
+/**
+ * Referral Controller (v2.11.0)
+ * Handles referral code generation, tracking, and reward distribution
+ */
+@Controller('referral')
+export class ReferralController {
+  constructor(private readonly referralService: ReferralService) {}
+
+  // ============================================================================
+  // USER ENDPOINTS (Authenticated users)
+  // ============================================================================
+
+  /**
+   * Generate referral code for current user
+   * POST /api/v1/referral/generate
+   */
+  @Post('generate')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async generateReferralCode(@Request() req: any) {
+    const userId = req.user.id;
+    const code = await this.referralService.generateReferralCode(userId);
+
+    return {
+      success: true,
+      code,
+      shareUrl: `${process.env.FRONTEND_URL}/auth/register?ref=${code}`,
+    };
+  }
+
+  /**
+   * Validate a referral code
+   * GET /api/v1/referral/validate/:code
+   */
+  @Get('validate/:code')
+  async validateReferralCode(@Param('code') code: string) {
+    const isValid = await this.referralService.validateReferralCode(code);
+
+    return {
+      success: true,
+      valid: isValid,
+      code: code.toUpperCase(),
+    };
+  }
+
+  /**
+   * Get referral summary for current user
+   * GET /api/v1/referral/summary
+   */
+  @Get('summary')
+  @UseGuards(JwtAuthGuard)
+  async getReferralSummary(@Request() req: any) {
+    const userId = req.user.id;
+    const summary = await this.referralService.getReferralSummary(userId);
+
+    return {
+      success: true,
+      data: summary,
+    };
+  }
+
+  /**
+   * Get referral history for current user
+   * GET /api/v1/referral/history?page=1&limit=20&status=PAID
+   */
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  async getReferralHistory(@Request() req: any, @Query() query: GetReferralHistoryDto) {
+    const userId = req.user.id;
+
+    const result = await this.referralService.getReferralHistory(userId, {
+      status: query.status,
+      startDate: query.startDate ? new Date(query.startDate) : undefined,
+      endDate: query.endDate ? new Date(query.endDate) : undefined,
+      page: query.page,
+      limit: query.limit,
+    });
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  /**
+   * Redeem a referral coupon for store credit
+   * POST /api/v1/referral/redeem-coupon
+   */
+  @Post('redeem-coupon')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async redeemCoupon(@Request() req: any, @Body('code') code: string) {
+    if (!code) {
+      throw new BadRequestException('Coupon code is required');
+    }
+
+    const result = await this.referralService.redeemReferralCoupon(
+      req.user.id,
+      code.trim().toUpperCase()
+    );
+
+    return {
+      success: true,
+      message: `Coupon redeemed — $${result.amount} ${result.currency} added to your store credit`,
+      amount: result.amount,
+      currency: result.currency,
+    };
+  }
+
+  /**
+   * Get referral settings (public info for frontend)
+   * GET /api/v1/referral/settings
+   */
+  @Get('settings')
+  async getReferralSettings() {
+    const settings = await this.referralService.getReferralSettings();
+
+    // Only return public settings (hide internal config)
+    return {
+      success: true,
+      data: {
+        enabled: settings.enabled,
+        rewardType: settings.rewardType,
+        buyerReward: settings.buyerReward,
+        sellerReward: settings.sellerReward,
+        minOrderValue: settings.minOrderValue,
+        currency: settings.rewardCurrency,
+        showLeaderboard: settings.showLeaderboard,
+        allowUserChoice: settings.allowUserChoice,
+      },
+    };
+  }
+
+  /**
+   * Save user's preferred reward type
+   * PATCH /api/v1/referral/preferred-reward-type
+   */
+  @Patch('preferred-reward-type')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async updatePreferredRewardType(@Request() req: any, @Body() body: UpdatePreferredRewardTypeDto) {
+    await this.referralService.updatePreferredRewardType(req.user.id, body.rewardType);
+    return {
+      success: true,
+      message: 'Reward preference saved',
+      rewardType: body.rewardType,
+    };
+  }
+
+  /**
+   * Get top referrers leaderboard
+   * GET /api/v1/referral/leaderboard?limit=10
+   */
+  @Get('leaderboard')
+  async getLeaderboard(@Query('limit') limit?: number) {
+    const settings = await this.referralService.getReferralSettings();
+
+    if (!settings.showLeaderboard) {
+      return {
+        success: true,
+        data: [],
+        message: 'Leaderboard is currently disabled',
+      };
+    }
+
+    const topReferrers = await this.referralService.getTopReferrers(limit ? Number(limit) : 10);
+
+    // Anonymize email for privacy (show only first 3 chars)
+    const anonymized = topReferrers.map((user, index) => ({
+      rank: index + 1,
+      name: `${user.firstName} ${user.lastName.charAt(0)}.`,
+      email: user.email.substring(0, 3) + '***@***',
+      totalReferrals: user.totalReferrals,
+      code: user.referralCode?.code || null,
+    }));
+
+    return {
+      success: true,
+      data: anonymized,
+    };
+  }
+
+  // ============================================================================
+  // ADMIN ENDPOINTS (Admin/Super Admin only)
+  // ============================================================================
+
+  /**
+   * Get all referrals with filters (Admin only)
+   * GET /api/v1/referral/admin/all?page=1&limit=20&status=PAID
+   */
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getAllReferrals(@Query() query: GetAllReferralsDto) {
+    const result = await this.referralService.getAllReferrals({
+      status: query.status,
+      referredUserRole: query.role,
+      startDate: query.startDate ? new Date(query.startDate) : undefined,
+      endDate: query.endDate ? new Date(query.endDate) : undefined,
+      page: query.page,
+      limit: query.limit,
+    });
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  /**
+   * Get referral statistics (Admin only)
+   * GET /api/v1/referral/admin/statistics?startDate=2024-01-01&endDate=2024-12-31
+   */
+  @Get('admin/statistics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getReferralStatistics(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string
+  ) {
+    const stats = await this.referralService.getReferralStatistics({
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+    });
+
+    return {
+      success: true,
+      data: stats,
+    };
+  }
+
+  /**
+   * Get top referrers with full details (Admin only)
+   * GET /api/v1/referral/admin/top-referrers?limit=50
+   */
+  @Get('admin/top-referrers')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getTopReferrersAdmin(@Query('limit') limit?: number) {
+    const topReferrers = await this.referralService.getTopReferrers(limit ? Number(limit) : 50);
+
+    return {
+      success: true,
+      data: topReferrers,
+    };
+  }
+
+  /**
+   * Get all referral settings (Admin only)
+   * GET /api/v1/referral/admin/settings
+   */
+  @Get('admin/settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getReferralSettingsAdmin() {
+    const settings = await this.referralService.getReferralSettings();
+
+    return {
+      success: true,
+      data: settings,
+    };
+  }
+
+  /**
+   * Manually grant referral reward (Admin only)
+   * POST /api/v1/referral/admin/grant-reward/:referralId
+   */
+  @Post('admin/grant-reward/:referralId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @HttpCode(HttpStatus.OK)
+  async grantRewardAdmin(@Param('referralId') referralId: string) {
+    await this.referralService.grantReferralReward(referralId);
+
+    return {
+      success: true,
+      message: 'Reward granted successfully',
+    };
+  }
+
+  // ============================================================================
+  // FLAT COMMISSION PAYOUT ENDPOINTS (Admin)
+  // ============================================================================
+
+  /**
+   * List referral payout records
+   * GET /api/v1/referral/admin/payouts?status=PENDING&page=1&limit=20
+   */
+  @Get('admin/payouts')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async getReferralPayouts(
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ) {
+    const result = await this.referralService.getReferralPayouts({
+      status: status as ReferralPayoutStatus | undefined,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 20,
+    });
+    return { success: true, ...result };
+  }
+
+  /**
+   * Update a referral payout record (mark as PROCESSING / PAID / FAILED)
+   * PATCH /api/v1/referral/admin/payouts/:payoutId
+   */
+  @Patch('admin/payouts/:payoutId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async updateReferralPayout(
+    @Param('payoutId') payoutId: string,
+    @Body()
+    body: {
+      status: ReferralPayoutStatus;
+      paymentMethod?: string;
+      paymentReference?: string;
+      notes?: string;
+    }
+  ) {
+    if (!body.status) throw new BadRequestException('status is required');
+    const updated = await this.referralService.updateReferralPayout(payoutId, body);
+    return { success: true, data: updated };
+  }
+}

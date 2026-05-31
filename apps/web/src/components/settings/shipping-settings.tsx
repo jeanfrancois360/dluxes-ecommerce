@@ -24,6 +24,7 @@ import { shippingSettingsSchema, type ShippingSettings } from '@/lib/validations
 import { transformSettingsToForm } from '@/lib/settings-utils';
 import { SettingsCard, SettingsField, SettingsToggle, SettingsFooter } from './shared';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+import { useUnsavedChangesGuard } from '@/hooks/use-unsaved-changes-guard';
 import { api } from '@/lib/api/client';
 
 // DHL Health Status Interface
@@ -372,6 +373,7 @@ export function ShippingSettingsSection() {
     onSave: () => form.handleSubmit(onSubmit)(),
     onReset: () => form.reset(),
   });
+  useUnsavedChangesGuard(form.formState.isDirty);
 
   if (loading) {
     return (
@@ -391,35 +393,63 @@ export function ShippingSettingsSection() {
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       <SettingsCard
         icon={Calculator}
-        title="Shipping Rates & Pricing"
-        description="Configure shipping cost calculator and free shipping promotions"
+        title="Fallback Shipping Rates & Pricing"
+        description="Manual rates used when API providers (EasyPost/DHL) are unavailable. EasyPost is the primary provider."
       >
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
           <div className="flex gap-2">
             <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-blue-900">Shipping Modes</p>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li>
-                  <strong>Manual:</strong> Use manually configured rates (below)
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-blue-900">Shipping Provider Cascade</p>
+              <p className="text-xs text-blue-700">
+                NextPik automatically selects the best shipping provider using this priority order:
+              </p>
+              <ol className="text-sm text-blue-700 space-y-1.5 ml-1">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-blue-900">1.</span>
+                  <div>
+                    <strong>EasyPost (Primary) ⭐</strong> - Multi-carrier rate comparison from 100+
+                    carriers worldwide (USPS, UPS, FedEx, DHL, etc.)
+                    <br />
+                    <span className="text-xs italic">Configure in the "EasyPost" tab above</span>
+                  </div>
                 </li>
-                <li>
-                  <strong>DHL API:</strong> Real-time rates from DHL Express
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-blue-900">2.</span>
+                  <div>
+                    <strong>DHL Express API</strong> - Real-time rates from DHL Express
+                    <br />
+                    <span className="text-xs italic">
+                      Only used if EasyPost is disabled/unavailable
+                    </span>
+                  </div>
                 </li>
-                <li>
-                  <strong>Hybrid:</strong> Try DHL API, fallback to manual if unavailable
-                  (Recommended)
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-blue-900">3.</span>
+                  <div>
+                    <strong>Shipping Zones</strong> - Zone-based rates (US Domestic, International)
+                    <br />
+                    <span className="text-xs italic">Fallback if no API providers available</span>
+                  </div>
                 </li>
-              </ul>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-blue-900">4.</span>
+                  <div>
+                    <strong>Manual Rates (Final Fallback)</strong> - Fixed rates configured below
+                    <br />
+                    <span className="text-xs italic">Used when all other providers fail</span>
+                  </div>
+                </li>
+              </ol>
             </div>
           </div>
         </div>
 
         <SettingsField
-          label="Shipping Mode"
+          label="Fallback Shipping Mode"
           id="shipping_mode"
           required
-          tooltip="Choose how shipping rates are calculated"
+          tooltip="Fallback method when EasyPost is unavailable (EasyPost is always tried first if enabled)"
           error={form.formState.errors.shipping_mode?.message}
         >
           <Select
@@ -429,12 +459,12 @@ export function ShippingSettingsSection() {
             }
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select mode" />
+              <SelectValue placeholder="Select fallback mode" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="manual">Manual Configuration</SelectItem>
-              <SelectItem value="dhl_api">DHL API Only</SelectItem>
-              <SelectItem value="hybrid">Hybrid (Recommended)</SelectItem>
+              <SelectItem value="manual">Manual Rates Only (Simplest)</SelectItem>
+              <SelectItem value="dhl_api">Try DHL API, then Manual</SelectItem>
+              <SelectItem value="hybrid">DHL API → Zones → Manual (Recommended)</SelectItem>
             </SelectContent>
           </Select>
         </SettingsField>

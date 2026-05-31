@@ -105,6 +105,11 @@ class CreateShipmentDto {
   @IsString()
   trackingUrl?: string;
 
+  // Auto-generation flag — triggers provider API (SendCloud, EasyShip, etc.)
+  @IsOptional()
+  @IsBoolean()
+  autoGenerate?: boolean;
+
   // DHL Auto-generation fields
   @IsOptional()
   @IsBoolean()
@@ -427,7 +432,8 @@ export class ShipmentsController {
         weight: dto.packages.reduce((sum, pkg) => sum + pkg.weight, 0),
         notes: `DHL ${this.dhlShipmentService.getProductDescription(dto.productCode)}`,
       },
-      req.user.id
+      req.user.id,
+      req.user.role
     );
 
     // Update shipment with tracking URL
@@ -437,7 +443,8 @@ export class ShipmentsController {
         trackingUrl: dhlResult.trackingUrl,
         status: ShipmentStatus.LABEL_CREATED,
       },
-      req.user.id
+      req.user.id,
+      req.user.role
     );
 
     return {
@@ -524,7 +531,8 @@ export class ShipmentsController {
         ...dto,
         estimatedDelivery: dto.estimatedDelivery ? new Date(dto.estimatedDelivery) : undefined,
       },
-      req.user.id
+      req.user.id,
+      req.user.role
     );
 
     return {
@@ -766,6 +774,18 @@ export class ShipmentsController {
           declaredValue: declaredValue > 0 ? declaredValue : 100,
           declaredValueCurrency: 'USD',
           customerReference: `Order-${dto.orderId.substring(0, 10)}`,
+          // Line items for export declaration (required for non-EU international shipments)
+          exportLineItems: order.items
+            .filter((item: any) => dto.itemIds.includes(item.id))
+            .map((item: any) => ({
+              description: (item.product?.name || 'Item').substring(0, 50),
+              quantity: item.quantity,
+              unitPrice: Number(item.price) || 1,
+              currency: 'USD',
+              weightKg: item.product?.weight ? Number(item.product.weight) : 0.5,
+              hsCode: item.product?.hsCode || undefined,
+              countryOfManufacture: item.product?.countryOfOrigin || undefined,
+            })),
         };
 
         this.logger.log(
@@ -1027,6 +1047,28 @@ export class ShipmentsController {
       data: shipment,
       message: 'Shipment updated successfully',
     };
+  }
+
+  /**
+   * Mark all pending shipments for an order as shipped (IN_TRANSIT).
+   * Updates existing PROCESSING / LABEL_CREATED / PENDING / PICKED_UP shipments
+   * rather than creating a new one, so the order status cascade works correctly.
+   * PATCH /api/v1/shipments/order/:orderId/mark-shipped
+   */
+  @Patch('order/:orderId/mark-shipped')
+  @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  async markOrderShipped(
+    @Request() req,
+    @Param('orderId') orderId: string,
+    @Body() body: { trackingNumber?: string; trackingUrl?: string }
+  ) {
+    const result = await this.shipmentsService.markOrderShipments(
+      orderId,
+      req.user.id,
+      body.trackingNumber,
+      body.trackingUrl
+    );
+    return { success: true, data: result, message: 'Order marked as shipped' };
   }
 
   /**

@@ -18,6 +18,7 @@ import { Request, Response } from 'express';
 import { EmailOTPType } from '@prisma/client';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { LoginThrottlerGuard } from './guards/login-throttler.guard';
 // New refactored services
 import { AuthCoreService } from './services/auth-core.service';
 import { PasswordService } from './services/password.service';
@@ -43,6 +44,7 @@ import {
   ResendVerificationDto,
   ChangePasswordDto,
 } from './dto/auth.dto';
+import { SkipTwoFactorCheck } from './decorators/skip-two-factor-check.decorator';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -88,16 +90,44 @@ export class EnhancedAuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(LoginThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 900000 } })
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, description: 'Login successful or 2FA required' })
   @ApiResponse({ status: 401, description: 'Invalid credentials or account locked' })
+  @ApiResponse({ status: 403, description: '2FA grace period expired — setupToken returned' })
   @ApiResponse({ status: 423, description: 'Account locked due to failed attempts' })
-  async login(@Body() dto: LoginDto, @Req() req: Request) {
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
 
-    return this.authCoreService.login(dto, ipAddress, userAgent);
+    const cookieHeader = (req.headers as any)['cookie'] as string | undefined;
+    const result = (await this.authCoreService.login(
+      dto,
+      ipAddress,
+      userAgent,
+      cookieHeader
+    )) as any;
+
+    // If the service issued a device trust token, set it as an httpOnly cookie
+    // and strip it from the JSON response (never expose raw token to client JS).
+    if (result.deviceTrustToken) {
+      const durationDays = 30; // mirrors the DB record duration
+      res.cookie('device_trust_token', result.deviceTrustToken, {
+        httpOnly: true,
+        secure: this.configService.get('NODE_ENV') === 'production',
+        sameSite: 'lax',
+        maxAge: durationDays * 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+      delete result.deviceTrustToken;
+    }
+
+    return result;
   }
 
   @Post('magic-link/request')
@@ -193,6 +223,7 @@ export class EnhancedAuthController {
   }
 
   @Post('2fa/setup')
+  @SkipTwoFactorCheck()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Setup TOTP 2FA — generates secret and QR code' })
@@ -202,6 +233,7 @@ export class EnhancedAuthController {
   }
 
   @Post('2fa/enable')
+  @SkipTwoFactorCheck()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Enable 2FA after verifying a TOTP code' })
@@ -219,6 +251,50 @@ export class EnhancedAuthController {
   @ApiResponse({ status: 400, description: 'Invalid verification code' })
   async disable2FA(@Body() dto: Verify2FADto, @Req() req: any) {
     return this.twoFactorService.disable2FA(req.user.id, dto.code);
+  }
+
+  @Post('2fa/email/setup')
+  @SkipTwoFactorCheck()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Send a 6-digit OTP to email to begin email-OTP 2FA setup' })
+  @ApiResponse({ status: 200, description: 'OTP sent; returns maskedEmail and expiresAt' })
+  async setupEmailOTP(@Req() req: any) {
+    return this.twoFactorService.setupEmailOTP(req.user.id);
+  }
+
+  @Post('2fa/email/enable')
+  @SkipTwoFactorCheck()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Enable email-OTP 2FA after verifying the emailed code' })
+  @ApiResponse({ status: 200, description: 'Email OTP 2FA enabled' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired OTP' })
+  async enable2FAEmail(@Body() dto: Enable2FADto, @Req() req: any) {
+    return this.twoFactorService.enableEmailOTP(req.user.id, dto.code);
+  }
+
+  @Post('2fa/email/disable')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Disable email-OTP 2FA (requires a fresh OTP from /2fa/email/setup)' })
+  @ApiResponse({ status: 200, description: 'Email OTP 2FA disabled' })
+  @ApiResponse({ status: 400, description: 'Email OTP not enabled or invalid code' })
+  async disable2FAEmail(@Body() dto: Verify2FADto, @Req() req: any) {
+    return this.twoFactorService.disableEmailOTP(req.user.id, dto.code);
+  }
+
+  @Get('2fa/email/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check if email-OTP 2FA is enabled for current user' })
+  @ApiResponse({ status: 200, description: 'Returns { enabled: boolean }' })
+  async get2FAEmailStatus(@Req() req: any) {
+    const enabled = await this.twoFactorService.isEmailOTPEnabled(req.user.id);
+    return { enabled };
   }
 
   @Post('2fa/regenerate-backup-codes')
@@ -351,6 +427,12 @@ export class EnhancedAuthController {
 
       const result = await this.googleOAuthService.googleAuth(req.user, ipAddress, userAgent);
 
+      // User has 2FA enabled — redirect to TOTP step with a pending token
+      if ((result as any).requires2FA) {
+        const params = new URLSearchParams({ pendingToken: (result as any).pendingToken });
+        return res.redirect(`${frontendUrl}/auth/login?${params.toString()}`);
+      }
+
       const params = new URLSearchParams({
         accessToken: result.accessToken,
         sessionToken: result.sessionToken,
@@ -364,6 +446,23 @@ export class EnhancedAuthController {
       const params = new URLSearchParams({ error: message });
       return res.redirect(`${frontendUrl}/auth/login?${params.toString()}`);
     }
+  }
+
+  @Post('google/verify-2fa')
+  @HttpCode(HttpStatus.OK)
+  @SkipTwoFactorCheck()
+  @ApiOperation({ summary: 'Verify TOTP after Google OAuth when user has 2FA enabled' })
+  @ApiResponse({ status: 200, description: 'TOTP verified — full tokens returned' })
+  @ApiResponse({ status: 401, description: 'Invalid pending token or wrong TOTP code' })
+  async verifyGoogle2FA(@Body() dto: { pendingToken: string; code: string }, @Req() req: Request) {
+    const ipAddress = (req as any).ip || (req as any).socket?.remoteAddress || 'unknown';
+    const userAgent = (req.headers as any)['user-agent'] || 'unknown';
+    return this.googleOAuthService.verifyGoogle2FA(
+      dto.pendingToken,
+      dto.code,
+      ipAddress,
+      userAgent
+    );
   }
 
   @Post('google/unlink')
@@ -393,11 +492,11 @@ export class EnhancedAuthController {
   async getUserSessions(@Req() req: any) {
     const sessions = await this.sessionService.getUserSessions(req.user.id);
 
-    // Mark current session
-    const currentToken = req.headers.authorization?.replace('Bearer ', '');
+    // Mark the current session using the session_id embedded in the JWT payload
+    const currentSessionId = req.user.sessionId;
     return sessions.map((session) => ({
       ...session,
-      isCurrent: session.token === currentToken,
+      isCurrent: !!currentSessionId && session.id === currentSessionId,
     }));
   }
 
@@ -408,6 +507,10 @@ export class EnhancedAuthController {
   @ApiOperation({ summary: 'Revoke (sign out) a specific session by ID' })
   @ApiResponse({ status: 200, description: 'Session revoked' })
   async revokeSession(@Req() req: any, @Param('sessionId') sessionId: string) {
+    // Prevent revoking the current session (would immediately lock the user out)
+    if (req.user.sessionId && sessionId === req.user.sessionId) {
+      return { message: 'Cannot revoke the current session. Use logout instead.' };
+    }
     return this.sessionService.revokeSession(req.user.id, sessionId);
   }
 

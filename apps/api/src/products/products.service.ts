@@ -1,10 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { CreditsService } from '../credits/credits.service';
 import { SearchService } from '../search/search.service';
 import { SettingsService } from '../settings/settings.service';
+import { ReferralService } from '../referral/referral.service';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -27,7 +34,8 @@ export class ProductsService {
     private readonly subscriptionService: SubscriptionService,
     private readonly creditsService: CreditsService,
     private readonly searchService: SearchService,
-    private readonly settingsService: SettingsService
+    private readonly settingsService: SettingsService,
+    @Optional() private readonly referralService?: ReferralService
   ) {}
 
   /**
@@ -279,11 +287,22 @@ export class ProductsService {
       where.featured = featured;
     }
 
-    // In Stock filter
+    // In Stock filter — non-inventory product types are always "in stock"
     if (inStock !== undefined && inStock === true) {
-      where.inventory = {
-        gt: 0,
-      };
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          OR: [
+            { inventory: { gt: 0 } }, // PHYSICAL with stock
+            {
+              productType: {
+                in: ['DIGITAL', 'SERVICE', 'RENTAL', 'REAL_ESTATE', 'VEHICLE'],
+              },
+            }, // Non-inventory types
+            { fulfillmentType: 'GELATO_POD' }, // Print-on-demand
+          ],
+        },
+      ];
     }
 
     // On Sale filter (has compareAtPrice)
@@ -388,6 +407,9 @@ export class ProductsService {
           sizes: true,
           materials: true,
           inventory: true,
+          productType: true,
+          purchaseType: true,
+          fulfillmentType: true,
           status: true,
           storeId: true,
           store: {
@@ -467,6 +489,9 @@ export class ProductsService {
         rating: true,
         reviewCount: true,
         inventory: true,
+        productType: true,
+        purchaseType: true,
+        fulfillmentType: true,
         category: {
           select: {
             id: true,
@@ -515,6 +540,9 @@ export class ProductsService {
         rating: true,
         reviewCount: true,
         inventory: true,
+        productType: true,
+        purchaseType: true,
+        fulfillmentType: true,
         badges: true,
         category: {
           select: {
@@ -561,6 +589,9 @@ export class ProductsService {
         rating: true,
         reviewCount: true,
         inventory: true,
+        productType: true,
+        purchaseType: true,
+        fulfillmentType: true,
         viewCount: true,
         likeCount: true,
         category: {
@@ -611,6 +642,9 @@ export class ProductsService {
         rating: true,
         reviewCount: true,
         inventory: true,
+        productType: true,
+        purchaseType: true,
+        fulfillmentType: true,
         category: {
           select: {
             id: true,
@@ -790,6 +824,24 @@ export class ProductsService {
       ...productData
     } = createProductDto;
 
+    // Check subscription status (block PAST_DUE, CANCELLED, EXPIRED sellers)
+    if (storeId) {
+      // Get seller ID from store
+      const store = await this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: { userId: true },
+      });
+
+      if (store) {
+        const { allowed, reason } = await this.subscriptionService.canSellerListProduct(
+          store.userId
+        );
+        if (!allowed) {
+          throw new BadRequestException(reason);
+        }
+      }
+    }
+
     // ALWAYS auto-generate SKU (custom SKUs not allowed)
     const finalSKU = await this.generateSKU();
 
@@ -799,8 +851,15 @@ export class ProductsService {
     // For INSTANT products, ensure price and inventory have defaults if not provided
     const finalPrice =
       price !== undefined ? price : finalPurchaseType === PurchaseType.INSTANT ? 0 : null;
+    // Digital products don't have finite stock — use null (unlimited)
     const finalInventory =
-      inventory !== undefined ? inventory : finalPurchaseType === PurchaseType.INSTANT ? 0 : null;
+      inventory !== undefined
+        ? inventory
+        : productData.productType === 'DIGITAL'
+          ? null
+          : finalPurchaseType === PurchaseType.INSTANT
+            ? 0
+            : null;
 
     // Validate category exists if provided
     if (categoryId && categoryId.trim() !== '') {
@@ -864,6 +923,15 @@ export class ProductsService {
         where: { id: storeId },
         data: { totalProducts: { increment: 1 } },
       });
+
+      // Referral System (v2.11.0) - Check seller qualification (NON-BLOCKING)
+      if (this.referralService) {
+        this.referralService.checkSellerQualification(storeId).catch((err) => {
+          this.logger.warn(
+            `Referral seller qualification check failed for store ${storeId}: ${err.message}`
+          );
+        });
+      }
     }
 
     return product;

@@ -1,13 +1,24 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  forwardRef,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { PayoutStatus, CommissionStatus, PayoutFrequency, EscrowStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { StripeConnectService } from './integrations/stripe-connect.service';
+import { PayPalPayoutsService } from './integrations/paypal-payouts.service';
+import { SettingsService } from '../settings/settings.service';
+import { EmailService } from '../email/email.service';
 
 /**
  * Payout Scheduler Service
  * Automated payout processing for sellers
  * Integrates with Escrow system to ensure secure fund releases
+ * v2.11.1: Added dynamic currency support and email notifications
  */
 @Injectable()
 export class PayoutSchedulerService {
@@ -16,7 +27,10 @@ export class PayoutSchedulerService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => StripeConnectService))
-    private readonly stripeConnectService: StripeConnectService
+    private readonly stripeConnectService: StripeConnectService,
+    private readonly paypalPayoutsService: PayPalPayoutsService,
+    private readonly settingsService: SettingsService,
+    private readonly emailService: EmailService
   ) {}
 
   /**
@@ -80,6 +94,58 @@ export class PayoutSchedulerService {
   }
 
   /**
+   * Get payout currency for seller
+   * Priority: Seller's payout currency > Store currency > Platform default
+   */
+  private async getPayoutCurrency(sellerId: string, storeId: string): Promise<string> {
+    try {
+      // Check seller's payout currency preference first
+      const store = await this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: { payoutCurrency: true, currency: true },
+      });
+
+      if (store?.payoutCurrency) {
+        return store.payoutCurrency;
+      }
+
+      if (store?.currency) {
+        return store.currency;
+      }
+
+      // Fall back to platform default
+      const defaultCurrency = await this.settingsService
+        .getSetting('default_currency')
+        .catch(() => ({ value: 'USD' }));
+
+      return String(defaultCurrency.value) || 'USD';
+    } catch (error) {
+      this.logger.warn(`Failed to get payout currency for ${sellerId}, using USD`, error);
+      return 'USD';
+    }
+  }
+
+  /**
+   * Get estimated arrival date for payout
+   */
+  private async getEstimatedArrival(): Promise<string> {
+    try {
+      const days = await this.settingsService
+        .getSetting('payout_processing_days')
+        .catch(() => ({ value: 3 }));
+      const processingDays = Number(days.value) || 3;
+      const arrival = new Date();
+      arrival.setDate(arrival.getDate() + processingDays);
+      return arrival.toISOString();
+    } catch (error) {
+      // Default to 3 business days
+      const arrival = new Date();
+      arrival.setDate(arrival.getDate() + 3);
+      return arrival.toISOString();
+    }
+  }
+
+  /**
    * Get active payout configuration
    */
   private async getActivePayoutConfig() {
@@ -99,6 +165,7 @@ export class PayoutSchedulerService {
     const minPayoutAmount = config.minPayoutAmount.toNumber();
 
     // Find sellers with released escrow funds or confirmed commissions
+    // Exclude sellers who already have a pending/processing payout (prevent duplicates)
     const eligibleFromEscrow = await this.prisma.user.findMany({
       where: {
         role: 'SELLER',
@@ -108,6 +175,11 @@ export class PayoutSchedulerService {
             releasedAt: {
               not: null,
             },
+          },
+        },
+        payouts: {
+          none: {
+            status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] },
           },
         },
       },
@@ -156,6 +228,7 @@ export class PayoutSchedulerService {
       where: { id: sellerId },
       include: {
         store: true,
+        payoutSettings: true, // Include payout settings to determine payment method
         escrowTransactions: {
           where: {
             status: EscrowStatus.RELEASED,
@@ -212,6 +285,16 @@ export class PayoutSchedulerService {
         break;
     }
 
+    // Get currency dynamically
+    const currency = await this.getPayoutCurrency(sellerId, seller.store!.id);
+
+    // Determine payment method from seller settings
+    // Priority: seller payout settings → store settings → default
+    const paymentMethod =
+      seller.payoutSettings?.paymentMethod ||
+      (seller.store as any)?.payoutMethod ||
+      'bank_transfer'; // Default fallback
+
     // Create payout in transaction
     const payout = await this.prisma.$transaction(async (prisma) => {
       // Create payout record
@@ -220,14 +303,14 @@ export class PayoutSchedulerService {
           sellerId,
           storeId: seller.store!.id,
           amount: totalAmount,
-          currency: 'USD', // TODO: Make dynamic based on seller's currency
+          currency, // Dynamic currency based on seller preference
           commissionCount: seller.commissions.length,
           status: PayoutStatus.PENDING,
-          paymentMethod: 'bank_transfer', // Default - can be configured per seller
+          paymentMethod, // Dynamic payment method based on seller preference
           periodStart,
           periodEnd,
           scheduledAt: now,
-          notes: `Automated payout - ${config.frequency}`,
+          notes: `Automated payout - ${config.frequency} via ${paymentMethod}`,
         },
       });
 
@@ -246,6 +329,26 @@ export class PayoutSchedulerService {
 
       return newPayout;
     });
+
+    // Send payout scheduled email (non-blocking)
+    try {
+      await this.emailService.sendPayoutScheduled(seller.email, {
+        sellerName: `${seller.firstName || ''} ${seller.lastName || ''}`.trim(),
+        storeName: seller.store?.name || 'Your Store',
+        payoutId: payout.id,
+        amount: Number(payout.amount),
+        currency: payout.currency,
+        commissionsCount: seller.commissions.length,
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+        scheduledDate: now.toISOString(),
+        estimatedArrival: await this.getEstimatedArrival(),
+        paymentMethod: paymentMethod.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        sellerId,
+      });
+    } catch (emailErr) {
+      this.logger.error(`Failed to send payout scheduled email to ${seller.email}`, emailErr);
+    }
 
     return payout;
   }
@@ -366,6 +469,15 @@ export class PayoutSchedulerService {
    * Get seller's pending payout amount
    */
   async getSellerPendingPayout(sellerId: string) {
+    // Get seller's store for currency
+    const user = await this.prisma.user.findUnique({
+      where: { id: sellerId },
+      include: { store: { select: { id: true, payoutCurrency: true, currency: true } } },
+    });
+
+    const storeId = user?.store?.id;
+    const currency = storeId ? await this.getPayoutCurrency(sellerId, storeId) : 'USD';
+
     const [escrowReleased, commissionsConfirmed] = await Promise.all([
       this.prisma.escrowTransaction.aggregate({
         where: {
@@ -392,7 +504,7 @@ export class PayoutSchedulerService {
       escrowAmount: escrowAmount.toNumber(),
       commissionAmount: commissionAmount.toNumber(),
       totalPending: totalPending.toNumber(),
-      currency: 'USD',
+      currency,
     };
   }
 
@@ -448,7 +560,7 @@ export class PayoutSchedulerService {
    * Mark payout as completed (Admin only - after actual payment)
    */
   async completePayout(payoutId: string, paymentReference?: string, paymentProof?: string) {
-    return this.prisma.payout.update({
+    const payout = await this.prisma.payout.update({
       where: { id: payoutId },
       data: {
         status: PayoutStatus.COMPLETED,
@@ -456,20 +568,53 @@ export class PayoutSchedulerService {
         paymentReference,
         paymentProof,
       },
+      include: {
+        seller: { select: { email: true, firstName: true, lastName: true } },
+        store: { select: { name: true } },
+      },
     });
+
+    // Send payout completed email (non-blocking)
+    try {
+      await this.emailService.sendPayoutCompleted(payout.seller.email, {
+        sellerName: `${payout.seller.firstName || ''} ${payout.seller.lastName || ''}`.trim(),
+        storeName: payout.store?.name || 'Your Store',
+        payoutId: payout.id,
+        amount: Number(payout.amount),
+        currency: payout.currency,
+        commissionsCount: payout.commissionCount || 0,
+        periodStart: payout.periodStart?.toISOString() || '',
+        periodEnd: payout.periodEnd?.toISOString() || '',
+        completedDate: payout.processedAt?.toISOString() || new Date().toISOString(),
+        paymentReference: paymentReference || '',
+        paymentMethod: payout.paymentMethod || 'Bank Transfer',
+        sellerId: payout.sellerId,
+      });
+    } catch (emailErr) {
+      this.logger.error(
+        `Failed to send payout completed email to ${payout.seller.email}`,
+        emailErr
+      );
+    }
+
+    return payout;
   }
 
   /**
    * Mark payout as failed (Admin only)
    */
   async failPayout(payoutId: string, reason: string) {
-    return this.prisma.$transaction(async (prisma) => {
+    const payout = await this.prisma.$transaction(async (prisma) => {
       // Update payout status
-      const payout = await prisma.payout.update({
+      const failedPayout = await prisma.payout.update({
         where: { id: payoutId },
         data: {
           status: PayoutStatus.FAILED,
           notes: `Failed: ${reason}`,
+        },
+        include: {
+          seller: { select: { email: true, firstName: true, lastName: true } },
+          store: { select: { name: true } },
         },
       });
 
@@ -483,7 +628,81 @@ export class PayoutSchedulerService {
         },
       });
 
-      return payout;
+      return failedPayout;
+    });
+
+    // Send payout failed email (non-blocking)
+    try {
+      await this.emailService.sendPayoutFailed(payout.seller.email, {
+        sellerName: `${payout.seller.firstName || ''} ${payout.seller.lastName || ''}`.trim(),
+        storeName: payout.store?.name || 'Your Store',
+        payoutId: payout.id,
+        amount: Number(payout.amount),
+        currency: payout.currency,
+        commissionsCount: payout.commissionCount || 0,
+        failureReason: reason,
+        failedDate: new Date().toISOString(),
+        paymentMethod: payout.paymentMethod || 'bank_transfer',
+        sellerId: payout.sellerId,
+      });
+    } catch (emailErr) {
+      this.logger.error(`Failed to send payout failed email to ${payout.seller.email}`, emailErr);
+    }
+
+    return payout;
+  }
+
+  /**
+   * Retry a failed payout (Admin only)
+   * Resets the existing FAILED payout back to PENDING and re-links its commissions.
+   * Does NOT create a new payout record.
+   */
+  async retryPayout(payoutId: string) {
+    const payout = await this.prisma.payout.findUnique({
+      where: { id: payoutId },
+    });
+
+    if (!payout) {
+      throw new Error('Payout not found');
+    }
+
+    if (payout.status !== PayoutStatus.FAILED) {
+      throw new Error(`Cannot retry a payout with status ${payout.status}`);
+    }
+
+    return this.prisma.$transaction(async (prisma) => {
+      // Re-link any commissions for this seller/period that were unlinked when the payout failed
+      await prisma.commission.updateMany({
+        where: {
+          sellerId: payout.sellerId,
+          payoutId: null,
+          paidOut: false,
+          createdAt: {
+            gte: payout.periodStart,
+            lte: payout.periodEnd,
+          },
+        },
+        data: {
+          payoutId: payout.id,
+        },
+      });
+
+      // Count all commissions now linked to this payout
+      const linkedCount = await prisma.commission.count({
+        where: { payoutId: payout.id },
+      });
+
+      // Reset to PENDING, clear failure state
+      return prisma.payout.update({
+        where: { id: payoutId },
+        data: {
+          status: PayoutStatus.PENDING,
+          notes: null,
+          processedAt: null,
+          paymentReference: null,
+          commissionCount: linkedCount,
+        },
+      });
     });
   }
 
@@ -581,15 +800,68 @@ export class PayoutSchedulerService {
             break;
 
           case 'PAYPAL':
-            // TODO: Implement PayPal Payouts API
-            this.logger.log(`Would process PayPal payout for ${payout.id}`);
-            await this.prisma.payout.update({
-              where: { id: payout.id },
-              data: {
-                status: PayoutStatus.PROCESSING,
-                notes: 'PayPal integration pending - manual processing required',
-              },
-            });
+          case 'paypal':
+            try {
+              if (!this.paypalPayoutsService.configured) {
+                this.logger.warn(
+                  `PayPal not configured — payout ${payout.id} requires manual processing`
+                );
+                await this.prisma.payout.update({
+                  where: { id: payout.id },
+                  data: {
+                    status: PayoutStatus.PROCESSING,
+                    notes: 'PayPal not configured — manual processing required',
+                  },
+                });
+                break;
+              }
+
+              // Resolve receiver email from payout settings
+              const paypalSettings = await this.prisma.sellerPayoutSettings.findUnique({
+                where: { sellerId: payout.sellerId },
+                select: { paypalEmail: true, paypalVerified: true },
+              });
+
+              if (!paypalSettings?.paypalEmail) {
+                throw new Error('Seller has no PayPal email configured in payout settings');
+              }
+
+              if (!paypalSettings.paypalVerified) {
+                throw new Error('Seller PayPal email is not verified');
+              }
+
+              // Create PayPal payout batch (1 item per payout record)
+              const result = await this.paypalPayoutsService.createPayout({
+                payoutId: payout.id,
+                receiver: paypalSettings.paypalEmail,
+                amount: payout.amount.toNumber(),
+                currency: currency,
+                note: `Seller payout for ${payout.commissionCount || 0} sale(s) via NextPik`,
+              });
+
+              // Mark as PROCESSING — batch is submitted; status will be polled
+              await this.prisma.payout.update({
+                where: { id: payout.id },
+                data: {
+                  status: PayoutStatus.PROCESSING,
+                  paymentReference: result.batchId,
+                  notes: `PayPal batch submitted: ${result.batchId} (status: ${result.batchStatus})`,
+                },
+              });
+
+              this.logger.log(
+                `PayPal payout submitted for ${payout.id} -> batch ${result.batchId} (${result.batchStatus})`
+              );
+            } catch (paypalError) {
+              this.logger.error(`PayPal payout failed for ${payout.id}:`, paypalError);
+              await this.prisma.payout.update({
+                where: { id: payout.id },
+                data: {
+                  status: PayoutStatus.PROCESSING,
+                  notes: `PayPal failed: ${paypalError instanceof Error ? paypalError.message : 'Unknown error'}. Manual processing required.`,
+                },
+              });
+            }
             break;
 
           case 'WISE':
@@ -799,6 +1071,7 @@ export class PayoutSchedulerService {
       },
       take: 100,
     });
+    // Note: Prisma findMany with include returns full payout fields including paymentReference
 
     let updatedCount = 0;
 
@@ -817,12 +1090,76 @@ export class PayoutSchedulerService {
             this.logger.log(`Would check Stripe Connect status for payout ${payout.id}`);
             break;
           case 'PAYPAL':
-            // const paypalStatus = await this.paypalPayoutService.getPayoutStatus(payout.id);
-            // if (paypalStatus === 'SUCCESS') {
-            //   await this.completePayout(payout.id, paypalStatus.batchId);
-            //   updatedCount++;
-            // }
-            this.logger.log(`Would check PayPal status for payout ${payout.id}`);
+          case 'paypal':
+            if (!payout.paymentReference) {
+              this.logger.warn(
+                `PayPal payout ${payout.id} has no batch ID stored — cannot check status`
+              );
+              break;
+            }
+
+            try {
+              if (!this.paypalPayoutsService.configured) {
+                break;
+              }
+
+              const batch = await this.paypalPayoutsService.getBatchStatus(payout.paymentReference);
+              const resolution = this.paypalPayoutsService.resolveInternalStatus(
+                batch.batchStatus,
+                batch.items
+              );
+
+              if (resolution === 'COMPLETED') {
+                const transactionId = batch.items[0]?.transactionId || batch.batchId;
+                await this.completePayout(
+                  payout.id,
+                  transactionId,
+                  `PayPal batch ${batch.batchId}`
+                );
+                updatedCount++;
+                this.logger.log(`PayPal payout ${payout.id} completed — batch ${batch.batchId}`);
+              } else if (resolution === 'FAILED') {
+                const failedItem = batch.items[0];
+                const failReason =
+                  failedItem?.errors?.[0]?.message || `PayPal batch ${batch.batchStatus}`;
+                await this.failPayout(payout.id, failReason);
+                updatedCount++;
+                this.logger.warn(`PayPal payout ${payout.id} failed — ${failReason}`);
+
+                // Detect email-related failures and reset paypalVerified so the seller
+                // is prompted to correct their PayPal email before the next payout attempt.
+                // Triggers on:
+                //   • RETURNED  — funds sent back after claim period (email never registered/claimed)
+                //   • RECEIVER_UNREGISTERED — PayPal API: email has no PayPal account
+                const isEmailInvalid =
+                  failedItem?.transactionStatus === 'RETURNED' ||
+                  failedItem?.errors?.some((e) => e.name === 'RECEIVER_UNREGISTERED');
+
+                if (isEmailInvalid) {
+                  try {
+                    await this.prisma.sellerPayoutSettings.updateMany({
+                      where: { sellerId: payout.sellerId },
+                      data: {
+                        paypalVerified: false,
+                        rejectionNotes: `PayPal payout returned: ${failReason}. Please ensure your PayPal email is correct and registered with PayPal.`,
+                      },
+                    });
+                    this.logger.warn(
+                      `Reset paypalVerified=false for seller ${payout.sellerId} — email returned/unregistered`
+                    );
+                  } catch (updateErr) {
+                    this.logger.error(
+                      `Failed to reset paypalVerified for seller ${payout.sellerId}:`,
+                      updateErr
+                    );
+                  }
+                }
+              } else {
+                this.logger.log(`PayPal payout ${payout.id} still ${batch.batchStatus}`);
+              }
+            } catch (err) {
+              this.logger.error(`Failed to check PayPal status for payout ${payout.id}:`, err);
+            }
             break;
           case 'WISE':
             // const wiseStatus = await this.wisePayoutService.getTransferStatus(payout.id);
@@ -843,6 +1180,281 @@ export class PayoutSchedulerService {
     return {
       updated: updatedCount,
     };
+  }
+
+  /**
+   * Get seller's payout history with pagination
+   */
+  async getSellerPayoutHistory(
+    sellerId: string,
+    page: number = 1,
+    limit: number = 20,
+    status?: string
+  ) {
+    const where: any = { sellerId };
+    if (status && status !== 'all') {
+      where.status = status.toUpperCase();
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [payouts, total] = await Promise.all([
+      this.prisma.payout.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          store: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      }),
+      this.prisma.payout.count({ where }),
+    ]);
+
+    return {
+      payouts,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      limit,
+    };
+  }
+
+  /**
+   * Get seller's payout statistics
+   */
+  async getSellerPayoutStats(sellerId: string) {
+    // Get seller's store
+    const user = await this.prisma.user.findUnique({
+      where: { id: sellerId },
+      include: { store: { select: { id: true } } },
+    });
+
+    if (!user?.store) {
+      throw new NotFoundException('Store not found for seller');
+    }
+
+    const storeId = user.store.id;
+
+    // Fetch all data in parallel
+    const [completedPayouts, pendingPayouts, unpaidCommissions, lastPayout, frequencySetting] =
+      await Promise.all([
+        this.prisma.payout.aggregate({
+          where: { sellerId, status: PayoutStatus.COMPLETED },
+          _sum: { amount: true },
+          _count: true,
+        }),
+        this.prisma.payout.aggregate({
+          where: {
+            sellerId,
+            status: { in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING] },
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.commission.aggregate({
+          where: {
+            sellerId,
+            paidOut: false,
+            status: CommissionStatus.CONFIRMED,
+          },
+          _sum: { commissionAmount: true },
+        }),
+        this.prisma.payout.findFirst({
+          where: { sellerId, status: PayoutStatus.COMPLETED },
+          orderBy: { processedAt: 'desc' },
+          select: { processedAt: true, amount: true, currency: true },
+        }),
+        this.settingsService
+          .getSetting('payout_default_frequency')
+          .catch(() => ({ value: 'WEEKLY' })),
+      ]);
+
+    const payoutSchedule = String(frequencySetting.value);
+    const currency = await this.getPayoutCurrency(sellerId, storeId);
+
+    return {
+      totalPaidAllTime: Number(completedPayouts._sum.amount || 0),
+      totalPayoutsCount: completedPayouts._count,
+      pendingAmount: Number(pendingPayouts._sum.amount || 0),
+      nextPayoutAmount: Number(unpaidCommissions._sum.commissionAmount || 0),
+      lastPayoutDate: lastPayout?.processedAt?.toISOString() || null,
+      lastPayoutAmount: Number(lastPayout?.amount || 0),
+      lastPayoutCurrency: lastPayout?.currency || currency,
+      payoutSchedule,
+      nextPayoutDate: this.calculateNextPayoutDate(payoutSchedule),
+      currency,
+    };
+  }
+
+  /**
+   * Get eligible commissions for next payout
+   */
+  async getEligibleCommissions(sellerId: string) {
+    const commissions = await this.prisma.commission.findMany({
+      where: {
+        sellerId,
+        paidOut: false,
+        status: CommissionStatus.CONFIRMED,
+      },
+      include: {
+        order: {
+          select: {
+            orderNumber: true,
+            total: true,
+            currency: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100, // Limit to recent 100
+    });
+
+    const total = commissions.reduce((sum, c) => sum + Number(c.commissionAmount || 0), 0);
+
+    return {
+      commissions,
+      total,
+      count: commissions.length,
+    };
+  }
+
+  /**
+   * Request manual payout (seller-initiated)
+   */
+  async requestManualPayout(sellerId: string) {
+    // Check if manual requests are enabled
+    const enabled = await this.settingsService
+      .getSetting('payout_manual_request_enabled')
+      .catch(() => ({ value: true }));
+
+    if (!enabled.value) {
+      throw new BadRequestException('Manual payout requests are currently disabled');
+    }
+
+    // Get seller's store and payout settings
+    const user = await this.prisma.user.findUnique({
+      where: { id: sellerId },
+      include: {
+        store: true,
+        payoutSettings: { select: { paymentMethod: true, verified: true } },
+      },
+    });
+
+    if (!user?.store) {
+      throw new NotFoundException('Store not found for seller');
+    }
+
+    if (!user.payoutSettings?.verified) {
+      throw new BadRequestException(
+        'Your payout settings must be configured and verified before requesting a payout'
+      );
+    }
+
+    const storeId = user.store.id;
+
+    // Get minimum payout amount
+    const minAmountSetting = await this.settingsService
+      .getSetting('payout_minimum_amount')
+      .catch(() => ({ value: 50 }));
+    const minAmount = Number(minAmountSetting.value);
+
+    // Get eligible commissions
+    const eligible = await this.getEligibleCommissions(sellerId);
+
+    if (eligible.total < minAmount) {
+      throw new BadRequestException(
+        `Minimum payout amount is ${minAmount}. Your eligible amount is ${eligible.total.toFixed(2)}.`
+      );
+    }
+
+    // Get seller currency
+    const currency = await this.getPayoutCurrency(sellerId, storeId);
+
+    // Create payout request
+    const payout = await this.prisma.$transaction(async (prisma) => {
+      const newPayout = await prisma.payout.create({
+        data: {
+          sellerId,
+          storeId,
+          amount: new Decimal(eligible.total),
+          currency,
+          status: PayoutStatus.PENDING,
+          commissionCount: eligible.count,
+          paymentMethod: user.payoutSettings?.paymentMethod || 'bank_transfer',
+          periodStart: new Date(),
+          periodEnd: new Date(),
+          scheduledAt: new Date(),
+          notes: 'Manual payout request by seller',
+        },
+      });
+
+      // Link commissions to payout
+      const commissionIds = eligible.commissions.map((c) => c.id);
+      if (commissionIds.length > 0) {
+        await prisma.commission.updateMany({
+          where: { id: { in: commissionIds } },
+          data: {
+            payoutId: newPayout.id,
+            paidOut: true,
+            paidOutAt: new Date(),
+          },
+        });
+      }
+
+      return newPayout;
+    });
+
+    // Send notification email (non-blocking)
+    try {
+      await this.emailService.sendPayoutScheduled(user.email, {
+        sellerName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+        storeName: user.store.name,
+        payoutId: payout.id,
+        amount: Number(payout.amount),
+        currency: payout.currency,
+        commissionsCount: eligible.count,
+        periodStart: new Date().toISOString(),
+        periodEnd: new Date().toISOString(),
+        scheduledDate: new Date().toISOString(),
+        estimatedArrival: await this.getEstimatedArrival(),
+        paymentMethod: 'Manual Request',
+        sellerId,
+      });
+    } catch (emailErr) {
+      this.logger.error('Failed to send manual payout request email', emailErr);
+    }
+
+    return payout;
+  }
+
+  /**
+   * Calculate next payout date based on frequency
+   */
+  private calculateNextPayoutDate(frequency: string): string {
+    const now = new Date();
+    switch (frequency.toUpperCase()) {
+      case 'DAILY':
+        now.setDate(now.getDate() + 1);
+        break;
+      case 'WEEKLY':
+        now.setDate(now.getDate() + (7 - now.getDay()));
+        break;
+      case 'BIWEEKLY':
+        now.setDate(now.getDate() + 14);
+        break;
+      case 'MONTHLY':
+        now.setMonth(now.getMonth() + 1, 1);
+        break;
+      default:
+        now.setDate(now.getDate() + 7);
+    }
+    return now.toISOString();
   }
 
   /**

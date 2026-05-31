@@ -10,6 +10,7 @@ import {
   Package,
   ShoppingBag,
   Users,
+  User,
   FolderOpen,
   Star,
   BarChart3,
@@ -24,6 +25,13 @@ import {
   PackageCheck,
   Store,
   Bell,
+  Gift,
+  Wallet,
+  Building2,
+  Tag,
+  TrendingUp,
+  MousePointerClick,
+  FileText,
 } from 'lucide-react';
 
 interface NavItem {
@@ -77,6 +85,7 @@ const navigationGroups: NavGroup[] = [
       { nameKey: 'escrow', href: '/admin/escrow', icon: ShieldCheck },
       { nameKey: 'commissions', href: '/admin/commissions', icon: Percent },
       { nameKey: 'payouts', href: '/admin/payouts', icon: Banknote },
+      { nameKey: 'payoutSettings', href: '/admin/payout-settings', icon: Wallet },
       { nameKey: 'currencies', href: '/admin/currencies', icon: DollarSign },
     ],
   },
@@ -95,11 +104,29 @@ const navigationGroups: NavGroup[] = [
       { nameKey: 'advertisements', href: '/admin/advertisements', icon: Megaphone },
       { nameKey: 'advertisementPlans', href: '/admin/advertisement-plans', icon: CreditCard },
       { nameKey: 'announcements', href: '/admin/announcements', icon: Bell },
+      { nameKey: 'referrals', href: '/admin/referrals', icon: Gift },
     ],
   },
   {
+    titleKey: 'affiliate',
+    items: [
+      { nameKey: 'affiliateAdvertisers', href: '/admin/affiliate/advertisers', icon: Building2 },
+      { nameKey: 'affiliateProducts', href: '/admin/affiliate/products', icon: Tag },
+      { nameKey: 'affiliateCommissions', href: '/admin/affiliate/commissions', icon: TrendingUp },
+      { nameKey: 'affiliateClicks', href: '/admin/affiliate/clicks', icon: MousePointerClick },
+    ],
+  },
+  {
+    titleKey: 'blog',
+    items: [{ nameKey: 'blogPosts', href: '/admin/blog', icon: FileText }],
+  },
+  {
     titleKey: 'system',
-    items: [{ nameKey: 'settings', href: '/admin/settings', icon: Settings }],
+    items: [
+      { nameKey: 'settings', href: '/admin/settings', icon: Settings },
+      { nameKey: 'profile', href: '/admin/profile', icon: User },
+      { nameKey: 'security', href: '/admin/account/security', icon: ShieldCheck },
+    ],
   },
 ];
 

@@ -11,6 +11,7 @@ coverage
 out
 build
 .vercel
+apps/web/next-env.d.ts
 
 # Turbo
 .turbo
@@ -46,6 +47,9 @@ yarn.lock
 *.swo
 *~
 
+# Claude Code
+.claude/settings.json
+
 # Prisma
 prisma/migrations
 
@@ -71,12 +75,33 @@ test-gelato-webhook.sh
 GELATO_*.md
 POD_TESTING_CHECKLIST.md
 PRODUCT_IMAGES_VS_DESIGN_FILES.md
+
+# Stray debug/one-off scripts in api root
 apps/api/check-*.js
+apps/api/check-*.ts
 apps/api/get-*.js
+apps/api/get-*.ts
 apps/api/submit-*.js
 apps/api/resubmit-*.js
 apps/api/fix-*.js
 apps/api/sync-*.ts
 apps/api/test-*.ts
+apps/api/test-*.js
+apps/api/verify-*.ts
+apps/api/find-*.ts
+apps/api/identify-*.ts
+apps/api/process-*.ts
+apps/api/add-*.ts
 apps/api/apps/
 check-pricing.js
+
+# Log files and test result artifacts
+apps/api/logs/
+apps/api/backend-results.txt
+apps/web/frontend-results.txt
+
+# Auto-generated build artifacts
+apps/web/public/version.json
+
+# Personal/client-facing notes (not for repo)
+CLIENT_PROGRESS_REPORT.md

@@ -9,6 +9,10 @@ interface GelatoProductSelectorProps {
   value: string;
   onChange: (uid: string, productName?: string, productDetails?: GelatoProduct) => void;
   disabled?: boolean;
+  /** When false, catalog fetch is skipped entirely */
+  gelatoEnabled?: boolean;
+  /** Store ID to use for credential lookup (admin context) */
+  storeId?: string;
 }
 
 // Helper function to truncate UID for display
@@ -17,7 +21,13 @@ function truncateUid(uid: string): string {
   return `${uid.substring(0, 8)}...${uid.substring(uid.length - 8)}`;
 }
 
-export function GelatoProductSelector({ value, onChange, disabled }: GelatoProductSelectorProps) {
+export function GelatoProductSelector({
+  value,
+  onChange,
+  disabled,
+  gelatoEnabled = true,
+  storeId,
+}: GelatoProductSelectorProps) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -31,19 +41,7 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
     total,
     isLoading: loading,
     error,
-  } = useGelatoCatalog({
-    search: debouncedSearch,
-    // Note: E-commerce API doesn't support category filtering for custom store products
-    limit: 50,
-  });
-
-  // Debug logging
-  useEffect(() => {
-    if (products.length > 0) {
-      console.log('[GelatoProductSelector] Products:', products);
-      console.log('[GelatoProductSelector] First product:', products[0]);
-    }
-  }, [products]);
+  } = useGelatoCatalog({ search: debouncedSearch, limit: 50, storeId }, gelatoEnabled);
 
   // Debounce search
   useEffect(() => {
@@ -84,10 +82,11 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
       return;
     }
 
-    // If not in search results and we have a value, fetch directly from API
-    if (value) {
+    // If not in search results and we have a value, fetch directly from API.
+    // Skip if gelatoEnabled is false (e.g. admin context without seller credentials).
+    if (value && gelatoEnabled) {
       gelatoApi
-        .getProductDetails(value)
+        .getProductDetails(value, storeId)
         .then((product) => {
           setSelectedName(product.title || product.uid);
           setSelectedImage(product.previewUrl || '');
@@ -95,16 +94,18 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
         .catch((error) => {
           console.error('Failed to fetch product details for UID:', value, error);
           // Fallback: show truncated UID as name
-          setSelectedName(value);
+          setSelectedName(truncateUid(value));
           setSelectedImage('');
         });
+    } else if (value && !gelatoEnabled) {
+      setSelectedName(truncateUid(value));
     }
-  }, [value, products, selectedName]);
+  }, [value, products, selectedName, gelatoEnabled]);
 
   async function handleSelect(uid: string, name: string, image?: string) {
     try {
       // Fetch full product details for auto-population
-      const productDetails = await gelatoApi.getProductDetails(uid);
+      const productDetails = await gelatoApi.getProductDetails(uid, storeId);
       onChange(uid, name, productDetails);
       setSelectedName(name);
       setSelectedImage(image || '');
@@ -335,6 +336,20 @@ export function GelatoProductSelector({ value, onChange, disabled }: GelatoProdu
                               d="M9 5l7 7-7 7"
                             />
                           </svg>
+                        </a>
+                      </>
+                    ) : typeof error === 'object' && (error as any)?.status === 403 ? (
+                      <>
+                        <p className="font-semibold text-amber-900 mb-1">Gelato is not enabled</p>
+                        <p className="text-amber-700 text-xs mb-2">
+                          Your Gelato account is connected but the integration is turned off. Enable
+                          it in your Gelato settings to access the catalog.
+                        </p>
+                        <a
+                          href="/seller/gelato-settings"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-700 underline"
+                        >
+                          Go to Gelato Settings →
                         </a>
                       </>
                     ) : (

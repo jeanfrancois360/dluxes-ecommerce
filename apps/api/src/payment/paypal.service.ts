@@ -1,9 +1,16 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as paypal from '@paypal/checkout-server-sdk';
 import { PrismaService } from '../database/prisma.service';
 import { PaymentMethod, PaymentStatus, PaymentTransactionStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { assertOrderAccess, AuthenticatedUser } from '../common/authorization/order-access.helper';
 
 @Injectable()
 export class PayPalService {
@@ -196,12 +203,16 @@ export class PayPalService {
    * Capture PayPal order after user approval
    */
   async captureOrder(
-    paypalOrderId: string
+    paypalOrderId: string,
+    user: AuthenticatedUser
   ): Promise<{ success: boolean; orderId: string; transactionId: string }> {
     const client = this.getClient();
 
     try {
-      // Find our order by PayPal order ID (stored in metadata)
+      // Find our order by PayPal order ID (stored in metadata).
+      // NOTE: This is an O(n) full-table scan filtered in application memory because
+      // paypalOrderId is stored in the metadata JSON field, not a dedicated indexed column.
+      // Logged for follow-up: normalize PaymentTransaction to add a first-class paypalOrderId column.
       const transactions = await this.prisma.paymentTransaction.findMany({
         where: {
           paymentMethod: PaymentMethod.PAYPAL,
@@ -215,8 +226,11 @@ export class PayPalService {
       });
 
       if (!transaction) {
-        throw new BadRequestException('Order not found');
+        throw new NotFoundException('Payment order not found');
       }
+
+      // Verify the calling user owns this order before capturing funds.
+      await assertOrderAccess(this.prisma, transaction.orderId, user, 'buyer');
 
       if (transaction.status === PaymentTransactionStatus.SUCCEEDED) {
         throw new BadRequestException('Order already captured');
@@ -269,7 +283,11 @@ export class PayPalService {
       }
     } catch (error) {
       this.logger.error('PayPal capture failed:', error);
-      if (error instanceof BadRequestException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
         throw error;
       }
       throw new BadRequestException(`PayPal capture failed: ${error.message}`);
@@ -313,6 +331,61 @@ export class PayPalService {
 
       const response = await client.execute(request);
       this.logger.log(`PayPal refund created: ${response.result.id} for capture: ${captureId}`);
+
+      // Write audit trail: update PaymentTransaction status and Order.paymentStatus
+      try {
+        const txn = await this.prisma.paymentTransaction.findFirst({
+          where: {
+            paymentMethod: PaymentMethod.PAYPAL,
+            metadata: {
+              path: ['captureId'],
+              equals: captureId,
+            },
+          },
+          include: { order: true },
+        });
+        if (txn) {
+          const isFullRefund = !amount || amount >= Number(txn.amount);
+          await this.prisma.paymentTransaction.update({
+            where: { id: txn.id },
+            data: {
+              status: isFullRefund
+                ? PaymentTransactionStatus.REFUNDED
+                : PaymentTransactionStatus.PARTIALLY_REFUNDED,
+              refundedAmount: amount ? new Decimal(amount) : txn.amount,
+              refundedAt: new Date(),
+              metadata: {
+                ...(txn.metadata as any),
+                refundId: response.result.id,
+                refundedAt: new Date().toISOString(),
+                refundAmount: amount ?? 'full',
+              } as any,
+            },
+          });
+          await this.prisma.order.update({
+            where: { id: txn.orderId },
+            data: {
+              paymentStatus: isFullRefund
+                ? PaymentStatus.REFUNDED
+                : PaymentStatus.PARTIALLY_REFUNDED,
+            },
+          });
+          this.logger.log(
+            `PayPal refund audit trail written for transaction ${txn.id}, order ${txn.orderId}`
+          );
+        } else {
+          this.logger.warn(
+            `PayPal refund ${response.result.id}: no PaymentTransaction found for captureId ${captureId}`
+          );
+        }
+      } catch (auditError) {
+        this.logger.error(
+          `PayPal refund audit trail failed for captureId ${captureId}:`,
+          auditError
+        );
+        // Don't fail the refund response if audit write fails
+      }
+
       return response.result;
     } catch (error) {
       this.logger.error('PayPal refund failed:', error);

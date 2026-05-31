@@ -78,28 +78,32 @@ export const gelatoApi = {
     search?: string;
     limit?: number;
     offset?: number;
+    storeId?: string;
   }): Promise<{ products: GelatoProduct[]; total: number }> {
     const query = new URLSearchParams();
     if (params?.category) query.set('category', params.category);
     if (params?.search) query.set('search', params.search);
     if (params?.limit) query.set('limit', String(params.limit));
     if (params?.offset) query.set('offset', String(params.offset));
+    if (params?.storeId) query.set('storeId', params.storeId);
     const response = await api.get(`/gelato/catalog/products?${query}`);
     return response.data ?? response;
   },
 
-  async getProductDetails(productUid: string): Promise<GelatoProduct> {
-    const response = await api.get(`/gelato/catalog/products/${productUid}`);
+  async getProductDetails(productUid: string, storeId?: string): Promise<GelatoProduct> {
+    const query = storeId ? `?storeId=${encodeURIComponent(storeId)}` : '';
+    const response = await api.get(`/gelato/catalog/products/${productUid}${query}`);
     return response.data ?? response;
   },
 
   async getProductPrice(
     productUid: string,
-    params?: { quantity?: number; country?: string }
+    params?: { quantity?: number; country?: string; storeId?: string }
   ): Promise<{ baseCost: number; currency: string; productUid: string }> {
     const query = new URLSearchParams();
     if (params?.quantity) query.set('quantity', String(params.quantity));
     if (params?.country) query.set('country', params.country);
+    if (params?.storeId) query.set('storeId', params.storeId);
     const response = await api.get(`/gelato/catalog/products/${productUid}/price?${query}`);
     return response.data ?? response;
   },

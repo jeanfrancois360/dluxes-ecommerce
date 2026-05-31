@@ -128,12 +128,24 @@ const SILENT_FAIL_ENDPOINTS = [
   '/advertisements/active',
   '/advertisements/pending',
   '/advertisement-plans',
+  '/gelato/catalog',
+  '/seller/gelato',
 ];
 
 async function handleResponse(response: Response) {
   const contentType = response.headers.get('content-type');
   const isJson = contentType?.includes('application/json');
-  const data = isJson ? await response.json() : await response.text();
+  const text = await response.text();
+  let data: any;
+  if (isJson && text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  } else {
+    data = text || null;
+  }
 
   // Check if this is a non-critical endpoint that can fail silently
   const url = new URL(response.url);
@@ -176,14 +188,13 @@ async function handleResponse(response: Response) {
   }
 
   // Unwrap response if it's wrapped in { success, data } format
-  if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
-    if (data.success) {
+  if (data && typeof data === 'object' && 'success' in data) {
+    if (data.success && 'data' in data) {
       return data.data;
-    } else {
-      // Handle error response from backend
+    } else if (!data.success) {
+      // Covers both { success: false, data: null } and { success: false, message: '...' }
       const errorMessage = data.message || 'An error occurred';
 
-      // Only log errors for critical endpoints
       if (!isSilentFailEndpoint) {
         console.error('[API Error] Failed response:', {
           url: response.url,
@@ -209,6 +220,7 @@ export async function apiClient<T = any>(endpoint: string, options: RequestInit 
 
   const config: RequestInit = {
     ...restOptions,
+    credentials: 'include', // required so httpOnly cookies (device_trust_token, etc.) are sent
     body,
     headers: {
       // Don't set Content-Type for FormData - browser will set it with boundary
