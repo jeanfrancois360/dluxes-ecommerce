@@ -454,6 +454,7 @@ export class DhlRatesService {
     configured: boolean;
     credentialsValid?: boolean;
     environment: string;
+    credentialError?: string | null;
   }> {
     const enabled = this.isApiEnabled();
     const environment = this.configService.get<string>('DHL_API_ENVIRONMENT', 'test');
@@ -478,6 +479,16 @@ export class DhlRatesService {
       configured: true,
       credentialsValid,
       environment,
+      // Provide actionable fix guidance when credentials fail
+      credentialError:
+        credentialsValid === false
+          ? environment === 'sandbox' || environment === 'test'
+            ? 'DHL sandbox credentials are invalid or expired. ' +
+              'Register/renew at developer.dhl.com → My Apps → Create App → Express (MyDHL API) sandbox. ' +
+              'Update DHL_EXPRESS_API_KEY and DHL_EXPRESS_API_SECRET in apps/api/.env.'
+            : 'DHL production credentials are invalid. ' +
+              'Verify DHL_EXPRESS_API_KEY and DHL_EXPRESS_API_SECRET match your DHL account at developer.dhl.com.'
+          : null,
     };
   }
 }
