@@ -69,6 +69,8 @@ export interface EasyshipPurchaseLabelDto {
     quantity: number;
     value: number; // declared customs value per unit (USD)
     weightKg: number;
+    hsCode?: string; // Harmonized System tariff code (falls back to '999999' if unset)
+    originCountry?: string; // ISO 2-letter country of manufacture (required for customs)
   }>;
   totalWeightKg: number;
   orderNumber?: string;
@@ -325,7 +327,10 @@ export class EasyshipService {
               quantity: item.quantity,
               declared_currency: 'USD',
               declared_customs_value: item.value || 1,
-              hs_code: '999999',
+              // Use real HS code from product when available; '999999' is generic catch-all
+              hs_code: item.hsCode || '999999',
+              // EasyShip 2024-09 API uses origin_country_alpha2 (ISO 2-letter code)
+              origin_country_alpha2: item.originCountry?.toUpperCase() || 'US',
               actual_weight: item.weightKg || 0.5,
               dimensions: { length: 10, width: 10, height: 10 },
             })),

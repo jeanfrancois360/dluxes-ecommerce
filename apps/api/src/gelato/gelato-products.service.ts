@@ -23,19 +23,20 @@ export class GelatoProductsService {
       offset?: number;
       search?: string;
     },
-    userId?: string
+    userId?: string,
+    storeId?: string
   ) {
-    return this.gelatoService.getProducts(params, userId);
+    return this.gelatoService.getProducts(params, userId, storeId);
   }
 
   async getCategories(userId?: string) {
     return this.gelatoService.getProductCategories(userId);
   }
 
-  async getProductDetails(productUid: string, userId?: string) {
+  async getProductDetails(productUid: string, userId?: string, storeId?: string) {
     // Try to fetch from Gelato API
     try {
-      const gelatoProduct = await this.gelatoService.getProduct(productUid, userId);
+      const gelatoProduct = await this.gelatoService.getProduct(productUid, userId, storeId);
 
       // Check if we have a local product with this gelatoProductUid
       const localProduct = await this.prisma.product.findFirst({

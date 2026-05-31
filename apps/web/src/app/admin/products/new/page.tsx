@@ -184,6 +184,7 @@ export default function AdminNewProductPage() {
               selectedStore?.gelatoSettings?.isEnabled && selectedStore?.gelatoSettings?.isVerified
             )
           }
+          adminStoreId={selectedStore?.id}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
         />

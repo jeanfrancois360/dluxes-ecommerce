@@ -18,7 +18,13 @@ export function useGelatoCategories() {
 }
 
 export function useGelatoCatalog(
-  params?: { category?: string; search?: string; limit?: number; offset?: number },
+  params?: {
+    category?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+    storeId?: string;
+  },
   enabled = true
 ) {
   const key = enabled

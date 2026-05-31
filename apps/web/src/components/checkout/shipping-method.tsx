@@ -20,6 +20,8 @@ export interface ShippingMethod {
   icon?: React.ReactNode;
   carrier?: string;
   source?: string;
+  /** True when the carrier delivers to a parcel shop (e.g. DPD Shop, bpost @bpack) */
+  requiresServicePoint?: boolean;
 }
 
 interface ShippingMethodProps {
@@ -151,6 +153,7 @@ export function ShippingMethodSelector({
             : String(opt.estimatedDays),
         carrier: opt.carrier,
         source: opt.source,
+        requiresServicePoint: opt.requiresServicePoint,
         icon: undefined, // Backend options don't have icons
       }));
     }
@@ -355,6 +358,11 @@ export function ShippingMethodSelector({
                             {SOURCE_LABELS[method.source].label}
                           </span>
                         )}
+                        {method.requiresServicePoint && (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-violet-50 text-violet-700 border-violet-200">
+                            Parcel shop
+                          </span>
+                        )}
                       </div>
                       <div className="text-right flex-shrink-0">
                         {shippingCalculations[method.id]?.isFree ? (
@@ -387,6 +395,12 @@ export function ShippingMethodSelector({
                       </div>
                     </div>
                     <p className="text-sm text-neutral-600 mb-2">{method.description}</p>
+                    {method.requiresServicePoint && (
+                      <p className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded px-2 py-1 mb-2">
+                        Delivered to a nearby parcel shop — a pickup point will be assigned after
+                        your order is placed.
+                      </p>
+                    )}
                     <div className="flex items-center gap-2 text-xs">
                       <svg
                         className="w-4 h-4 text-neutral-400"

@@ -475,6 +475,8 @@ model Product {
   previousStock    Int? // For smooth inventory transition animations
   weight           Decimal?      @db.Decimal(10, 2)
   weightGrams      Int?          // Canonical weight in grams. The `weight` Decimal field above is legacy (kg or assumed kg).
+  hsCode          String?       // Harmonized System tariff code for customs declarations (e.g. "6109.10")
+  countryOfOrigin String?       // ISO 2-letter country where product was manufactured (e.g. "CN", "TR")
 
   // Product Type & Purchase Model
   productType     ProductType  @default(PHYSICAL)

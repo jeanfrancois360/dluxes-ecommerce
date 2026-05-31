@@ -59,6 +59,17 @@ export interface DhlShipmentRequest {
   // Label options
   labelFormat?: 'PDF' | 'PNG' | 'ZPL' | 'EPL';
   labelTemplate?: string; // ECOM26_84_001, etc.
+
+  // Export declaration line items — required for non-EU international shipments
+  exportLineItems?: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number; // price per unit
+    currency: string; // e.g. 'USD'
+    weightKg: number; // net weight per unit in kg
+    hsCode?: string; // Harmonized System tariff code
+    countryOfManufacture?: string; // ISO 2-letter country code
+  }>;
 }
 
 // Shipment Response Interface
@@ -335,6 +346,53 @@ export class DhlShipmentService {
       incoterm: request.incoterm || 'DAP',
       unitOfMeasurement: 'metric',
     };
+
+    // exportDeclaration is mandatory for all non-EU international (isCustomsDeclarable=true) shipments
+    if (isCustomsDeclarable) {
+      const lineItems =
+        request.exportLineItems && request.exportLineItems.length > 0
+          ? request.exportLineItems
+          : [
+              {
+                description: request.description.substring(0, 50) || 'E-commerce goods',
+                quantity: 1,
+                unitPrice: request.declaredValue || 10,
+                currency: request.declaredValueCurrency || 'USD',
+                weightKg: request.packages.reduce((sum, p) => sum + p.weight, 0),
+                hsCode: undefined,
+                countryOfManufacture: undefined,
+              },
+            ];
+
+      (payload.content as any).exportDeclaration = {
+        invoice: {
+          number: request.customerReference || `INV-${Date.now()}`,
+          date: request.plannedShippingDate,
+        },
+        exportReasonType: 'SALE',
+        lineItems: lineItems.map((item, index) => ({
+          number: index + 1,
+          description: item.description.substring(0, 50),
+          price: item.unitPrice,
+          priceCurrency: item.currency,
+          quantity: {
+            value: item.quantity,
+            unitOfMeasurement: 'PCS',
+          },
+          weight: {
+            netValue: Math.max(0.001, item.weightKg),
+          },
+          ...(item.hsCode
+            ? {
+                commodityCodes: [{ typeCode: 'outbound', code: item.hsCode }],
+              }
+            : {}),
+          ...(item.countryOfManufacture
+            ? { manufacturerCountry: item.countryOfManufacture.toUpperCase() }
+            : {}),
+        })),
+      };
+    }
 
     payload.outputImageProperties = {
       imageOptions: [
