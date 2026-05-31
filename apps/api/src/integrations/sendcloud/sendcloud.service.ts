@@ -46,10 +46,12 @@ export interface SendcloudGetRatesRequest {
 export interface SendcloudAddress {
   name: string;
   company?: string;
-  address: string;
+  address: string; // Street name (SendCloud splits street from house number)
+  houseNumber?: string; // House/building number (optional — inferred from address if omitted)
   city: string;
   postalCode: string;
   country: string; // ISO 2
+  state?: string; // Required for US/CA/AU/IT destinations (2-letter code, e.g. "CA")
   phone?: string;
   email?: string;
 }
@@ -69,6 +71,8 @@ export interface SendcloudPurchaseLabelDto {
     weight: number; // kg per unit
     value: number; // monetary value per unit
     sku?: string;
+    hsCode?: string; // Harmonized System tariff code (required for customs)
+    originCountry?: string; // ISO 2-letter country of manufacture (required for customs)
   }>;
 }
 
@@ -224,14 +228,23 @@ export class SendcloudService {
     }
 
     // POST /parcels — single parcel creation
+    const isInternational =
+      dto.toAddress.country.toUpperCase() !== dto.fromAddress.country.toUpperCase();
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
     const parcelPayload = {
       parcel: {
         name: dto.toAddress.name,
         company_name: dto.toAddress.company || '',
+        // SendCloud separates street name from house number for European addresses.
+        // For non-EU addresses the full street+number goes in `address`; house_number stays empty.
         address: dto.toAddress.address,
+        house_number: dto.toAddress.houseNumber || '',
         city: dto.toAddress.city,
         postal_code: dto.toAddress.postalCode,
         country: dto.toAddress.country.toUpperCase(), // SendCloud expects plain ISO-2 string
+        // Required for US, Canada, Australia, and Italy destinations
+        ...(dto.toAddress.state ? { country_state: dto.toAddress.state } : {}),
         telephone: dto.toAddress.phone || '',
         email: dto.toAddress.email || '',
         // Weight must be a string in kg with 3 decimal places per SendCloud docs
@@ -244,15 +257,32 @@ export class SendcloudService {
         apply_shipping_rules: false,
         // Service point — required for DPD Shop and other parcel-pickup methods
         ...(dto.servicePointId ? { to_service_point: dto.servicePointId } : {}),
-        // Parcel items — required by some carriers and displayed in SendCloud dashboard
+        // Customs information — MUST be nested under customs_information (not at root level)
+        // Required: customs_invoice_nr, customs_shipment_type
+        ...(isInternational
+          ? {
+              customs_information: {
+                customs_invoice_nr: dto.orderNumber || dto.orderId,
+                customs_shipment_type: 2, // 2 = Commercial Goods
+                export_type: 'commercial_b2c', // B2C e-commerce
+                invoice_date: today,
+              },
+            }
+          : {}),
+        // Parcel items — hs_code is always required per SendCloud item schema
         ...(dto.items && dto.items.length > 0
           ? {
               parcel_items: dto.items.map((item) => ({
                 description: item.description,
                 quantity: item.quantity,
+                // Weight per unit as string in kg (3 decimal places)
                 weight: item.weight.toFixed(3),
                 value: item.value.toFixed(2),
                 sku: item.sku || '',
+                // hs_code is required in parcel_items schema; empty string is accepted when unknown
+                hs_code: item.hsCode || '',
+                // origin_country is optional but strongly recommended for customs
+                origin_country: item.originCountry ? item.originCountry.toUpperCase() : undefined,
               })),
             }
           : {}),

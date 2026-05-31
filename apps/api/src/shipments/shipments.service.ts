@@ -149,6 +149,8 @@ export class ShipmentsService {
             city: addr?.city || '',
             postalCode: addr?.postalCode || addr?.zipCode || '',
             country: addr?.country || 'BE',
+            // US destinations require state; SendCloud ignores it for EU countries
+            state: addr?.province || addr?.state || undefined,
             phone: order.user?.phone || addr?.phone || undefined,
             email: order.user?.email || undefined,
           },
@@ -167,6 +169,8 @@ export class ShipmentsService {
             weight: item.product?.weight ? Number(item.product.weight) : 0.5,
             value: Number(item.price || item.product?.price || 0),
             sku: item.product?.sku || undefined,
+            hsCode: item.product?.hsCode || undefined,
+            originCountry: item.product?.countryOfOrigin || undefined,
           })),
           weightGrams: Math.max(10, Math.round(weightGrams)),
           orderNumber: order.orderNumber,
@@ -231,6 +235,8 @@ export class ShipmentsService {
             quantity: item.quantity,
             value: Number(item.price),
             weightKg: item.product?.weight ? Number(item.product.weight) : 0.5,
+            hsCode: item.product?.hsCode || undefined,
+            originCountry: item.product?.countryOfOrigin || undefined,
           })),
           totalWeightKg: Math.max(0.01, totalWeightKg),
           orderNumber: order.orderNumber,
@@ -323,7 +329,10 @@ export class ShipmentsService {
                       35.274
                   )
                 ),
-                origin_country: 'US',
+                // EasyPost uses hs_tariff_number (not hs_code) in CustomsItem
+                hs_tariff_number: item.product?.hsCode || '',
+                origin_country:
+                  item.product?.countryOfOrigin?.toUpperCase() || platformFrom.country || 'US',
               })),
             }
           : undefined;

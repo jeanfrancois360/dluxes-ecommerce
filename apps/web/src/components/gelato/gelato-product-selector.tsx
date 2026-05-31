@@ -11,6 +11,8 @@ interface GelatoProductSelectorProps {
   disabled?: boolean;
   /** When false, catalog fetch is skipped entirely */
   gelatoEnabled?: boolean;
+  /** Store ID to use for credential lookup (admin context) */
+  storeId?: string;
 }
 
 // Helper function to truncate UID for display
@@ -24,6 +26,7 @@ export function GelatoProductSelector({
   onChange,
   disabled,
   gelatoEnabled = true,
+  storeId,
 }: GelatoProductSelectorProps) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -38,7 +41,7 @@ export function GelatoProductSelector({
     total,
     isLoading: loading,
     error,
-  } = useGelatoCatalog({ search: debouncedSearch, limit: 50 }, gelatoEnabled);
+  } = useGelatoCatalog({ search: debouncedSearch, limit: 50, storeId }, gelatoEnabled);
 
   // Debounce search
   useEffect(() => {
@@ -83,7 +86,7 @@ export function GelatoProductSelector({
     // Skip if gelatoEnabled is false (e.g. admin context without seller credentials).
     if (value && gelatoEnabled) {
       gelatoApi
-        .getProductDetails(value)
+        .getProductDetails(value, storeId)
         .then((product) => {
           setSelectedName(product.title || product.uid);
           setSelectedImage(product.previewUrl || '');
@@ -102,7 +105,7 @@ export function GelatoProductSelector({
   async function handleSelect(uid: string, name: string, image?: string) {
     try {
       // Fetch full product details for auto-population
-      const productDetails = await gelatoApi.getProductDetails(uid);
+      const productDetails = await gelatoApi.getProductDetails(uid, storeId);
       onChange(uid, name, productDetails);
       setSelectedName(name);
       setSelectedImage(image || '');

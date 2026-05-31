@@ -79,6 +79,8 @@ export interface ShippingOption {
   carrier?: string;
   /** Provider tier that supplied this rate (easypost | sendcloud | easyship | dhl | zone | manual | gelato) */
   source?: string;
+  /** True when the carrier requires a service point selection (e.g. DPD Shop, bpost @bpack) */
+  requiresServicePoint?: boolean;
 }
 
 export interface OrderCalculationResponse {

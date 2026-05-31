@@ -157,6 +157,8 @@ interface ProductFormProps {
   adminMode?: boolean;
   /** When adminMode=true, reflects the selected store's Gelato verified+enabled status */
   adminGelatoConfigured?: boolean;
+  /** When adminMode=true, the internal store ID for Gelato credential lookup */
+  adminStoreId?: string;
   onSubmit: (data: Partial<ProductData>) => Promise<void>;
   onCancel: () => void;
 }
@@ -581,6 +583,7 @@ export default function ProductForm({
   isEdit = false,
   adminMode = false,
   adminGelatoConfigured = false,
+  adminStoreId,
   onSubmit,
   onCancel,
 }: ProductFormProps) {
@@ -669,6 +672,8 @@ export default function ProductForm({
         ? (product as any).materials.filter(Boolean)
         : [],
       weight: (product as any)?.weight || undefined,
+      hsCode: (product as any)?.hsCode || '',
+      countryOfOrigin: (product as any)?.countryOfOrigin || '',
       // Real Estate Fields
       propertyType: (product as any)?.propertyType || '',
       bedrooms: (product as any)?.bedrooms || undefined,
@@ -848,6 +853,8 @@ export default function ProductForm({
         sizes: (product as any)?.sizes || [],
         materials: (product as any)?.materials || [],
         weight: (product as any)?.weight || undefined,
+        hsCode: (product as any)?.hsCode || '',
+        countryOfOrigin: (product as any)?.countryOfOrigin || '',
         // Product-type specific fields...
         propertyType: (product as any)?.propertyType || '',
         bedrooms: (product as any)?.bedrooms || undefined,
@@ -1288,6 +1295,7 @@ export default function ProductForm({
               isGelatoConfigured={isGelatoConfigured}
               isGelatoEnabled={isGelatoEnabled}
               gelatoAccountName={gelatoSettings?.gelatoAccountName ?? null}
+              storeId={adminMode ? adminStoreId : undefined}
             />
           </div>
 
@@ -1825,6 +1833,56 @@ export default function ProductForm({
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
                     placeholder="0.00"
                   />
+                </div>
+
+                {/* HS Code — customs tariff code for international shipping */}
+                <div>
+                  <label
+                    htmlFor="hsCode"
+                    className="block text-sm font-medium text-gray-700 mb-1.5"
+                  >
+                    HS Code <span className="text-xs font-normal text-gray-400">(customs)</span>
+                  </label>
+                  <input
+                    id="hsCode"
+                    type="text"
+                    value={formData.hsCode || ''}
+                    onChange={(e) => setFormData({ ...formData, hsCode: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
+                    placeholder="e.g. 6109.10"
+                    maxLength={20}
+                  />
+                  <p className="mt-1 text-xs text-gray-400">
+                    Harmonized System tariff code — required for international shipments
+                  </p>
+                </div>
+
+                {/* Country of Origin — required by customs for international shipments */}
+                <div>
+                  <label
+                    htmlFor="countryOfOrigin"
+                    className="block text-sm font-medium text-gray-700 mb-1.5"
+                  >
+                    Country of Origin{' '}
+                    <span className="text-xs font-normal text-gray-400">(customs)</span>
+                  </label>
+                  <input
+                    id="countryOfOrigin"
+                    type="text"
+                    value={formData.countryOfOrigin || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        countryOfOrigin: e.target.value.toUpperCase().slice(0, 2),
+                      })
+                    }
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent uppercase"
+                    placeholder="e.g. CN"
+                    maxLength={2}
+                  />
+                  <p className="mt-1 text-xs text-gray-400">
+                    ISO 2-letter code where the product was manufactured — required for customs
+                  </p>
                 </div>
               </div>
             )}

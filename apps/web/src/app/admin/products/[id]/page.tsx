@@ -292,6 +292,7 @@ function ProductEditContent({ params }: { params: Promise<{ id: string }> }) {
           isEdit
           adminMode
           adminGelatoConfigured={storeGelatoOk}
+          adminStoreId={selectedStore?.id}
           onSubmit={handleSubmit}
           onCancel={handleCancel}
         />

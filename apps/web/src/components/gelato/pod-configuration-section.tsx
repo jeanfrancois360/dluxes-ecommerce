@@ -32,6 +32,8 @@ interface PodConfigurationSectionProps {
   // Legacy props kept for backward compat (admin form)
   isGelatoAvailable?: boolean;
   storeSelected?: boolean;
+  /** Store ID for admin catalog credential lookup */
+  storeId?: string;
 }
 
 const GOLD = '#CBB57B';
@@ -62,6 +64,7 @@ export function PodConfigurationSection({
   isGelatoEnabled,
   gelatoAccountName,
   isGelatoAvailable = true,
+  storeId,
 }: PodConfigurationSectionProps) {
   const isPod = fulfillmentType === 'GELATO_POD';
   const hasProductImages = productImages.length > 0;
@@ -263,6 +266,7 @@ export function PodConfigurationSection({
                 }}
                 disabled={disabled}
                 gelatoEnabled={isGelatoEnabled !== false}
+                storeId={storeId}
               />
             )}
           </section>

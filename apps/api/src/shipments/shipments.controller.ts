@@ -771,6 +771,18 @@ export class ShipmentsController {
           declaredValue: declaredValue > 0 ? declaredValue : 100,
           declaredValueCurrency: 'USD',
           customerReference: `Order-${dto.orderId.substring(0, 10)}`,
+          // Line items for export declaration (required for non-EU international shipments)
+          exportLineItems: order.items
+            .filter((item: any) => dto.itemIds.includes(item.id))
+            .map((item: any) => ({
+              description: (item.product?.name || 'Item').substring(0, 50),
+              quantity: item.quantity,
+              unitPrice: Number(item.price) || 1,
+              currency: 'USD',
+              weightKg: item.product?.weight ? Number(item.product.weight) : 0.5,
+              hsCode: item.product?.hsCode || undefined,
+              countryOfManufacture: item.product?.countryOfOrigin || undefined,
+            })),
         };
 
         this.logger.log(
