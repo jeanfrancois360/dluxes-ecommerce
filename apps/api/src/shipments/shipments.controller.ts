@@ -529,7 +529,8 @@ export class ShipmentsController {
         ...dto,
         estimatedDelivery: dto.estimatedDelivery ? new Date(dto.estimatedDelivery) : undefined,
       },
-      req.user.id
+      req.user.id,
+      req.user.role
     );
 
     return {
