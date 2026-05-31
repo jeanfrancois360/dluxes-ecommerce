@@ -612,9 +612,9 @@ export default function ProductForm({
     // Transform backend image format to frontend format on initial load
     let initialImages: string[] = [];
     if (product) {
-      // Priority 1: ProductImage relation (array of image objects)
+      // Priority 1: ProductImage relation (objects) OR plain string URLs
       if (Array.isArray(product.images) && product.images.length > 0) {
-        initialImages = product.images.map((img: any) => img.url);
+        initialImages = product.images.map((img: any) => (typeof img === 'string' ? img : img.url));
       }
       // Priority 2: heroImage field (simple string)
       else if ((product as any).heroImage) {
@@ -804,9 +804,9 @@ export default function ProductForm({
       // Transform backend image format to frontend format (images array)
       let imageArray: string[] = [];
 
-      // Priority 1: ProductImage relation (array of image objects)
+      // Priority 1: ProductImage relation (objects) OR plain string URLs
       if (Array.isArray(product.images) && product.images.length > 0) {
-        imageArray = product.images.map((img: any) => img.url);
+        imageArray = product.images.map((img: any) => (typeof img === 'string' ? img : img.url));
       }
       // Priority 2: heroImage field (simple string)
       else if ((product as any).heroImage) {
@@ -947,6 +947,7 @@ export default function ProductForm({
         designFileUrl: (product as any)?.designFileUrl || '',
         printAreas: (product as any)?.printAreas || null,
         baseCost: (product as any)?.baseCost || undefined,
+        markupPercentage: (product as any)?.markupPercentage || undefined,
       });
     }
   }, [product]);
