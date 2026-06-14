@@ -294,9 +294,10 @@ export class AwinFeedService {
 
     if (existing) {
       // Update pricing, stock, deep link — preserve admin overrides on isFeatured/displayOrder/tags.
+      // Also restore if soft-deleted: feed is the source of truth for FEED products.
       await this.prisma.affiliateProduct.update({
         where: { id: existing.id },
-        data: productData,
+        data: { ...productData, deletedAt: null, isActive: true },
       });
 
       // Refresh the EN translation title + description (content update from feed).
