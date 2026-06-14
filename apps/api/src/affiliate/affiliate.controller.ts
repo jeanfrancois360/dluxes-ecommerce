@@ -36,6 +36,8 @@ import {
   SyncCommissionsRequestDto,
   ListCommissionsQueryDto,
   ClickAnalyticsQueryDto,
+  TriggerFeedSyncDto,
+  FeedSyncHistoryQueryDto,
 } from './dto/affiliate.dto';
 
 /**
@@ -361,6 +363,65 @@ export class AffiliateController {
   async getCommissionStats(@Query('advertiserId') advertiserId?: string) {
     const stats = await this.affiliateService.getCommissionStats(advertiserId);
     return { success: true, data: stats };
+  }
+
+  // ============================================================================
+  // ADMIN — FEED SYNC
+  // ============================================================================
+
+  /**
+   * POST /affiliate/admin/feeds/sync
+   * Trigger a full feed sync for all active advertisers (ADMIN).
+   * Runs in the background; responds immediately with the result summary.
+   */
+  @Post('admin/feeds/sync')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @HttpCode(HttpStatus.OK)
+  async triggerFeedSync(@Body() dto: TriggerFeedSyncDto) {
+    if (dto.awinMerchantId) {
+      const result = await this.affiliateService.syncFeedForMerchant(dto.awinMerchantId);
+      return { success: true, data: result };
+    }
+    const result = await this.affiliateService.syncAllFeeds();
+    return { success: true, data: result };
+  }
+
+  /**
+   * POST /affiliate/admin/feeds/sync/:awinMerchantId
+   * Trigger a feed sync for a single Awin merchant (ADMIN).
+   */
+  @Post('admin/feeds/sync/:awinMerchantId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @HttpCode(HttpStatus.OK)
+  async triggerFeedSyncForMerchant(@Param('awinMerchantId') awinMerchantId: string) {
+    const result = await this.affiliateService.syncFeedForMerchant(awinMerchantId);
+    return { success: true, data: result };
+  }
+
+  /**
+   * GET /affiliate/admin/feeds
+   * List all available Awin product feeds (live from Awin API) (ADMIN).
+   */
+  @Get('admin/feeds')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async listAvailableFeeds() {
+    const feeds = await this.affiliateService.listAvailableFeeds();
+    return { success: true, data: feeds };
+  }
+
+  /**
+   * GET /affiliate/admin/feeds/history
+   * Paginated AwinFeedSync audit log (ADMIN).
+   */
+  @Get('admin/feeds/history')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  async listFeedSyncHistory(@Query() query: FeedSyncHistoryQueryDto) {
+    const result = await this.affiliateService.listFeedSyncs(query);
+    return { success: true, data: result };
   }
 
   // ============================================================================

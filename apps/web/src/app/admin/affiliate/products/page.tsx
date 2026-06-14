@@ -22,6 +22,7 @@ import {
   Eye,
   EyeOff,
   Languages,
+  RefreshCw,
 } from 'lucide-react';
 import type { AffiliateProduct } from '@/lib/api/affiliate';
 
@@ -599,6 +600,15 @@ function buildColumns(
               Featured
             </span>
           )}
+          <span
+            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${
+              item.fulfillmentSource === 'FEED'
+                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                : 'bg-gray-50 text-gray-500 border-gray-200'
+            }`}
+          >
+            {item.fulfillmentSource === 'FEED' ? 'Feed' : 'Manual'}
+          </span>
         </div>
       ),
     },
@@ -712,6 +722,30 @@ function AffiliateProductsContent() {
   const { advertisers: approvedAdvertisers, loading: advertisersLoading } = useAffiliateAdvertisers(
     useMemo(() => ({ limit: 100, approvalStatus: 'APPROVED' }), [])
   );
+
+  // Feed sync state
+  const [syncingFeeds, setSyncingFeeds] = useState(false);
+
+  const handleSyncFeeds = async () => {
+    if (!window.confirm('Trigger a full Awin feed sync for all active advertisers?')) return;
+    try {
+      setSyncingFeeds(true);
+      const result = await affiliateApi.triggerFeedSync();
+      if ('totalUpserted' in result) {
+        toast.success(
+          `Feed sync complete — ${result.totalUpserted} upserted, ${result.totalErrors} errors`,
+          { duration: 6000 }
+        );
+      } else {
+        toast.success(`Feed sync complete — ${result.productsUpserted} upserted`);
+      }
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Feed sync failed.');
+    } finally {
+      setSyncingFeeds(false);
+    }
+  };
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -906,12 +940,22 @@ function AffiliateProductsContent() {
             Manage affiliate product listings ({pagination.total} total)
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800"
-        >
-          + Create Product
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSyncFeeds}
+            disabled={syncingFeeds}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncingFeeds ? 'animate-spin' : ''}`} />
+            {syncingFeeds ? 'Syncing…' : 'Sync Feeds'}
+          </button>
+          <button
+            onClick={openCreate}
+            className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800"
+          >
+            + Create Product
+          </button>
+        </div>
       </div>
 
       {/* Filter bar */}

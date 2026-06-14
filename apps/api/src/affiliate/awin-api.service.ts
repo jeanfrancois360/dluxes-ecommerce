@@ -7,6 +7,50 @@ import { ConfigService } from '@nestjs/config';
 // Ref: Awin Developer Centre + awin-py library field introspection
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Types — Awin Product Data API (productdata.awin.com)
+// Feed list: GET /datafeed/list/apikey/{AWIN_API_TOKEN}/
+// Feed download: URL from feed list (gzipped CSV)
+// ---------------------------------------------------------------------------
+
+/** One row from the feed-list CSV returned by productdata.awin.com */
+export interface AwinFeedMeta {
+  feedId: string;
+  feedName: string;
+  advertiserId: string; // Awin numeric merchant ID (matches AffiliateAdvertiser.awinMerchantId)
+  advertiserName: string;
+  language: string;
+  region: string;
+  vertical: string;
+  productCount: number;
+  lastImported: string; // ISO date string
+  downloadUrl: string; // Pre-signed or token-embedded download URL
+}
+
+/**
+ * Fields extracted from a single Awin product-feed CSV row.
+ * All values are raw strings as returned by the feed; callers must coerce types.
+ * Only the fields used for product import are listed; the full `raw` map is
+ * available for any additional field.
+ */
+export interface AwinFeedProduct {
+  merchantProductId: string; // aw_product_id
+  productName: string; // product_name
+  awDeepLink: string; // aw_deep_link  ← Awin-tracked URL (awin1.com)
+  awImageUrl: string; // aw_image_url
+  merchantImageUrl: string; // merchant_image_url
+  searchPrice: string; // search_price (current / discounted)
+  storePrice: string; // store_price (original / RRP)
+  currency: string; // currency
+  description: string; // description
+  brandName: string; // brand_name
+  inStock: string; // in_stock ('yes'/'no' or '1'/'0')
+  merchantId: string; // merchant_id
+  merchantName: string; // merchant_name
+  dataFeedId: string; // data_feed_id
+  raw: Record<string, string>;
+}
+
 export interface AwinSaleAmount {
   amount: number;
   currency: string;
@@ -44,9 +88,8 @@ export interface AwinTransaction {
   validationDate?: string;
   paymentDate?: string;
 
-  // Click refs — used to correlate back to our AffiliateClickLog.
-  // Note: AffiliateClickLog does not yet have an awinClickRef column;
-  // clickRefs[0] is stored on AffiliateCommission.awinClickRef for future linking.
+  // Awin echoes back our injected SubID here.
+  // clickRefs[0] matches AffiliateClickLog.awinClickRef for click→commission attribution.
   clickRefs?: string[];
 
   // Device / geo
@@ -103,6 +146,228 @@ export class AwinApiClient {
     const publisherId = this.configService.get<string>('AWIN_PUBLISHER_ID');
     const apiToken = this.configService.get<string>('AWIN_API_TOKEN');
     return Boolean(publisherId?.trim()) && Boolean(apiToken?.trim());
+  }
+
+  /**
+   * Fetches the list of available product feeds from Awin's Product Data API.
+   * The Product Data API uses AWIN_API_TOKEN (same UUID) as the URL-embedded key.
+   *
+   * Returns metadata for every feed this publisher account can access.
+   * Callers should filter to feeds whose advertiserId matches a known AffiliateAdvertiser.
+   *
+   * Throws if the request fails or returns non-2xx.
+   */
+  async fetchFeedList(): Promise<AwinFeedMeta[]> {
+    const apiToken = this.configService.get<string>('AWIN_API_TOKEN');
+    if (!apiToken?.trim()) {
+      throw new Error('AWIN_API_TOKEN is not configured — cannot fetch feed list.');
+    }
+
+    const url = `https://productdata.awin.com/datafeed/list/apikey/${apiToken}/`;
+    this.logger.log('Fetching Awin feed list from productdata.awin.com');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(url, { signal: controller.signal });
+    } catch (err: unknown) {
+      clearTimeout(timeoutId);
+      const msg =
+        err instanceof Error && err.name === 'AbortError'
+          ? `Awin feed-list request timed out after ${FETCH_TIMEOUT_MS / 1000}s`
+          : `Awin feed-list request failed: ${err instanceof Error ? err.message : String(err)}`;
+      this.logger.error(msg);
+      throw new Error(msg);
+    }
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const body = await response.text();
+      const msg = `Awin feed-list API ${response.status}: ${body}`;
+      this.logger.error(msg);
+      throw new Error(msg);
+    }
+
+    const csv = await response.text();
+    return this.parseFeedListCsv(csv);
+  }
+
+  /**
+   * Downloads and parses up to `rowLimit` product rows from a feed CSV URL.
+   * Feeds are usually gzip-compressed; this method handles both compressed
+   * and uncompressed responses via the Content-Encoding header.
+   *
+   * rowLimit=0 (default) means no limit — download the full feed.
+   * For sampling, pass rowLimit=10.
+   */
+  async fetchFeedProducts(downloadUrl: string, rowLimit = 0): Promise<AwinFeedProduct[]> {
+    this.logger.log(
+      `Fetching Awin feed: ${downloadUrl}${rowLimit > 0 ? ` (first ${rowLimit} rows)` : ''}`
+    );
+
+    const controller = new AbortController();
+    // Feed files can be large — use a generous timeout.
+    const timeoutId = setTimeout(() => controller.abort(), 120_000);
+
+    let response: Response;
+    try {
+      response = await fetch(downloadUrl, { signal: controller.signal });
+    } catch (err: unknown) {
+      clearTimeout(timeoutId);
+      const msg =
+        err instanceof Error && err.name === 'AbortError'
+          ? 'Awin feed download timed out (120s)'
+          : `Awin feed download failed: ${err instanceof Error ? err.message : String(err)}`;
+      this.logger.error(msg);
+      throw new Error(msg);
+    }
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Awin feed download HTTP ${response.status}: ${body.slice(0, 200)}`);
+    }
+
+    // Decompress if needed — Node 18+ fetch gives a ReadableStream body.
+    // We read the full buffer and then let Node's built-in zlib handle it.
+    const encoding = response.headers.get('content-encoding') ?? '';
+    const rawBuffer = Buffer.from(await response.arrayBuffer());
+
+    let csvText: string;
+    if (encoding === 'gzip' || downloadUrl.endsWith('.gz')) {
+      const zlib = await import('zlib');
+      csvText = await new Promise<string>((resolve, reject) => {
+        zlib.gunzip(rawBuffer, (err, result) => {
+          if (err) reject(err);
+          else resolve(result.toString('utf8'));
+        });
+      });
+    } else {
+      csvText = rawBuffer.toString('utf8');
+    }
+
+    return this.parseFeedProductCsv(csvText, rowLimit);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private CSV parsers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Parses the feed-list CSV from productdata.awin.com/datafeed/list/...
+   * Expected header (order may vary):
+   *   advertiser_id, advertiser_name, feed_id, feed_name, language, region,
+   *   vertical, no_of_products, last_imported, last_checked, url
+   */
+  private parseFeedListCsv(csv: string): AwinFeedMeta[] {
+    const lines = csv.split('\n').filter((l) => l.trim());
+    if (lines.length < 2) return [];
+
+    const headers = this.splitCsvRow(lines[0]!).map((h) => h.trim().toLowerCase());
+    const idx = (col: string) => headers.indexOf(col);
+
+    const feeds: AwinFeedMeta[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = this.splitCsvRow(lines[i]!);
+      if (cols.length < 3) continue;
+
+      const productCountRaw = cols[idx('no_of_products')] ?? '';
+      feeds.push({
+        advertiserId: (cols[idx('advertiser_id')] ?? '').trim(),
+        advertiserName: (cols[idx('advertiser_name')] ?? '').trim(),
+        feedId: (cols[idx('feed_id')] ?? '').trim(),
+        feedName: (cols[idx('feed_name')] ?? '').trim(),
+        language: (cols[idx('language')] ?? '').trim(),
+        region: (cols[idx('region')] ?? '').trim(),
+        vertical: (cols[idx('vertical')] ?? '').trim(),
+        productCount: parseInt(productCountRaw, 10) || 0,
+        lastImported: (cols[idx('last_imported')] ?? '').trim(),
+        downloadUrl: (cols[idx('url')] ?? '').trim(),
+      });
+    }
+
+    this.logger.log(`Parsed ${feeds.length} feed(s) from Awin feed list`);
+    return feeds;
+  }
+
+  /**
+   * Parses a product-feed CSV (full feed or sample).
+   * Awin feeds use comma-separated values with quoted fields.
+   * Key columns: aw_product_id, product_name, aw_deep_link, aw_image_url,
+   *   merchant_image_url, search_price, store_price, currency, description,
+   *   brand_name, in_stock, merchant_id, merchant_name, data_feed_id.
+   */
+  private parseFeedProductCsv(csv: string, rowLimit: number): AwinFeedProduct[] {
+    const lines = csv.split('\n').filter((l) => l.trim());
+    if (lines.length < 2) return [];
+
+    const headers = this.splitCsvRow(lines[0]!).map((h) => h.trim().toLowerCase());
+    const idx = (col: string): number => headers.indexOf(col);
+
+    const products: AwinFeedProduct[] = [];
+    const limit = rowLimit > 0 ? Math.min(lines.length - 1, rowLimit) : lines.length - 1;
+
+    for (let i = 1; i <= limit; i++) {
+      const cols = this.splitCsvRow(lines[i]!);
+      if (cols.length < 3) continue;
+
+      const raw: Record<string, string> = {};
+      headers.forEach((h, j) => {
+        raw[h] = cols[j] ?? '';
+      });
+
+      products.push({
+        merchantProductId: (cols[idx('aw_product_id')] ?? '').trim(),
+        productName: (cols[idx('product_name')] ?? '').trim(),
+        awDeepLink: (cols[idx('aw_deep_link')] ?? '').trim(),
+        awImageUrl: (cols[idx('aw_image_url')] ?? '').trim(),
+        merchantImageUrl: (cols[idx('merchant_image_url')] ?? '').trim(),
+        searchPrice: (cols[idx('search_price')] ?? '').trim(),
+        storePrice: (cols[idx('store_price')] ?? '').trim(),
+        currency: (cols[idx('currency')] ?? '').trim(),
+        description: (cols[idx('description')] ?? '').trim(),
+        brandName: (cols[idx('brand_name')] ?? '').trim(),
+        inStock: (cols[idx('in_stock')] ?? '').trim(),
+        merchantId: (cols[idx('merchant_id')] ?? '').trim(),
+        merchantName: (cols[idx('merchant_name')] ?? '').trim(),
+        dataFeedId: (cols[idx('data_feed_id')] ?? '').trim(),
+        raw,
+      });
+    }
+
+    return products;
+  }
+
+  /**
+   * RFC-4180-compliant CSV row splitter.
+   * Handles quoted fields containing commas and escaped quotes ("").
+   */
+  private splitCsvRow(row: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < row.length; i++) {
+      const ch = row[i]!;
+      if (ch === '"') {
+        if (inQuotes && row[i + 1] === '"') {
+          // Escaped quote
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === ',' && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current);
+    return result;
   }
 
   /**

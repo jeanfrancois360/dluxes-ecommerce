@@ -17,6 +17,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   AffiliateAdvertiserStatus,
   AffiliateCommissionStatus,
+  AffiliateFulfillmentSource,
   TranslationStatus,
 } from '@prisma/client';
 
@@ -163,6 +164,14 @@ export class CreateAffiliateProductDto {
   tags?: string[];
 
   @IsOptional()
+  @IsString()
+  brandName?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  inStock?: boolean;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
@@ -174,6 +183,19 @@ export class CreateAffiliateProductDto {
   @IsInt()
   @Min(0)
   displayOrder?: number;
+
+  // Feed metadata — set by AwinFeedService; read-only for admin API
+  @IsOptional()
+  @IsEnum(AffiliateFulfillmentSource)
+  fulfillmentSource?: AffiliateFulfillmentSource;
+
+  @IsOptional()
+  @IsString()
+  merchantProductId?: string;
+
+  @IsOptional()
+  @IsString()
+  feedId?: string;
 }
 
 export class UpdateAffiliateProductDto {
@@ -215,6 +237,14 @@ export class UpdateAffiliateProductDto {
   tags?: string[];
 
   @IsOptional()
+  @IsString()
+  brandName?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  inStock?: boolean;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
@@ -226,6 +256,36 @@ export class UpdateAffiliateProductDto {
   @IsInt()
   @Min(0)
   displayOrder?: number;
+}
+
+// ============================================================================
+// FEED SYNC DTOs
+// ============================================================================
+
+export class TriggerFeedSyncDto {
+  /** Awin numeric merchant ID. Omit to sync all advertisers. */
+  @IsOptional()
+  @IsString()
+  awinMerchantId?: string;
+}
+
+export class FeedSyncHistoryQueryDto {
+  @IsOptional()
+  @IsString()
+  advertiserId?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value, 10))
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 20;
 }
 
 export class ListProductsQueryDto {

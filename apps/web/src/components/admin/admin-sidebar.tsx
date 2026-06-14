@@ -31,6 +31,7 @@ import {
   Tag,
   TrendingUp,
   MousePointerClick,
+  RefreshCw,
   FileText,
 } from 'lucide-react';
 
@@ -114,6 +115,7 @@ const navigationGroups: NavGroup[] = [
       { nameKey: 'affiliateProducts', href: '/admin/affiliate/products', icon: Tag },
       { nameKey: 'affiliateCommissions', href: '/admin/affiliate/commissions', icon: TrendingUp },
       { nameKey: 'affiliateClicks', href: '/admin/affiliate/clicks', icon: MousePointerClick },
+      { nameKey: 'affiliateFeeds', href: '/admin/affiliate/feeds', icon: RefreshCw },
     ],
   },
   {
