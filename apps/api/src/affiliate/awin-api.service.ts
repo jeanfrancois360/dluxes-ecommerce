@@ -148,192 +148,162 @@ export class AwinApiClient {
     return Boolean(publisherId?.trim()) && Boolean(apiToken?.trim());
   }
 
+  getPublisherId(): string {
+    return this.configService.get<string>('AWIN_PUBLISHER_ID') ?? '';
+  }
+
   /**
-   * Fetches the list of available product feeds from Awin's Product Data API.
-   * The Product Data API uses AWIN_API_TOKEN (same UUID) as the URL-embedded key.
+   * Downloads and parses the enhanced (Google-format) JSONL feed for a single
+   * advertiser from the Awin Publisher API.
    *
-   * Returns metadata for every feed this publisher account can access.
-   * Callers should filter to feeds whose advertiserId matches a known AffiliateAdvertiser.
+   * Endpoint: GET https://api.awin.com/publishers/{PID}/awinfeeds/download/{AID}-retail-{locale}.jsonl
+   * Auth: Bearer token (AWIN_API_TOKEN).
    *
-   * Throws if the request fails or returns non-2xx.
+   * Tries each locale in order and returns the first successful response.
+   * Throws only if all locales fail.
+   *
+   * Awin rate limit: 5 req/min per endpoint. Caller must not exceed this.
    */
-  async fetchFeedList(): Promise<AwinFeedMeta[]> {
+  async fetchEnhancedFeed(
+    awinAdvertiserId: string,
+    locales: string[] = ['en_GB', 'en_US', 'en_NL', 'en_DE', 'fr_FR', 'de_DE']
+  ): Promise<AwinFeedProduct[]> {
+    const publisherId = this.configService.get<string>('AWIN_PUBLISHER_ID');
     const apiToken = this.configService.get<string>('AWIN_API_TOKEN');
-    if (!apiToken?.trim()) {
-      throw new Error('AWIN_API_TOKEN is not configured — cannot fetch feed list.');
-    }
 
-    const url = `https://productdata.awin.com/datafeed/list/apikey/${apiToken}/`;
-    this.logger.log('Fetching Awin feed list from productdata.awin.com');
+    let lastError = '';
+    for (const locale of locales) {
+      const url = `${this.baseUrl}/publishers/${publisherId}/awinfeeds/download/${awinAdvertiserId}-retail-${locale}.jsonl`;
+      this.logger.log(`Trying Awin enhanced feed: ${url}`);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120_000);
 
-    let response: Response;
-    try {
-      response = await fetch(url, { signal: controller.signal });
-    } catch (err: unknown) {
-      clearTimeout(timeoutId);
-      const msg =
-        err instanceof Error && err.name === 'AbortError'
-          ? `Awin feed-list request timed out after ${FETCH_TIMEOUT_MS / 1000}s`
-          : `Awin feed-list request failed: ${err instanceof Error ? err.message : String(err)}`;
-      this.logger.error(msg);
-      throw new Error(msg);
-    }
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const body = await response.text();
-      const msg = `Awin feed-list API ${response.status}: ${this.stripHtml(body)}`;
-      this.logger.error(msg);
-      throw new Error(msg);
-    }
-
-    const csv = await response.text();
-    return this.parseFeedListCsv(csv);
-  }
-
-  /**
-   * Downloads and parses up to `rowLimit` product rows from a feed CSV URL.
-   * Feeds are usually gzip-compressed; this method handles both compressed
-   * and uncompressed responses via the Content-Encoding header.
-   *
-   * rowLimit=0 (default) means no limit — download the full feed.
-   * For sampling, pass rowLimit=10.
-   */
-  async fetchFeedProducts(downloadUrl: string, rowLimit = 0): Promise<AwinFeedProduct[]> {
-    this.logger.log(
-      `Fetching Awin feed: ${downloadUrl}${rowLimit > 0 ? ` (first ${rowLimit} rows)` : ''}`
-    );
-
-    const controller = new AbortController();
-    // Feed files can be large — use a generous timeout.
-    const timeoutId = setTimeout(() => controller.abort(), 120_000);
-
-    let response: Response;
-    try {
-      response = await fetch(downloadUrl, { signal: controller.signal });
-    } catch (err: unknown) {
-      clearTimeout(timeoutId);
-      const msg =
-        err instanceof Error && err.name === 'AbortError'
-          ? 'Awin feed download timed out (120s)'
-          : `Awin feed download failed: ${err instanceof Error ? err.message : String(err)}`;
-      this.logger.error(msg);
-      throw new Error(msg);
-    }
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`Awin feed download HTTP ${response.status}: ${this.stripHtml(body)}`);
-    }
-
-    // Decompress if needed — Node 18+ fetch gives a ReadableStream body.
-    // We read the full buffer and then let Node's built-in zlib handle it.
-    const encoding = response.headers.get('content-encoding') ?? '';
-    const rawBuffer = Buffer.from(await response.arrayBuffer());
-
-    let csvText: string;
-    if (encoding === 'gzip' || downloadUrl.endsWith('.gz')) {
-      const zlib = await import('zlib');
-      csvText = await new Promise<string>((resolve, reject) => {
-        zlib.gunzip(rawBuffer, (err, result) => {
-          if (err) reject(err);
-          else resolve(result.toString('utf8'));
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          signal: controller.signal,
+          headers: { Authorization: `Bearer ${apiToken}`, Accept: 'application/x-ndjson' },
         });
-      });
-    } else {
-      csvText = rawBuffer.toString('utf8');
+      } catch (err: unknown) {
+        clearTimeout(timeoutId);
+        lastError =
+          err instanceof Error && err.name === 'AbortError'
+            ? `Awin feed request timed out (120s) for locale ${locale}`
+            : `Awin feed request failed for locale ${locale}: ${err instanceof Error ? err.message : String(err)}`;
+        this.logger.warn(lastError);
+        continue;
+      }
+      clearTimeout(timeoutId);
+
+      if (response.status === 404) {
+        // This locale / feed doesn't exist — try the next one.
+        this.logger.log(`No feed for advertiser ${awinAdvertiserId} locale ${locale} (404)`);
+        continue;
+      }
+
+      if (!response.ok) {
+        const body = await response.text();
+        lastError = `Awin feed HTTP ${response.status} for locale ${locale}: ${this.stripHtml(body)}`;
+        this.logger.warn(lastError);
+        continue;
+      }
+
+      const jsonlText = await response.text();
+      const products = this.parseEnhancedFeedJsonl(jsonlText);
+      this.logger.log(
+        `Fetched ${products.length} products for advertiser ${awinAdvertiserId} (locale ${locale})`
+      );
+      return products;
     }
 
-    return this.parseFeedProductCsv(csvText, rowLimit);
+    throw new Error(
+      `No working feed found for Awin advertiser ${awinAdvertiserId}. Last error: ${lastError}`
+    );
   }
 
   // ---------------------------------------------------------------------------
-  // Private CSV parsers
+  // Private parsers
   // ---------------------------------------------------------------------------
 
   /**
-   * Parses the feed-list CSV from productdata.awin.com/datafeed/list/...
-   * Expected header (order may vary):
-   *   advertiser_id, advertiser_name, feed_id, feed_name, language, region,
-   *   vertical, no_of_products, last_imported, last_checked, url
+   * Parses Awin's enhanced (Google-format) JSONL feed response.
+   * Each non-empty line is a JSON object following Google's product data spec.
+   * The last line may be an error sentinel — it's ignored if it lacks an `id`.
+   *
+   * Google feed → AwinFeedProduct field mapping:
+   *   id                    → merchantProductId
+   *   title                 → productName
+   *   description           → description
+   *   link                  → awDeepLink  (Awin-tracked URL)
+   *   image_link            → awImageUrl
+   *   additional_image_link → merchantImageUrl (first item)
+   *   sale_price            → searchPrice (current/discounted, e.g. "9.99 GBP")
+   *   price                 → storePrice  (original/RRP)
+   *   availability          → inStock     ("in_stock" | "out_of_stock" | "preorder")
+   *   brand                 → brandName
    */
-  private parseFeedListCsv(csv: string): AwinFeedMeta[] {
-    const lines = csv.split('\n').filter((l) => l.trim());
-    if (lines.length < 2) return [];
-
-    const headers = this.splitCsvRow(lines[0]!).map((h) => h.trim().toLowerCase());
-    const idx = (col: string) => headers.indexOf(col);
-
-    const feeds: AwinFeedMeta[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const cols = this.splitCsvRow(lines[i]!);
-      if (cols.length < 3) continue;
-
-      const productCountRaw = cols[idx('no_of_products')] ?? '';
-      feeds.push({
-        advertiserId: (cols[idx('advertiser_id')] ?? '').trim(),
-        advertiserName: (cols[idx('advertiser_name')] ?? '').trim(),
-        feedId: (cols[idx('feed_id')] ?? '').trim(),
-        feedName: (cols[idx('feed_name')] ?? '').trim(),
-        language: (cols[idx('language')] ?? '').trim(),
-        region: (cols[idx('region')] ?? '').trim(),
-        vertical: (cols[idx('vertical')] ?? '').trim(),
-        productCount: parseInt(productCountRaw, 10) || 0,
-        lastImported: (cols[idx('last_imported')] ?? '').trim(),
-        downloadUrl: (cols[idx('url')] ?? '').trim(),
-      });
-    }
-
-    this.logger.log(`Parsed ${feeds.length} feed(s) from Awin feed list`);
-    return feeds;
-  }
-
-  /**
-   * Parses a product-feed CSV (full feed or sample).
-   * Awin feeds use comma-separated values with quoted fields.
-   * Key columns: aw_product_id, product_name, aw_deep_link, aw_image_url,
-   *   merchant_image_url, search_price, store_price, currency, description,
-   *   brand_name, in_stock, merchant_id, merchant_name, data_feed_id.
-   */
-  private parseFeedProductCsv(csv: string, rowLimit: number): AwinFeedProduct[] {
-    const lines = csv.split('\n').filter((l) => l.trim());
-    if (lines.length < 2) return [];
-
-    const headers = this.splitCsvRow(lines[0]!).map((h) => h.trim().toLowerCase());
-    const idx = (col: string): number => headers.indexOf(col);
-
+  private parseEnhancedFeedJsonl(jsonl: string): AwinFeedProduct[] {
     const products: AwinFeedProduct[] = [];
-    const limit = rowLimit > 0 ? Math.min(lines.length - 1, rowLimit) : lines.length - 1;
 
-    for (let i = 1; i <= limit; i++) {
-      const cols = this.splitCsvRow(lines[i]!);
-      if (cols.length < 3) continue;
+    for (const line of jsonl.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
 
-      const raw: Record<string, string> = {};
-      headers.forEach((h, j) => {
-        raw[h] = cols[j] ?? '';
-      });
+      let obj: Record<string, unknown>;
+      try {
+        obj = JSON.parse(trimmed) as Record<string, unknown>;
+      } catch {
+        continue;
+      }
+
+      // Skip error sentinel lines (last line may be { "error": 500, "message": "..." })
+      const id = (obj['id'] as string | undefined)?.trim();
+      if (!id) continue;
+
+      const additionalImages = Array.isArray(obj['additional_image_link'])
+        ? (obj['additional_image_link'] as string[])
+        : typeof obj['additional_image_link'] === 'string'
+          ? [obj['additional_image_link'] as string]
+          : [];
+
+      // Prices come as "9.99 GBP" — extract numeric and currency portions.
+      const extractPrice = (val: unknown): string => {
+        if (typeof val !== 'string') return '';
+        return val.split(' ')[0] ?? '';
+      };
+      const extractCurrency = (val: unknown): string => {
+        if (typeof val !== 'string') return '';
+        return val.split(' ')[1] ?? '';
+      };
+
+      const rawPrice = obj['price'] as string | undefined;
+      const rawSalePrice = obj['sale_price'] as string | undefined;
+
+      // aw_deep_link is the Awin-tracked URL (awin1.com); `link` is the raw merchant URL.
+      // We always use aw_deep_link so Awin can attribute clicks correctly.
+      const awDeepLink =
+        ((obj['aw_deep_link'] as string | undefined) ?? '').trim() ||
+        ((obj['link'] as string | undefined) ?? '').trim();
 
       products.push({
-        merchantProductId: (cols[idx('aw_product_id')] ?? '').trim(),
-        productName: (cols[idx('product_name')] ?? '').trim(),
-        awDeepLink: (cols[idx('aw_deep_link')] ?? '').trim(),
-        awImageUrl: (cols[idx('aw_image_url')] ?? '').trim(),
-        merchantImageUrl: (cols[idx('merchant_image_url')] ?? '').trim(),
-        searchPrice: (cols[idx('search_price')] ?? '').trim(),
-        storePrice: (cols[idx('store_price')] ?? '').trim(),
-        currency: (cols[idx('currency')] ?? '').trim(),
-        description: (cols[idx('description')] ?? '').trim(),
-        brandName: (cols[idx('brand_name')] ?? '').trim(),
-        inStock: (cols[idx('in_stock')] ?? '').trim(),
-        merchantId: (cols[idx('merchant_id')] ?? '').trim(),
-        merchantName: (cols[idx('merchant_name')] ?? '').trim(),
-        dataFeedId: (cols[idx('data_feed_id')] ?? '').trim(),
-        raw,
+        merchantProductId: id,
+        productName: ((obj['title'] as string | undefined) ?? '').trim(),
+        awDeepLink,
+        awImageUrl: ((obj['image_link'] as string | undefined) ?? '').trim(),
+        merchantImageUrl: (additionalImages[0] ?? '').trim(),
+        searchPrice: extractPrice(rawSalePrice || rawPrice),
+        storePrice: extractPrice(rawPrice),
+        currency: extractCurrency(rawPrice || rawSalePrice),
+        description: ((obj['description'] as string | undefined) ?? '').trim(),
+        brandName: ((obj['brand'] as string | undefined) ?? '').trim(),
+        inStock: ((obj['availability'] as string | undefined) ?? '').trim(),
+        merchantId: '',
+        merchantName: '',
+        dataFeedId: '',
+        raw: Object.fromEntries(
+          Object.entries(obj).map(([k, v]) => [k, typeof v === 'string' ? v : JSON.stringify(v)])
+        ),
       });
     }
 
@@ -351,36 +321,6 @@ export class AwinApiClient {
       .replace(/\s{2,}/g, ' ')
       .trim()
       .slice(0, 300);
-  }
-
-  /**
-   * RFC-4180-compliant CSV row splitter.
-   * Handles quoted fields containing commas and escaped quotes ("").
-   */
-  private splitCsvRow(row: string): string[] {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < row.length; i++) {
-      const ch = row[i]!;
-      if (ch === '"') {
-        if (inQuotes && row[i + 1] === '"') {
-          // Escaped quote
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (ch === ',' && !inQuotes) {
-        result.push(current);
-        current = '';
-      } else {
-        current += ch;
-      }
-    }
-    result.push(current);
-    return result;
   }
 
   /**

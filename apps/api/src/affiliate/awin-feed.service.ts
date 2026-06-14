@@ -3,6 +3,9 @@ import { AffiliateFulfillmentSource, TranslationStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { AwinApiClient, AwinFeedMeta, AwinFeedProduct } from './awin-api.service';
 
+// Default locales to try when downloading a feed, in order of preference.
+const DEFAULT_FEED_LOCALES = ['en_GB', 'en_US', 'en_NL', 'en_DE', 'fr_FR', 'de_DE'];
+
 export interface FeedSyncResult {
   advertiserId: string;
   awinMerchantId: string;
@@ -54,31 +57,13 @@ export class AwinFeedService {
       };
     }
 
-    this.logger.log('Starting full Awin feed sync');
+    this.logger.log('Starting full Awin feed sync (enhanced JSONL API)');
     const startedAt = new Date();
 
-    // Fetch live feed list once
-    let feedList: AwinFeedMeta[];
-    try {
-      feedList = await this.awinClient.fetchFeedList();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Failed to fetch Awin feed list: ${msg}`);
-      throw err;
-    }
-
-    // Build a lookup: awinMerchantId → best feed (most products)
-    const feedByMerchant = new Map<string, AwinFeedMeta>();
-    for (const feed of feedList) {
-      const existing = feedByMerchant.get(feed.advertiserId);
-      if (!existing || feed.productCount > existing.productCount) {
-        feedByMerchant.set(feed.advertiserId, feed);
-      }
-    }
-
-    // Get all active advertisers from our DB
+    // Get all active, approved advertisers from our DB.
+    // No Awin "feed list" API call needed — we derive feed URLs from awinMerchantId directly.
     const advertisers = await this.prisma.affiliateAdvertiser.findMany({
-      where: { isActive: true, deletedAt: null },
+      where: { isActive: true, deletedAt: null, approvalStatus: 'APPROVED' },
     });
 
     const results: FeedSyncResult[] = [];
@@ -89,42 +74,21 @@ export class AwinFeedService {
     let advertisersWithoutFeed = 0;
 
     for (const advertiser of advertisers) {
-      const feedMeta = feedByMerchant.get(advertiser.awinMerchantId);
-
-      if (!feedMeta) {
-        advertisersWithoutFeed++;
-        this.logger.log(
-          `No feed available for advertiser ${advertiser.name} (${advertiser.awinMerchantId})`
-        );
-        await this.writeSyncAudit({
-          advertiserId: advertiser.id,
-          awinMerchantId: advertiser.awinMerchantId,
-          feedId: null,
-          productsUpserted: 0,
-          productsSkipped: 0,
-          errors: 0,
-          status: 'skipped',
-          startedAt,
-          completedAt: new Date(),
-        });
-        results.push({
-          advertiserId: advertiser.id,
-          awinMerchantId: advertiser.awinMerchantId,
-          feedId: null,
-          productsUpserted: 0,
-          productsSkipped: 0,
-          errors: 0,
-          status: 'skipped',
-        });
-        continue;
-      }
-
-      advertisersWithFeed++;
-      const result = await this.syncOneFeed(advertiser.id, advertiser.awinMerchantId, feedMeta);
+      const result = await this.syncOneFeed(
+        advertiser.id,
+        advertiser.awinMerchantId,
+        advertiser.name
+      );
       results.push(result);
-      totalUpserted += result.productsUpserted;
-      totalSkipped += result.productsSkipped;
-      totalErrors += result.errors;
+
+      if (result.status === 'skipped') {
+        advertisersWithoutFeed++;
+      } else {
+        advertisersWithFeed++;
+        totalUpserted += result.productsUpserted;
+        totalSkipped += result.productsSkipped;
+        totalErrors += result.errors;
+      }
     }
 
     this.logger.log(
@@ -158,43 +122,35 @@ export class AwinFeedService {
       throw new Error(`No AffiliateAdvertiser with awinMerchantId="${awinMerchantId}"`);
     }
 
-    const feedList = await this.awinClient.fetchFeedList();
-    const feedMeta = feedList
-      .filter((f) => f.advertiserId === awinMerchantId)
-      .sort((a, b) => b.productCount - a.productCount)[0];
-
-    if (!feedMeta) {
-      await this.writeSyncAudit({
-        advertiserId: advertiser.id,
-        awinMerchantId,
-        feedId: null,
-        productsUpserted: 0,
-        productsSkipped: 0,
-        errors: 0,
-        status: 'skipped',
-        startedAt: new Date(),
-        completedAt: new Date(),
-      });
-      return {
-        advertiserId: advertiser.id,
-        awinMerchantId,
-        feedId: null,
-        productsUpserted: 0,
-        productsSkipped: 0,
-        errors: 0,
-        status: 'skipped',
-      };
-    }
-
-    return this.syncOneFeed(advertiser.id, awinMerchantId, feedMeta);
+    return this.syncOneFeed(advertiser.id, awinMerchantId, advertiser.name);
   }
 
   /**
-   * Expose the live feed list (for the admin /feeds endpoint).
+   * Returns feed metadata derived from active DB advertisers.
+   * The Awin enhanced feed API has no "list" endpoint — we construct
+   * the metadata from what we know (advertiser ID + fixed URL pattern).
    */
   async listAvailableFeeds(): Promise<AwinFeedMeta[]> {
-    if (!this.awinClient.isConfigured()) return [];
-    return this.awinClient.fetchFeedList();
+    const publisherId = this.awinClient.getPublisherId();
+    const advertisers = await this.prisma.affiliateAdvertiser.findMany({
+      where: { isActive: true, deletedAt: null, approvalStatus: 'APPROVED' },
+      orderBy: { name: 'asc' },
+    });
+
+    return advertisers.map((adv) => ({
+      feedId: `${adv.awinMerchantId}-retail`,
+      feedName: `${adv.name} — Retail`,
+      advertiserId: adv.awinMerchantId,
+      advertiserName: adv.name,
+      downloadUrl: publisherId
+        ? `https://api.awin.com/publishers/${publisherId}/awinfeeds/download/${adv.awinMerchantId}-retail-en_GB.jsonl`
+        : '',
+      productCount: 0,
+      language: 'en_GB',
+      region: '',
+      vertical: 'retail',
+      lastImported: '',
+    }));
   }
 
   // ============================================================================
@@ -204,28 +160,28 @@ export class AwinFeedService {
   private async syncOneFeed(
     advertiserId: string,
     awinMerchantId: string,
-    feedMeta: AwinFeedMeta
+    advertiserName: string
   ): Promise<FeedSyncResult> {
     const startedAt = new Date();
-    this.logger.log(
-      `Syncing feed ${feedMeta.feedId} for advertiser ${feedMeta.advertiserName} ` +
-        `(${feedMeta.productCount} products)`
-    );
+    this.logger.log(`Syncing enhanced feed for advertiser ${advertiserName} (${awinMerchantId})`);
 
     let products: AwinFeedProduct[];
     try {
-      products = await this.awinClient.fetchFeedProducts(feedMeta.downloadUrl);
+      products = await this.awinClient.fetchEnhancedFeed(awinMerchantId, DEFAULT_FEED_LOCALES);
     } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Feed download failed for ${feedMeta.advertiserName}: ${detail}`);
+      this.logger.error(`Feed download failed for ${advertiserName}: ${detail}`);
+
+      // "No working feed found" means the advertiser has no feed in any locale — treat as skipped.
+      const isNoFeed = detail.includes('No working feed found');
       await this.writeSyncAudit({
         advertiserId,
         awinMerchantId,
-        feedId: feedMeta.feedId,
+        feedId: null,
         productsUpserted: 0,
         productsSkipped: 0,
-        errors: 1,
-        status: 'failed',
+        errors: isNoFeed ? 0 : 1,
+        status: isNoFeed ? 'skipped' : 'failed',
         errorDetail: detail,
         startedAt,
         completedAt: new Date(),
@@ -233,11 +189,11 @@ export class AwinFeedService {
       return {
         advertiserId,
         awinMerchantId,
-        feedId: feedMeta.feedId,
+        feedId: null,
         productsUpserted: 0,
         productsSkipped: 0,
-        errors: 1,
-        status: 'failed',
+        errors: isNoFeed ? 0 : 1,
+        status: isNoFeed ? 'skipped' : 'failed',
         errorDetail: detail,
       };
     }
@@ -253,12 +209,12 @@ export class AwinFeedService {
       }
 
       try {
-        await this.upsertFeedProduct(advertiserId, feedMeta, row);
+        await this.upsertFeedProduct(advertiserId, advertiserName, row);
         upserted++;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.warn(
-          `Failed to upsert product ${row.merchantProductId} for ${feedMeta.advertiserName}: ${msg}`
+          `Failed to upsert product ${row.merchantProductId} for ${advertiserName}: ${msg}`
         );
         errors++;
       }
@@ -270,7 +226,7 @@ export class AwinFeedService {
     await this.writeSyncAudit({
       advertiserId,
       awinMerchantId,
-      feedId: feedMeta.feedId,
+      feedId: null,
       productsUpserted: upserted,
       productsSkipped: skipped,
       errors,
@@ -280,13 +236,13 @@ export class AwinFeedService {
     });
 
     this.logger.log(
-      `Feed sync for ${feedMeta.advertiserName}: upserted=${upserted} skipped=${skipped} errors=${errors}`
+      `Feed sync for ${advertiserName}: upserted=${upserted} skipped=${skipped} errors=${errors}`
     );
 
     return {
       advertiserId,
       awinMerchantId,
-      feedId: feedMeta.feedId,
+      feedId: null,
       productsUpserted: upserted,
       productsSkipped: skipped,
       errors,
@@ -296,7 +252,7 @@ export class AwinFeedService {
 
   private async upsertFeedProduct(
     advertiserId: string,
-    feedMeta: AwinFeedMeta,
+    advertiserName: string,
     row: AwinFeedProduct
   ): Promise<void> {
     const imageUrl = row.awImageUrl || row.merchantImageUrl;
@@ -310,7 +266,7 @@ export class AwinFeedService {
       row.storePrice && row.searchPrice && row.storePrice !== row.searchPrice
         ? parseFloat(row.storePrice) || undefined
         : undefined;
-    const inStock = /^(yes|1|true)$/i.test(row.inStock);
+    const inStock = /^(yes|1|true|in_stock)$/i.test(row.inStock);
     const currency = (row.currency || 'EUR').toUpperCase();
 
     // Slug: slugified product name + last-8 chars of merchantProductId for uniqueness.
@@ -332,7 +288,7 @@ export class AwinFeedService {
       brandName: row.brandName || null,
       inStock,
       fulfillmentSource: AffiliateFulfillmentSource.FEED,
-      feedId: row.dataFeedId || feedMeta.feedId,
+      feedId: row.dataFeedId || null,
       lastFeedSync: new Date(),
     };
 
