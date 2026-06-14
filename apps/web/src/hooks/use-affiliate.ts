@@ -9,6 +9,7 @@ import {
   type AffiliateProductTranslation,
   type AffiliateClickLog,
   type CommissionStats,
+  type AwinFeedSync,
 } from '@/lib/api/affiliate';
 
 // ---------------------------------------------------------------------------
@@ -18,7 +19,9 @@ import {
 export function useAffiliatePublicProducts(params?: {
   page?: number;
   limit?: number;
+  advertiserId?: string;
   isFeatured?: boolean;
+  inStock?: boolean;
   tag?: string;
   locale?: string;
 }) {
@@ -36,7 +39,15 @@ export function useAffiliatePublicProducts(params?: {
   const memoizedParams = useMemo(
     () => params,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [params?.page, params?.limit, params?.isFeatured, params?.tag, params?.locale]
+    [
+      params?.page,
+      params?.limit,
+      params?.advertiserId,
+      params?.isFeatured,
+      params?.inStock,
+      params?.tag,
+      params?.locale,
+    ]
   );
 
   const fetchProducts = useCallback(async () => {
@@ -123,6 +134,7 @@ export function useAffiliateProducts(params?: {
   advertiserId?: string;
   isActive?: boolean;
   isFeatured?: boolean;
+  fulfillmentSource?: 'FEED' | 'MANUAL';
 }) {
   const [products, setProducts] = useState<AffiliateProduct[]>([]);
   const [pagination, setPagination] = useState({
@@ -138,7 +150,14 @@ export function useAffiliateProducts(params?: {
   const memoizedParams = useMemo(
     () => params,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [params?.page, params?.limit, params?.advertiserId, params?.isActive, params?.isFeatured]
+    [
+      params?.page,
+      params?.limit,
+      params?.advertiserId,
+      params?.isActive,
+      params?.isFeatured,
+      params?.fulfillmentSource,
+    ]
   );
 
   const fetchProducts = useCallback(async () => {
@@ -341,6 +360,48 @@ export function useAffiliateProduct(slug: string, locale?: string) {
   }, [fetchProduct]);
 
   return { product, loading, error, refetch: fetchProduct };
+}
+
+// ---------------------------------------------------------------------------
+// Feed Sync History
+// ---------------------------------------------------------------------------
+
+export function useFeedSyncs(params?: { advertiserId?: string; page?: number; limit?: number }) {
+  const [syncs, setSyncs] = useState<AwinFeedSync[]>([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const memoizedParams = useMemo(
+    () => params,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [params?.advertiserId, params?.page, params?.limit]
+  );
+
+  const fetchSyncs = useCallback(async () => {
+    try {
+      setLoading(true);
+      const result = await affiliateApi.listFeedSyncs(memoizedParams);
+      setSyncs(result.data);
+      setPagination(result.pagination);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch feed sync history');
+    } finally {
+      setLoading(false);
+    }
+  }, [memoizedParams]);
+
+  useEffect(() => {
+    fetchSyncs();
+  }, [fetchSyncs]);
+
+  return { syncs, pagination, loading, error, refetch: fetchSyncs };
 }
 
 // ---------------------------------------------------------------------------

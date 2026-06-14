@@ -13,6 +13,7 @@ import {
   TranslationStatus,
 } from '@prisma/client';
 import { AwinApiClient, AwinTransaction, AwinTransactionFilters } from './awin-api.service';
+import { AwinFeedService, AllFeedsSyncSummary, FeedSyncResult } from './awin-feed.service';
 import {
   CreateAdvertiserDto,
   UpdateAdvertiserDto,
@@ -39,7 +40,8 @@ export class AffiliateService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly awinClient: AwinApiClient
+    private readonly awinClient: AwinApiClient,
+    private readonly awinFeedService: AwinFeedService
   ) {}
 
   // ============================================================================
@@ -209,6 +211,7 @@ export class AffiliateService {
       ...(query.advertiserId && { advertiserId: query.advertiserId }),
       ...(query.isFeatured !== undefined && { isFeatured: query.isFeatured }),
       ...(query.tag && { tags: { has: query.tag } }),
+      ...(query.inStock !== undefined && { inStock: query.inStock }),
     };
 
     const [products, total] = await Promise.all([
@@ -246,6 +249,7 @@ export class AffiliateService {
       ...(query.isFeatured !== undefined && { isFeatured: query.isFeatured }),
       ...(query.isActive !== undefined && { isActive: query.isActive }),
       ...(query.tag && { tags: { has: query.tag } }),
+      ...(query.fulfillmentSource && { fulfillmentSource: query.fulfillmentSource }),
       ...(!query.includeDeleted && { deletedAt: null }),
     };
 
@@ -452,23 +456,35 @@ export class AffiliateService {
         userAgent: context.userAgent ?? null,
         referrer: context.referrer ?? null,
         locale: context.locale ?? null,
+        // awinClickRef written below after we know clickLog.id
       },
     });
 
-    // Best-effort: denormalized counter increment.
-    // AffiliateProduct.clickCount is approximate analytics convenience data.
-    // Source of truth is COUNT(AffiliateClickLog) WHERE affiliateProductId = ?.
-    // Counter may diverge under transient failures; that is acceptable.
-    this.prisma.affiliateProduct
-      .update({ where: { id: productId }, data: { clickCount: { increment: 1 } } })
-      .catch((err: Error) =>
-        this.logger.warn(
-          `Failed to increment clickCount for affiliate product ${productId}: ${err.message}. ` +
-            `Audit log ${clickLog.id} was written successfully. Counter reconcilable from AffiliateClickLog.`
-        )
-      );
+    // Inject our click-log ID as the Awin SubID (?clickref=…).
+    // Awin echoes this value back in AffiliateCommission.awinClickRef, enabling
+    // click→commission attribution. The separator depends on whether the stored
+    // deep link already carries a query string.
+    const separator = product.awinDeepLink.includes('?') ? '&' : '?';
+    const trackedLink = `${product.awinDeepLink}${separator}clickref=${clickLog.id}`;
 
-    return { clickId: clickLog.id, deepLink: product.awinDeepLink };
+    // Best-effort: write back the injected clickRef and increment the denormalized counter.
+    // Both are approximate convenience data — source of truth is AffiliateClickLog.
+    Promise.all([
+      this.prisma.affiliateClickLog.update({
+        where: { id: clickLog.id },
+        data: { awinClickRef: clickLog.id },
+      }),
+      this.prisma.affiliateProduct.update({
+        where: { id: productId },
+        data: { clickCount: { increment: 1 } },
+      }),
+    ]).catch((err: Error) =>
+      this.logger.warn(
+        `Best-effort post-click update failed for click ${clickLog.id}: ${err.message}`
+      )
+    );
+
+    return { clickId: clickLog.id, deepLink: trackedLink };
   }
 
   // ============================================================================
@@ -607,6 +623,44 @@ export class AffiliateService {
   }
 
   // ============================================================================
+  // FEED SYNC (delegates to AwinFeedService)
+  // ============================================================================
+
+  async syncAllFeeds(): Promise<AllFeedsSyncSummary> {
+    return this.awinFeedService.syncAllFeeds();
+  }
+
+  async syncFeedForMerchant(awinMerchantId: string): Promise<FeedSyncResult> {
+    return this.awinFeedService.syncFeedForMerchant(awinMerchantId);
+  }
+
+  async listAvailableFeeds() {
+    return this.awinFeedService.listAvailableFeeds();
+  }
+
+  async listFeedSyncs(query: { advertiserId?: string; limit?: number; page?: number }) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const where = query.advertiserId ? { advertiserId: query.advertiserId } : {};
+    const [syncs, total] = await Promise.all([
+      this.prisma.awinFeedSync.findMany({
+        where,
+        orderBy: { startedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.awinFeedSync.count({ where }),
+    ]);
+
+    return {
+      data: syncs,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  // ============================================================================
   // CLICK ANALYTICS
   // ============================================================================
 
@@ -655,11 +709,10 @@ export class AffiliateService {
    *   - AwinCronService (nightly at 3am, syncs last 48h)
    *   - POST /affiliate/admin/commissions/awin-sync (manual trigger)
    *
-   * Limitations (documented for Phase C.17 follow-up):
-   *   - affiliateProductId is always null — AffiliateClickLog has no awinClickRef
-   *     column yet, so click-to-commission linking is deferred.
-   *   - insert vs update are not distinguished in the returned counts (upsert
-   *     does not expose which path was taken); updated is always 0.
+   * Attribution: affiliateProductId is resolved via AffiliateClickLog.awinClickRef
+   *   when the SubID we inject at click time matches tx.clickRefs[0].
+   *   When APPROVED for the first time, AffiliateProduct.conversionCount is incremented.
+   *   insert vs update are not distinguished; updated is always 0 in returned counts.
    */
   async syncCommissionsFromAwin(filters: AwinTransactionFilters): Promise<{
     fetched: number;
@@ -709,16 +762,31 @@ export class AffiliateService {
         const commissionAmt = this.extractAmount(tx.commissionAmount);
         const saleAmt = this.extractAmount(tx.saleAmount);
         const status = this.mapAwinStatus(tx.commissionStatus);
+        const awinClickRef = tx.clickRefs?.[0] ?? null;
+
+        // Resolve affiliateProductId via the SubID we injected at click time.
+        // AffiliateClickLog.awinClickRef = our clickLog.id = Awin's clickRefs[0].
+        let affiliateProductId: string | null = null;
+        if (awinClickRef) {
+          const clickLog = await this.prisma.affiliateClickLog.findFirst({
+            where: { awinClickRef },
+            select: { affiliateProductId: true },
+          });
+          affiliateProductId = clickLog?.affiliateProductId ?? null;
+        }
+
+        const prevCommission = await this.prisma.affiliateCommission.findUnique({
+          where: { awinTransactionId: String(tx.id) },
+          select: { status: true, affiliateProductId: true },
+        });
 
         await this.prisma.affiliateCommission.upsert({
           where: { awinTransactionId: String(tx.id) },
           create: {
             awinTransactionId: String(tx.id),
-            awinClickRef: tx.clickRefs?.[0] ?? null,
+            awinClickRef,
             advertiserId: advertiser.id,
-            // affiliateProductId: null — AffiliateClickLog.awinClickRef not yet implemented.
-            // Deferred to Phase C.17 (E2E tests + schema expansion).
-            affiliateProductId: null,
+            affiliateProductId,
             saleAmount: saleAmt.amount,
             commissionAmount: commissionAmt.amount,
             currency: commissionAmt.currency,
@@ -731,6 +799,9 @@ export class AffiliateService {
           },
           update: {
             status,
+            // Backfill affiliateProductId if we can now resolve it (e.g. on re-sync)
+            ...(affiliateProductId &&
+              !prevCommission?.affiliateProductId && { affiliateProductId }),
             saleAmount: saleAmt.amount,
             commissionAmount: commissionAmt.amount,
             currency: commissionAmt.currency,
@@ -740,6 +811,25 @@ export class AffiliateService {
             syncedAt: new Date(),
           },
         });
+
+        // Increment conversionCount when a commission transitions to APPROVED
+        // for the first time (previous status was not APPROVED).
+        if (
+          status === AffiliateCommissionStatus.APPROVED &&
+          prevCommission?.status !== AffiliateCommissionStatus.APPROVED &&
+          affiliateProductId
+        ) {
+          this.prisma.affiliateProduct
+            .update({
+              where: { id: affiliateProductId },
+              data: { conversionCount: { increment: 1 } },
+            })
+            .catch((err: Error) =>
+              this.logger.warn(
+                `Failed to increment conversionCount for product ${affiliateProductId}: ${err.message}`
+              )
+            );
+        }
 
         inserted++;
       } catch (err: unknown) {

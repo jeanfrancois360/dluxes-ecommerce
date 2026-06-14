@@ -8,7 +8,7 @@ import { useAffiliatePublicProducts } from '@/hooks/use-affiliate';
 import { useLocale } from '@/contexts/locale-context';
 import { ProductGridSkeleton } from '@/components/loading/skeleton';
 import { ScrollToTop } from '@/components/scroll-to-top';
-import { Filter, Search, Star, X } from 'lucide-react';
+import { Filter, Search, Star, X, Percent, CheckCircle2 } from 'lucide-react';
 
 const LIMIT = 20;
 
@@ -16,10 +16,16 @@ const LIMIT = 20;
 // Helpers
 // ---------------------------------------------------------------------------
 
-function buildParams(page: number, isFeatured: boolean, tag: string): URLSearchParams {
+function buildParams(
+  page: number,
+  isFeatured: boolean,
+  inStockOnly: boolean,
+  tag: string
+): URLSearchParams {
   const p = new URLSearchParams();
   if (page > 1) p.set('page', String(page));
   if (isFeatured) p.set('featured', '1');
+  if (inStockOnly) p.set('inStock', '1');
   if (tag.trim()) p.set('tag', tag.trim());
   return p;
 }
@@ -38,12 +44,14 @@ export default function AffiliateListingPage() {
   // ---------------------------------------------------------------------------
   const [page, setPage] = useState(1);
   const [isFeatured, setIsFeatured] = useState(false);
+  const [inStockOnly, setInStockOnly] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [activeTag, setActiveTag] = useState('');
 
   useEffect(() => {
     setPage(parseInt(searchParams.get('page') || '1', 10));
     setIsFeatured(searchParams.get('featured') === '1');
+    setInStockOnly(searchParams.get('inStock') === '1');
     const t = searchParams.get('tag') || '';
     setTagInput(t);
     setActiveTag(t);
@@ -53,8 +61,8 @@ export default function AffiliateListingPage() {
   // Push new URL when filters change
   // ---------------------------------------------------------------------------
   const pushParams = useCallback(
-    (nextPage: number, nextFeatured: boolean, nextTag: string) => {
-      const p = buildParams(nextPage, nextFeatured, nextTag);
+    (nextPage: number, nextFeatured: boolean, nextInStock: boolean, nextTag: string) => {
+      const p = buildParams(nextPage, nextFeatured, nextInStock, nextTag);
       const qs = p.toString();
       router.push(`/affiliate${qs ? '?' + qs : ''}`);
     },
@@ -62,28 +70,32 @@ export default function AffiliateListingPage() {
   );
 
   const handleFeaturedToggle = () => {
-    pushParams(1, !isFeatured, activeTag);
+    pushParams(1, !isFeatured, inStockOnly, activeTag);
+  };
+
+  const handleInStockToggle = () => {
+    pushParams(1, isFeatured, !inStockOnly, activeTag);
   };
 
   const handleTagSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    pushParams(1, isFeatured, tagInput);
+    pushParams(1, isFeatured, inStockOnly, tagInput);
   };
 
   const handleClearTag = () => {
     setTagInput('');
-    pushParams(1, isFeatured, '');
+    pushParams(1, isFeatured, inStockOnly, '');
   };
 
   const handlePageChange = (p: number) => {
-    pushParams(p, isFeatured, activeTag);
+    pushParams(p, isFeatured, inStockOnly, activeTag);
   };
 
-  const hasActiveFilters = isFeatured || Boolean(activeTag);
+  const hasActiveFilters = isFeatured || inStockOnly || Boolean(activeTag);
 
   const clearAll = () => {
     setTagInput('');
-    pushParams(1, false, '');
+    pushParams(1, false, false, '');
   };
 
   // ---------------------------------------------------------------------------
@@ -94,10 +106,11 @@ export default function AffiliateListingPage() {
       page,
       limit: LIMIT,
       isFeatured: isFeatured || undefined,
+      inStock: inStockOnly || undefined,
       tag: activeTag || undefined,
       locale,
     }),
-    [page, isFeatured, activeTag, locale]
+    [page, isFeatured, inStockOnly, activeTag, locale]
   );
 
   const { products, pagination, loading, error } = useAffiliatePublicProducts(queryParams);
@@ -109,12 +122,24 @@ export default function AffiliateListingPage() {
     <PageLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-neutral-900">Partner Deals</h1>
-          <p className="text-neutral-500 mt-1">
-            Curated products from our trusted partners
-            {pagination.total > 0 && ` · ${pagination.total} products`}
-          </p>
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-[#CBB57B]/15 text-[#9A8540] text-xs font-semibold rounded-full border border-[#CBB57B]/30">
+                <Percent className="w-3 h-3" />
+                Affiliate deals
+              </span>
+            </div>
+            <h1 className="text-3xl font-bold text-neutral-900">Partner Deals</h1>
+            <p className="text-neutral-500 mt-1">
+              Curated products from our trusted partners
+              {pagination.total > 0 && (
+                <span className="ml-1.5 font-medium text-neutral-700">
+                  · {pagination.total.toLocaleString()} products
+                </span>
+              )}
+            </p>
+          </div>
         </div>
 
         {/* Filter bar */}
@@ -136,6 +161,19 @@ export default function AffiliateListingPage() {
             >
               <Star className={`w-3.5 h-3.5 ${isFeatured ? 'fill-amber-900' : ''}`} />
               Featured
+            </button>
+
+            {/* In Stock toggle */}
+            <button
+              onClick={handleInStockToggle}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                inStockOnly
+                  ? 'bg-green-500 border-green-500 text-white'
+                  : 'bg-white border-neutral-200 text-neutral-600 hover:border-neutral-400'
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              In stock
             </button>
 
             {/* Tag search */}

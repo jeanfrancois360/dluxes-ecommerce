@@ -7,6 +7,50 @@ import { ConfigService } from '@nestjs/config';
 // Ref: Awin Developer Centre + awin-py library field introspection
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Types — Awin Product Data API (productdata.awin.com)
+// Feed list: GET /datafeed/list/apikey/{AWIN_API_TOKEN}/
+// Feed download: URL from feed list (gzipped CSV)
+// ---------------------------------------------------------------------------
+
+/** One row from the feed-list CSV returned by productdata.awin.com */
+export interface AwinFeedMeta {
+  feedId: string;
+  feedName: string;
+  advertiserId: string; // Awin numeric merchant ID (matches AffiliateAdvertiser.awinMerchantId)
+  advertiserName: string;
+  language: string;
+  region: string;
+  vertical: string;
+  productCount: number;
+  lastImported: string; // ISO date string
+  downloadUrl: string; // Pre-signed or token-embedded download URL
+}
+
+/**
+ * Fields extracted from a single Awin product-feed CSV row.
+ * All values are raw strings as returned by the feed; callers must coerce types.
+ * Only the fields used for product import are listed; the full `raw` map is
+ * available for any additional field.
+ */
+export interface AwinFeedProduct {
+  merchantProductId: string; // aw_product_id
+  productName: string; // product_name
+  awDeepLink: string; // aw_deep_link  ← Awin-tracked URL (awin1.com)
+  awImageUrl: string; // aw_image_url
+  merchantImageUrl: string; // merchant_image_url
+  searchPrice: string; // search_price (current / discounted)
+  storePrice: string; // store_price (original / RRP)
+  currency: string; // currency
+  description: string; // description
+  brandName: string; // brand_name
+  inStock: string; // in_stock ('yes'/'no' or '1'/'0')
+  merchantId: string; // merchant_id
+  merchantName: string; // merchant_name
+  dataFeedId: string; // data_feed_id
+  raw: Record<string, string>;
+}
+
 export interface AwinSaleAmount {
   amount: number;
   currency: string;
@@ -44,9 +88,8 @@ export interface AwinTransaction {
   validationDate?: string;
   paymentDate?: string;
 
-  // Click refs — used to correlate back to our AffiliateClickLog.
-  // Note: AffiliateClickLog does not yet have an awinClickRef column;
-  // clickRefs[0] is stored on AffiliateCommission.awinClickRef for future linking.
+  // Awin echoes back our injected SubID here.
+  // clickRefs[0] matches AffiliateClickLog.awinClickRef for click→commission attribution.
   clickRefs?: string[];
 
   // Device / geo
@@ -103,6 +146,181 @@ export class AwinApiClient {
     const publisherId = this.configService.get<string>('AWIN_PUBLISHER_ID');
     const apiToken = this.configService.get<string>('AWIN_API_TOKEN');
     return Boolean(publisherId?.trim()) && Boolean(apiToken?.trim());
+  }
+
+  getPublisherId(): string {
+    return this.configService.get<string>('AWIN_PUBLISHER_ID') ?? '';
+  }
+
+  /**
+   * Downloads and parses the enhanced (Google-format) JSONL feed for a single
+   * advertiser from the Awin Publisher API.
+   *
+   * Endpoint: GET https://api.awin.com/publishers/{PID}/awinfeeds/download/{AID}-retail-{locale}.jsonl
+   * Auth: Bearer token (AWIN_API_TOKEN).
+   *
+   * Tries each locale in order and returns the first successful response.
+   * Throws only if all locales fail.
+   *
+   * Awin rate limit: 5 req/min per endpoint. Caller must not exceed this.
+   */
+  async fetchEnhancedFeed(
+    awinAdvertiserId: string,
+    locales: string[] = ['en_GB', 'en_US', 'en_NL', 'en_DE', 'fr_FR', 'de_DE']
+  ): Promise<AwinFeedProduct[]> {
+    const publisherId = this.configService.get<string>('AWIN_PUBLISHER_ID');
+    const apiToken = this.configService.get<string>('AWIN_API_TOKEN');
+
+    let lastError = '';
+    for (const locale of locales) {
+      const url = `${this.baseUrl}/publishers/${publisherId}/awinfeeds/download/${awinAdvertiserId}-retail-${locale}.jsonl`;
+      this.logger.log(`Trying Awin enhanced feed: ${url}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120_000);
+
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          signal: controller.signal,
+          headers: { Authorization: `Bearer ${apiToken}` },
+        });
+      } catch (err: unknown) {
+        clearTimeout(timeoutId);
+        lastError =
+          err instanceof Error && err.name === 'AbortError'
+            ? `Awin feed request timed out (120s) for locale ${locale}`
+            : `Awin feed request failed for locale ${locale}: ${err instanceof Error ? err.message : String(err)}`;
+        this.logger.warn(lastError);
+        continue;
+      }
+      clearTimeout(timeoutId);
+
+      if (response.status === 404) {
+        // This locale / feed doesn't exist — try the next one.
+        this.logger.log(`No feed for advertiser ${awinAdvertiserId} locale ${locale} (404)`);
+        continue;
+      }
+
+      if (!response.ok) {
+        const body = await response.text();
+        lastError = `Awin feed HTTP ${response.status} for locale ${locale}: ${this.stripHtml(body)}`;
+        this.logger.warn(lastError);
+        continue;
+      }
+
+      const jsonlText = await response.text();
+      const products = this.parseEnhancedFeedJsonl(jsonlText);
+      this.logger.log(
+        `Fetched ${products.length} products for advertiser ${awinAdvertiserId} (locale ${locale})`
+      );
+      return products;
+    }
+
+    throw new Error(
+      `No working feed found for Awin advertiser ${awinAdvertiserId}. Last error: ${lastError}`
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private parsers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Parses Awin's enhanced (Google-format) JSONL feed response.
+   * Each non-empty line is a JSON object following Google's product data spec.
+   * The last line may be an error sentinel — it's ignored if it lacks an `id`.
+   *
+   * Google feed → AwinFeedProduct field mapping:
+   *   id                    → merchantProductId
+   *   title                 → productName
+   *   description           → description
+   *   link                  → awDeepLink  (Awin-tracked URL)
+   *   image_link            → awImageUrl
+   *   additional_image_link → merchantImageUrl (first item)
+   *   sale_price            → searchPrice (current/discounted, e.g. "9.99 GBP")
+   *   price                 → storePrice  (original/RRP)
+   *   availability          → inStock     ("in_stock" | "out_of_stock" | "preorder")
+   *   brand                 → brandName
+   */
+  private parseEnhancedFeedJsonl(jsonl: string): AwinFeedProduct[] {
+    const products: AwinFeedProduct[] = [];
+
+    for (const line of jsonl.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      let obj: Record<string, unknown>;
+      try {
+        obj = JSON.parse(trimmed) as Record<string, unknown>;
+      } catch {
+        continue;
+      }
+
+      // Skip error sentinel lines (last line may be { "error": 500, "message": "..." })
+      const id = (obj['id'] as string | undefined)?.trim();
+      if (!id) continue;
+
+      const additionalImages = Array.isArray(obj['additional_image_link'])
+        ? (obj['additional_image_link'] as string[])
+        : typeof obj['additional_image_link'] === 'string'
+          ? [obj['additional_image_link'] as string]
+          : [];
+
+      // Prices come as "9.99 GBP" — extract numeric and currency portions.
+      const extractPrice = (val: unknown): string => {
+        if (typeof val !== 'string') return '';
+        return val.split(' ')[0] ?? '';
+      };
+      const extractCurrency = (val: unknown): string => {
+        if (typeof val !== 'string') return '';
+        return val.split(' ')[1] ?? '';
+      };
+
+      const rawPrice = obj['price'] as string | undefined;
+      const rawSalePrice = obj['sale_price'] as string | undefined;
+
+      // aw_deep_link is the Awin-tracked URL (awin1.com); `link` is the raw merchant URL.
+      // We always use aw_deep_link so Awin can attribute clicks correctly.
+      const awDeepLink =
+        ((obj['aw_deep_link'] as string | undefined) ?? '').trim() ||
+        ((obj['link'] as string | undefined) ?? '').trim();
+
+      products.push({
+        merchantProductId: id,
+        productName: ((obj['title'] as string | undefined) ?? '').trim(),
+        awDeepLink,
+        awImageUrl: ((obj['image_link'] as string | undefined) ?? '').trim(),
+        merchantImageUrl: (additionalImages[0] ?? '').trim(),
+        searchPrice: extractPrice(rawSalePrice || rawPrice),
+        storePrice: extractPrice(rawPrice),
+        currency: extractCurrency(rawPrice || rawSalePrice),
+        description: ((obj['description'] as string | undefined) ?? '').trim(),
+        brandName: ((obj['brand'] as string | undefined) ?? '').trim(),
+        inStock: ((obj['availability'] as string | undefined) ?? '').trim(),
+        merchantId: '',
+        merchantName: '',
+        dataFeedId: '',
+        raw: Object.fromEntries(
+          Object.entries(obj).map(([k, v]) => [k, typeof v === 'string' ? v : JSON.stringify(v)])
+        ),
+      });
+    }
+
+    return products;
+  }
+
+  /** Strips HTML tags and decodes basic entities; truncates to 300 chars. */
+  private stripHtml(text: string): string {
+    return text
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+      .slice(0, 300);
   }
 
   /**

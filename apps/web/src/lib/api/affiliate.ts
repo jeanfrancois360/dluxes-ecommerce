@@ -13,6 +13,7 @@ import { api } from './client';
 export type AffiliateAdvertiserStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAUSED';
 export type AffiliateCommissionStatus = 'PENDING' | 'APPROVED' | 'DECLINED' | 'PAID';
 export type TranslationStatus = 'ORIGINAL' | 'MACHINE_TRANSLATED' | 'HUMAN_REVIEWED' | 'PUBLISHED';
+export type AffiliateFulfillmentSource = 'MANUAL' | 'FEED';
 
 // ---------------------------------------------------------------------------
 // Model interfaces — field names match schema.prisma
@@ -46,12 +47,16 @@ export interface AffiliateProduct {
   originalPrice?: number;
   productCategoryIds: string[];
   tags: string[];
+  brandName?: string;
+  inStock?: boolean;
+  fulfillmentSource?: AffiliateFulfillmentSource;
+  merchantProductId?: string;
   isActive: boolean;
   isFeatured: boolean;
   displayOrder: number;
   clickCount: number;
   conversionCount: number;
-  createdById: string;
+  createdById?: string;
   deletedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -108,6 +113,49 @@ export interface AffiliateClickLog {
   createdAt: string;
   // API-enriched
   affiliateProduct?: Pick<AffiliateProduct, 'id' | 'slug'>;
+}
+
+export interface AwinFeedMeta {
+  feedId: string;
+  advertiserId: string;
+  advertiserName: string;
+  downloadUrl: string;
+  productCount: number;
+  language: string;
+}
+
+export interface FeedSyncResult {
+  advertiserId: string;
+  awinMerchantId: string;
+  feedId: string | null;
+  productsUpserted: number;
+  productsSkipped: number;
+  errors: number;
+  status: 'success' | 'partial' | 'failed' | 'skipped';
+  errorDetail?: string;
+}
+
+export interface AllFeedsSyncSummary {
+  advertisersWithFeed: number;
+  advertisersWithoutFeed: number;
+  totalUpserted: number;
+  totalSkipped: number;
+  totalErrors: number;
+  results: FeedSyncResult[];
+}
+
+export interface AwinFeedSync {
+  id: string;
+  advertiserId?: string;
+  awinMerchantId?: string;
+  feedId?: string;
+  productsUpserted: number;
+  productsSkipped: number;
+  errors: number;
+  status: string;
+  errorDetail?: string;
+  startedAt: string;
+  completedAt?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -271,6 +319,7 @@ const adminListProducts = async (params?: {
   locale?: string;
   isActive?: boolean;
   includeDeleted?: boolean;
+  fulfillmentSource?: AffiliateFulfillmentSource;
 }) => {
   return api.get<PaginatedResponse<AffiliateProduct>>(
     `/affiliate/admin/products${buildQueryString(params)}`
@@ -423,6 +472,23 @@ const getCommissionStats = async (advertiserId?: string) => {
 };
 
 // ---------------------------------------------------------------------------
+// Admin — Feed Sync
+// ---------------------------------------------------------------------------
+
+const listFeeds = async () => api.get<AwinFeedMeta[]>('/affiliate/admin/feeds');
+
+const triggerFeedSync = async (awinMerchantId?: string) =>
+  api.post<FeedSyncResult | AllFeedsSyncSummary>(
+    '/affiliate/admin/feeds/sync',
+    awinMerchantId ? { awinMerchantId } : {}
+  );
+
+const listFeedSyncs = async (params?: { advertiserId?: string; page?: number; limit?: number }) =>
+  api.get<PaginatedResponse<AwinFeedSync>>(
+    `/affiliate/admin/feeds/history${buildQueryString(params)}`
+  );
+
+// ---------------------------------------------------------------------------
 // Admin — Click analytics
 // ---------------------------------------------------------------------------
 
@@ -471,4 +537,8 @@ export const affiliateApi = {
   getCommissionStats,
   // Admin clicks
   listClickLogs,
+  // Admin feed sync
+  listFeeds,
+  triggerFeedSync,
+  listFeedSyncs,
 };

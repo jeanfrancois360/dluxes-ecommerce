@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { ModernTable } from '@/components/admin/modern-table';
-import { useAffiliateProducts, useAffiliateAdvertisers } from '@/hooks/use-affiliate';
+import { useAffiliateProducts, useAffiliateAdvertisers, useFeedSyncs } from '@/hooks/use-affiliate';
 import { affiliateApi } from '@/lib/api/affiliate';
 import { api } from '@/lib/api/client';
-import { formatDate } from '@/lib/utils/date-format';
+import { formatDate, formatRelativeTime } from '@/lib/utils/date-format';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { toast } from '@/lib/utils/toast';
 import {
@@ -22,6 +23,8 @@ import {
   Eye,
   EyeOff,
   Languages,
+  RefreshCw,
+  Rss,
 } from 'lucide-react';
 import type { AffiliateProduct } from '@/lib/api/affiliate';
 
@@ -563,6 +566,9 @@ function buildColumns(
       render: (item: AffiliateProduct) => (
         <div>
           <div className="font-semibold text-gray-900">{item.title ?? item.slug}</div>
+          {item.brandName && (
+            <div className="text-xs text-gray-500 font-medium">{item.brandName}</div>
+          )}
           {item.title && (
             <div className="text-xs text-gray-400 font-mono truncate max-w-[180px]">
               {item.slug}
@@ -594,11 +600,26 @@ function buildColumns(
           >
             {item.isActive ? 'Active' : 'Inactive'}
           </span>
+          {item.inStock !== undefined && (
+            <span
+              title={item.inStock ? 'In stock' : 'Out of stock'}
+              className={`w-2 h-2 rounded-full ${item.inStock ? 'bg-green-500' : 'bg-red-400'}`}
+            />
+          )}
           {item.isFeatured && (
             <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border bg-amber-50 text-amber-700 border-amber-200">
               Featured
             </span>
           )}
+          <span
+            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${
+              item.fulfillmentSource === 'FEED'
+                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                : 'bg-gray-50 text-gray-500 border-gray-200'
+            }`}
+          >
+            {item.fulfillmentSource === 'FEED' ? 'Feed' : 'Manual'}
+          </span>
         </div>
       ),
     },
@@ -692,6 +713,7 @@ function AffiliateProductsContent() {
   const [advertiserIdFilter, setAdvertiserIdFilter] = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [isFeaturedFilter, setIsFeaturedFilter] = useState<'all' | 'featured'>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'FEED' | 'MANUAL'>('all');
 
   const limit = 20;
 
@@ -702,8 +724,9 @@ function AffiliateProductsContent() {
       advertiserId: advertiserIdFilter || undefined,
       isActive: isActiveFilter === 'all' ? undefined : isActiveFilter === 'active',
       isFeatured: isFeaturedFilter === 'all' ? undefined : true,
+      fulfillmentSource: sourceFilter === 'all' ? undefined : (sourceFilter as 'FEED' | 'MANUAL'),
     }),
-    [page, advertiserIdFilter, isActiveFilter, isFeaturedFilter]
+    [page, advertiserIdFilter, isActiveFilter, isFeaturedFilter, sourceFilter]
   );
 
   const { products, pagination, loading, error, refetch } = useAffiliateProducts(queryParams);
@@ -712,6 +735,33 @@ function AffiliateProductsContent() {
   const { advertisers: approvedAdvertisers, loading: advertisersLoading } = useAffiliateAdvertisers(
     useMemo(() => ({ limit: 100, approvalStatus: 'APPROVED' }), [])
   );
+
+  // Last feed sync (for contextual banner)
+  const { syncs: recentSyncs } = useFeedSyncs(useMemo(() => ({ limit: 1 }), []));
+  const lastFeedSync = recentSyncs[0];
+
+  // Feed sync state
+  const [syncingFeeds, setSyncingFeeds] = useState(false);
+
+  const handleSyncFeeds = async () => {
+    try {
+      setSyncingFeeds(true);
+      const result = await affiliateApi.triggerFeedSync();
+      if ('totalUpserted' in result) {
+        toast.success(
+          `Feed sync complete — ${result.totalUpserted} upserted, ${result.totalErrors} errors`,
+          { duration: 6000 }
+        );
+      } else {
+        toast.success(`Feed sync complete — ${result.productsUpserted} upserted`);
+      }
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Feed sync failed.');
+    } finally {
+      setSyncingFeeds(false);
+    }
+  };
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -885,12 +935,16 @@ function AffiliateProductsContent() {
   );
 
   const hasActiveFilters =
-    advertiserIdFilter || isActiveFilter !== 'all' || isFeaturedFilter !== 'all';
+    advertiserIdFilter ||
+    isActiveFilter !== 'all' ||
+    isFeaturedFilter !== 'all' ||
+    sourceFilter !== 'all';
 
   const clearFilters = () => {
     setAdvertiserIdFilter('');
     setIsActiveFilter('all');
     setIsFeaturedFilter('all');
+    setSourceFilter('all');
     setPage(1);
   };
 
@@ -906,12 +960,22 @@ function AffiliateProductsContent() {
             Manage affiliate product listings ({pagination.total} total)
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800"
-        >
-          + Create Product
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSyncFeeds}
+            disabled={syncingFeeds}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncingFeeds ? 'animate-spin' : ''}`} />
+            {syncingFeeds ? 'Syncing…' : 'Sync Feeds'}
+          </button>
+          <button
+            onClick={openCreate}
+            className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800"
+          >
+            + Create Product
+          </button>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -967,6 +1031,20 @@ function AffiliateProductsContent() {
             <option value="featured">Featured only</option>
           </select>
 
+          {/* Source */}
+          <select
+            value={sourceFilter}
+            onChange={(e) => {
+              setSourceFilter(e.target.value as 'all' | 'FEED' | 'MANUAL');
+              handleFilterChange();
+            }}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
+          >
+            <option value="all">All sources</option>
+            <option value="FEED">Feed only</option>
+            <option value="MANUAL">Manual only</option>
+          </select>
+
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
@@ -978,6 +1056,31 @@ function AffiliateProductsContent() {
           )}
         </div>
       </div>
+
+      {/* Feed source contextual banner */}
+      {sourceFilter === 'FEED' && (
+        <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-blue-700">
+            <Rss className="w-4 h-4 flex-shrink-0" />
+            <span>
+              Showing feed-imported products
+              {lastFeedSync && (
+                <>
+                  {' '}
+                  · Last synced{' '}
+                  <span className="font-medium">{formatRelativeTime(lastFeedSync.startedAt)}</span>
+                </>
+              )}
+            </span>
+          </div>
+          <Link
+            href="/admin/affiliate/feeds"
+            className="text-xs font-medium text-blue-600 hover:text-blue-800 whitespace-nowrap transition-colors"
+          >
+            View Feed History →
+          </Link>
+        </div>
+      )}
 
       {/* Error state */}
       {error && (
