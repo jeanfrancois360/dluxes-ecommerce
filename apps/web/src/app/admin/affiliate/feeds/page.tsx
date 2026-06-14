@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
-import { useFeedSyncs, useAffiliateAdvertisers } from '@/hooks/use-affiliate';
+import { useFeedSyncs, useAffiliateAdvertisers, useAffiliateProducts } from '@/hooks/use-affiliate';
 import { affiliateApi } from '@/lib/api/affiliate';
 import { formatRelativeTime, formatDateTime } from '@/lib/utils/date-format';
 import { toast } from '@/lib/utils/toast';
@@ -21,6 +22,8 @@ import {
   ChevronDown,
   ChevronUp,
   SkipForward,
+  Database,
+  ArrowRight,
 } from 'lucide-react';
 import type {
   AwinFeedSync,
@@ -331,6 +334,13 @@ function AdvertiserHealthCard({
           )}
         </div>
       )}
+
+      <Link
+        href="/admin/affiliate/products"
+        className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 transition-colors self-start"
+      >
+        View products <ArrowRight className="w-3 h-3" />
+      </Link>
     </div>
   );
 }
@@ -360,9 +370,6 @@ function HistoryRow({
               <p className="text-xs text-gray-400 font-mono">{sync.awinMerchantId}</p>
             )}
           </div>
-        </td>
-        <td className="px-4 py-3">
-          <span className="text-xs text-gray-500 font-mono">{sync.feedId ?? '—'}</span>
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center gap-1.5">
@@ -413,7 +420,7 @@ function HistoryRow({
       </tr>
       {showError && sync.errorDetail && (
         <tr className="bg-red-50">
-          <td colSpan={8} className="px-4 py-2">
+          <td colSpan={7} className="px-4 py-2">
             <p className="text-xs text-red-700 font-mono break-all">{sync.errorDetail}</p>
           </td>
         </tr>
@@ -458,6 +465,11 @@ function FeedSyncsContent() {
   }, [refetchHealth, refetchHistory]);
 
   const { advertisers } = useAffiliateAdvertisers(useMemo(() => ({ limit: 100 }), []));
+
+  // Total feed products in DB (live count)
+  const { pagination: feedProductPagination } = useAffiliateProducts(
+    useMemo(() => ({ fulfillmentSource: 'FEED' as const, limit: 1 }), [])
+  );
 
   const advertiserMap = useMemo(
     () => new Map(advertisers.map((a) => [a.id, a.name])),
@@ -589,7 +601,7 @@ function FeedSyncsContent() {
       {/* Stats row                                                           */}
       {/* ------------------------------------------------------------------ */}
       {!healthLoading && stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           <StatCard
             icon={<Clock className="w-5 h-5 text-gray-400" />}
             label="Last Sync"
@@ -615,12 +627,18 @@ function FeedSyncsContent() {
             value={stats.batchErrors}
             accent={stats.batchErrors > 0 ? 'red' : 'green'}
           />
+          <StatCard
+            icon={<Database className="w-5 h-5 text-purple-500" />}
+            label="Feed Products (total)"
+            value={feedProductPagination.total.toLocaleString()}
+            accent="blue"
+          />
         </div>
       )}
 
       {healthLoading && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
             <div
               key={i}
               className="bg-white rounded-xl border border-gray-200 p-5 h-24 animate-pulse"
@@ -724,7 +742,6 @@ function FeedSyncsContent() {
                   <tr className="border-b border-gray-100 bg-gray-50">
                     {[
                       'Advertiser',
-                      'Feed ID',
                       'Status',
                       'Upserted',
                       'Skipped',

@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { AffiliateProductCard } from './affiliate-product-card';
 import type { AffiliateProduct } from '@/lib/api/affiliate';
@@ -19,6 +21,8 @@ interface AffiliateProductsSectionProps {
   title?: string;
   /** Show the Awin disclosure line. Default true (required by Awin + EU law). */
   showDisclosure?: boolean;
+  /** Show "View all deals →" link. Default true. */
+  showViewAll?: boolean;
   locale: string;
 }
 
@@ -26,6 +30,7 @@ export function AffiliateProductsSection({
   products,
   title,
   showDisclosure = true,
+  showViewAll = true,
   locale,
 }: AffiliateProductsSectionProps) {
   const ta = useTranslations('affiliate');
@@ -37,16 +42,27 @@ export function AffiliateProductsSection({
 
   return (
     <section className="space-y-5">
-      <div>
-        <div className="flex items-center gap-3">
-          <span className="w-1 h-5 bg-[#CBB57B] rounded-full shrink-0" />
-          <h2 className="text-base font-semibold text-neutral-900">{heading}</h2>
-          <span className="px-2 py-0.5 bg-neutral-100 text-neutral-500 text-xs font-medium rounded-full">
-            {products.length}
-          </span>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="w-1 h-5 bg-[#CBB57B] rounded-full shrink-0" />
+            <h2 className="text-base font-semibold text-neutral-900">{heading}</h2>
+            <span className="px-2 py-0.5 bg-neutral-100 text-neutral-500 text-xs font-medium rounded-full">
+              {products.length}
+            </span>
+          </div>
+          {showDisclosure && (
+            <p className="mt-1 ml-4 text-xs text-neutral-400">{tb('featuredProductsDisclosure')}</p>
+          )}
         </div>
-        {showDisclosure && (
-          <p className="mt-1 ml-4 text-xs text-neutral-400">{tb('featuredProductsDisclosure')}</p>
+        {showViewAll && (
+          <Link
+            href="/affiliate"
+            className="flex items-center gap-1 text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors shrink-0 mt-0.5"
+          >
+            View all deals
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

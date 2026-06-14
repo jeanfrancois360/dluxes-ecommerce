@@ -261,6 +261,18 @@ export class AwinFeedService {
       return;
     }
 
+    // Quality gate: skip products where title === description.
+    // This is a reliable signal of bad feed data (e.g. Voghion test catalog
+    // sends the raw SKU code as both fields). Real products never do this.
+    const titleTrimmed = row.productName.trim();
+    const descTrimmed = row.description.trim();
+    if (titleTrimmed && descTrimmed && titleTrimmed === descTrimmed) {
+      this.logger.warn(
+        `Skipping product ${row.merchantProductId} for ${advertiserName}: title === description (bad feed data)`
+      );
+      return;
+    }
+
     const displayPrice = parseFloat(row.searchPrice || row.storePrice) || undefined;
     const originalPrice =
       row.storePrice && row.searchPrice && row.storePrice !== row.searchPrice
@@ -269,8 +281,9 @@ export class AwinFeedService {
     const inStock = /^(yes|1|true|in_stock)$/i.test(row.inStock);
     const currency = (row.currency || 'EUR').toUpperCase();
 
-    // Slug: slugified product name + last-8 chars of merchantProductId for uniqueness.
-    const slug = this.buildSlug(row.productName, row.merchantProductId);
+    // Slug: slugified product name + merchantProductId suffix + advertiserId suffix.
+    // Including advertiserId prevents collisions when two advertisers have identically-named products.
+    const slug = this.buildSlug(row.productName, row.merchantProductId, advertiserId);
 
     // Upsert by compound unique (advertiserId, merchantProductId).
     // Prisma compound unique name = advertiserId_merchantProductId.
@@ -339,19 +352,21 @@ export class AwinFeedService {
   // PRIVATE — helpers
   // ============================================================================
 
-  private buildSlug(productName: string, merchantProductId: string): string {
+  private buildSlug(productName: string, merchantProductId: string, advertiserId: string): string {
     const base = productName
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
-      .slice(0, 80);
-    const suffix = merchantProductId
-      .slice(-8)
+      .slice(0, 60);
+    // Combine last-6 of merchantProductId + last-4 of advertiserId for cross-advertiser uniqueness.
+    const productSuffix = merchantProductId
+      .slice(-6)
       .replace(/[^a-z0-9]/gi, '')
       .toLowerCase();
-    return `${base || 'product'}-${suffix}`;
+    const advertiserSuffix = advertiserId.replace(/-/g, '').slice(-4).toLowerCase();
+    return `${base || 'product'}-${productSuffix}${advertiserSuffix}`;
   }
 
   private async writeSyncAudit(data: {
