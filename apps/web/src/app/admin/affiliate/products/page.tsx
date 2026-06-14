@@ -564,6 +564,9 @@ function buildColumns(
       render: (item: AffiliateProduct) => (
         <div>
           <div className="font-semibold text-gray-900">{item.title ?? item.slug}</div>
+          {item.brandName && (
+            <div className="text-xs text-gray-500 font-medium">{item.brandName}</div>
+          )}
           {item.title && (
             <div className="text-xs text-gray-400 font-mono truncate max-w-[180px]">
               {item.slug}
@@ -595,6 +598,12 @@ function buildColumns(
           >
             {item.isActive ? 'Active' : 'Inactive'}
           </span>
+          {item.inStock !== undefined && (
+            <span
+              title={item.inStock ? 'In stock' : 'Out of stock'}
+              className={`w-2 h-2 rounded-full ${item.inStock ? 'bg-green-500' : 'bg-red-400'}`}
+            />
+          )}
           {item.isFeatured && (
             <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border bg-amber-50 text-amber-700 border-amber-200">
               Featured
@@ -702,6 +711,7 @@ function AffiliateProductsContent() {
   const [advertiserIdFilter, setAdvertiserIdFilter] = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [isFeaturedFilter, setIsFeaturedFilter] = useState<'all' | 'featured'>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'FEED' | 'MANUAL'>('all');
 
   const limit = 20;
 
@@ -712,8 +722,9 @@ function AffiliateProductsContent() {
       advertiserId: advertiserIdFilter || undefined,
       isActive: isActiveFilter === 'all' ? undefined : isActiveFilter === 'active',
       isFeatured: isFeaturedFilter === 'all' ? undefined : true,
+      fulfillmentSource: sourceFilter === 'all' ? undefined : (sourceFilter as 'FEED' | 'MANUAL'),
     }),
-    [page, advertiserIdFilter, isActiveFilter, isFeaturedFilter]
+    [page, advertiserIdFilter, isActiveFilter, isFeaturedFilter, sourceFilter]
   );
 
   const { products, pagination, loading, error, refetch } = useAffiliateProducts(queryParams);
@@ -727,7 +738,6 @@ function AffiliateProductsContent() {
   const [syncingFeeds, setSyncingFeeds] = useState(false);
 
   const handleSyncFeeds = async () => {
-    if (!window.confirm('Trigger a full Awin feed sync for all active advertisers?')) return;
     try {
       setSyncingFeeds(true);
       const result = await affiliateApi.triggerFeedSync();
@@ -919,12 +929,16 @@ function AffiliateProductsContent() {
   );
 
   const hasActiveFilters =
-    advertiserIdFilter || isActiveFilter !== 'all' || isFeaturedFilter !== 'all';
+    advertiserIdFilter ||
+    isActiveFilter !== 'all' ||
+    isFeaturedFilter !== 'all' ||
+    sourceFilter !== 'all';
 
   const clearFilters = () => {
     setAdvertiserIdFilter('');
     setIsActiveFilter('all');
     setIsFeaturedFilter('all');
+    setSourceFilter('all');
     setPage(1);
   };
 
@@ -1009,6 +1023,20 @@ function AffiliateProductsContent() {
           >
             <option value="all">All products</option>
             <option value="featured">Featured only</option>
+          </select>
+
+          {/* Source */}
+          <select
+            value={sourceFilter}
+            onChange={(e) => {
+              setSourceFilter(e.target.value as 'all' | 'FEED' | 'MANUAL');
+              handleFilterChange();
+            }}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#CBB57B]"
+          >
+            <option value="all">All sources</option>
+            <option value="FEED">Feed only</option>
+            <option value="MANUAL">Manual only</option>
           </select>
 
           {hasActiveFilters && (

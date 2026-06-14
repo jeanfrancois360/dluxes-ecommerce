@@ -248,6 +248,7 @@ export class AffiliateService {
       ...(query.isFeatured !== undefined && { isFeatured: query.isFeatured }),
       ...(query.isActive !== undefined && { isActive: query.isActive }),
       ...(query.tag && { tags: { has: query.tag } }),
+      ...(query.fulfillmentSource && { fulfillmentSource: query.fulfillmentSource }),
       ...(!query.includeDeleted && { deletedAt: null }),
     };
 

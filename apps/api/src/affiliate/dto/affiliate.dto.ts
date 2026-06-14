@@ -330,6 +330,10 @@ export class AdminListProductsQueryDto extends ListProductsQueryDto {
   @Transform(({ value }) => value === 'true')
   @IsBoolean()
   includeDeleted?: boolean;
+
+  @IsOptional()
+  @IsEnum(AffiliateFulfillmentSource)
+  fulfillmentSource?: AffiliateFulfillmentSource;
 }
 
 // ============================================================================
