@@ -124,6 +124,7 @@ export function useAffiliateProducts(params?: {
   advertiserId?: string;
   isActive?: boolean;
   isFeatured?: boolean;
+  fulfillmentSource?: 'FEED' | 'MANUAL';
 }) {
   const [products, setProducts] = useState<AffiliateProduct[]>([]);
   const [pagination, setPagination] = useState({
@@ -139,7 +140,14 @@ export function useAffiliateProducts(params?: {
   const memoizedParams = useMemo(
     () => params,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [params?.page, params?.limit, params?.advertiserId, params?.isActive, params?.isFeatured]
+    [
+      params?.page,
+      params?.limit,
+      params?.advertiserId,
+      params?.isActive,
+      params?.isFeatured,
+      params?.fulfillmentSource,
+    ]
   );
 
   const fetchProducts = useCallback(async () => {

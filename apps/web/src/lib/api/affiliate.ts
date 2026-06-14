@@ -319,6 +319,7 @@ const adminListProducts = async (params?: {
   locale?: string;
   isActive?: boolean;
   includeDeleted?: boolean;
+  fulfillmentSource?: AffiliateFulfillmentSource;
 }) => {
   return api.get<PaginatedResponse<AffiliateProduct>>(
     `/affiliate/admin/products${buildQueryString(params)}`
