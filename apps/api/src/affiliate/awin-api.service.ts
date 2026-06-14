@@ -183,7 +183,7 @@ export class AwinApiClient {
       try {
         response = await fetch(url, {
           signal: controller.signal,
-          headers: { Authorization: `Bearer ${apiToken}`, Accept: 'application/x-ndjson' },
+          headers: { Authorization: `Bearer ${apiToken}` },
         });
       } catch (err: unknown) {
         clearTimeout(timeoutId);
