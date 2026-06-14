@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { ModernTable } from '@/components/admin/modern-table';
-import { useAffiliateProducts, useAffiliateAdvertisers } from '@/hooks/use-affiliate';
+import { useAffiliateProducts, useAffiliateAdvertisers, useFeedSyncs } from '@/hooks/use-affiliate';
 import { affiliateApi } from '@/lib/api/affiliate';
 import { api } from '@/lib/api/client';
-import { formatDate } from '@/lib/utils/date-format';
+import { formatDate, formatRelativeTime } from '@/lib/utils/date-format';
 import { formatCurrencyAmount } from '@/lib/utils/number-format';
 import { toast } from '@/lib/utils/toast';
 import {
@@ -23,6 +24,7 @@ import {
   EyeOff,
   Languages,
   RefreshCw,
+  Rss,
 } from 'lucide-react';
 import type { AffiliateProduct } from '@/lib/api/affiliate';
 
@@ -734,6 +736,10 @@ function AffiliateProductsContent() {
     useMemo(() => ({ limit: 100, approvalStatus: 'APPROVED' }), [])
   );
 
+  // Last feed sync (for contextual banner)
+  const { syncs: recentSyncs } = useFeedSyncs(useMemo(() => ({ limit: 1 }), []));
+  const lastFeedSync = recentSyncs[0];
+
   // Feed sync state
   const [syncingFeeds, setSyncingFeeds] = useState(false);
 
@@ -1050,6 +1056,31 @@ function AffiliateProductsContent() {
           )}
         </div>
       </div>
+
+      {/* Feed source contextual banner */}
+      {sourceFilter === 'FEED' && (
+        <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-blue-700">
+            <Rss className="w-4 h-4 flex-shrink-0" />
+            <span>
+              Showing feed-imported products
+              {lastFeedSync && (
+                <>
+                  {' '}
+                  · Last synced{' '}
+                  <span className="font-medium">{formatRelativeTime(lastFeedSync.startedAt)}</span>
+                </>
+              )}
+            </span>
+          </div>
+          <Link
+            href="/admin/affiliate/feeds"
+            className="text-xs font-medium text-blue-600 hover:text-blue-800 whitespace-nowrap transition-colors"
+          >
+            View Feed History →
+          </Link>
+        </div>
+      )}
 
       {/* Error state */}
       {error && (

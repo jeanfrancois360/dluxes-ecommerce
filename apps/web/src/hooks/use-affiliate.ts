@@ -19,7 +19,9 @@ import {
 export function useAffiliatePublicProducts(params?: {
   page?: number;
   limit?: number;
+  advertiserId?: string;
   isFeatured?: boolean;
+  inStock?: boolean;
   tag?: string;
   locale?: string;
 }) {
@@ -37,7 +39,15 @@ export function useAffiliatePublicProducts(params?: {
   const memoizedParams = useMemo(
     () => params,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [params?.page, params?.limit, params?.isFeatured, params?.tag, params?.locale]
+    [
+      params?.page,
+      params?.limit,
+      params?.advertiserId,
+      params?.isFeatured,
+      params?.inStock,
+      params?.tag,
+      params?.locale,
+    ]
   );
 
   const fetchProducts = useCallback(async () => {

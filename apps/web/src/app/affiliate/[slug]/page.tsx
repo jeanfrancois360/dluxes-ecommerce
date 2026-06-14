@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
-import { ChevronRight, Star, ExternalLink, Tag } from 'lucide-react';
+import { ChevronRight, Star, ExternalLink, Tag, CheckCircle2, XCircle } from 'lucide-react';
 import { PageLayout } from '@/components/layout/page-layout';
 import { useAffiliateProduct } from '@/hooks/use-affiliate';
 import { useLocale } from '@/contexts/locale-context';
@@ -60,11 +60,26 @@ export default function AffiliateDetailPage() {
   // Type narrowing — product is non-null past this point
   const p = product!;
   const translation = p.translations?.[0];
-  const title = translation?.title ?? p.slug;
+  const rawTitle = translation?.title ?? p.slug;
+  // Clean raw SKU-style titles (e.g. from Voghion: "177943450027lgoods_test_goods_color649492")
+  const title = (() => {
+    if (!rawTitle || rawTitle.includes(' ')) return rawTitle;
+    const cleaned = rawTitle.replace(/[_-]+/g, ' ').trim();
+    const nonAlpha = (rawTitle.match(/[^a-zA-Z]/g) ?? []).length;
+    if (nonAlpha / rawTitle.length > 0.35) {
+      const wordCount = cleaned.split(' ').length;
+      if (wordCount <= 2 && /\d{6,}/.test(cleaned))
+        return p.advertiser ? `${p.advertiser.name} product` : 'Partner product';
+      return cleaned.length > 100 ? cleaned.slice(0, 100) + '…' : cleaned;
+    }
+    return rawTitle;
+  })();
   const description = translation?.description ?? '';
   const currency = p.displayCurrency || 'USD';
   const hasPrice = p.displayPrice != null && p.displayPrice > 0;
   const hasDiscount = hasPrice && p.originalPrice != null && p.originalPrice > p.displayPrice!;
+  const discountPct = hasDiscount ? Math.round((1 - p.displayPrice! / p.originalPrice!) * 100) : 0;
+  const isOutOfStock = p.inStock === false;
 
   const allImages = [
     ...(p.imageUrl ? [p.imageUrl] : []),
@@ -149,6 +164,26 @@ export default function AffiliateDetailPage() {
             {/* Title */}
             <h1 className="text-2xl font-bold text-neutral-900 leading-snug">{title}</h1>
 
+            {/* Stock + discount badges */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {isOutOfStock ? (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full">
+                  <XCircle className="w-3.5 h-3.5" />
+                  Out of stock
+                </span>
+              ) : p.inStock === true ? (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  In stock
+                </span>
+              ) : null}
+              {discountPct > 0 && (
+                <span className="inline-flex items-center text-xs font-bold text-white bg-red-500 px-2.5 py-1 rounded-full">
+                  -{discountPct}% off
+                </span>
+              )}
+            </div>
+
             {/* Price */}
             {hasPrice && (
               <div className="flex items-baseline gap-3">
@@ -184,15 +219,24 @@ export default function AffiliateDetailPage() {
             )}
 
             {/* CTA */}
-            <a
-              href={redirectHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-auto flex items-center justify-center gap-2 w-full py-3 px-6 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-700 transition-colors duration-150"
-            >
-              Buy Now
-              <ExternalLink className="w-4 h-4" />
-            </a>
+            {isOutOfStock ? (
+              <button
+                disabled
+                className="mt-auto flex items-center justify-center gap-2 w-full py-3 px-6 rounded-xl bg-neutral-200 text-neutral-400 text-sm font-semibold cursor-not-allowed"
+              >
+                Out of stock
+              </button>
+            ) : (
+              <a
+                href={redirectHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-auto flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-xl bg-neutral-900 text-white text-sm font-semibold hover:bg-neutral-700 transition-colors duration-150"
+              >
+                Buy Now — Shop at {p.advertiser?.name ?? 'Partner'}
+                <ExternalLink className="w-4 h-4 shrink-0" />
+              </a>
+            )}
 
             {/* Affiliate disclosure */}
             <p className="text-xs text-neutral-400 text-center">

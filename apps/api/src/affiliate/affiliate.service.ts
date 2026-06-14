@@ -211,6 +211,7 @@ export class AffiliateService {
       ...(query.advertiserId && { advertiserId: query.advertiserId }),
       ...(query.isFeatured !== undefined && { isFeatured: query.isFeatured }),
       ...(query.tag && { tags: { has: query.tag } }),
+      ...(query.inStock !== undefined && { inStock: query.inStock }),
     };
 
     const [products, total] = await Promise.all([
