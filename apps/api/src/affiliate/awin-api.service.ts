@@ -185,7 +185,7 @@ export class AwinApiClient {
 
     if (!response.ok) {
       const body = await response.text();
-      const msg = `Awin feed-list API ${response.status}: ${body}`;
+      const msg = `Awin feed-list API ${response.status}: ${this.stripHtml(body)}`;
       this.logger.error(msg);
       throw new Error(msg);
     }
@@ -227,7 +227,7 @@ export class AwinApiClient {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Awin feed download HTTP ${response.status}: ${body.slice(0, 200)}`);
+      throw new Error(`Awin feed download HTTP ${response.status}: ${this.stripHtml(body)}`);
     }
 
     // Decompress if needed — Node 18+ fetch gives a ReadableStream body.
@@ -338,6 +338,19 @@ export class AwinApiClient {
     }
 
     return products;
+  }
+
+  /** Strips HTML tags and decodes basic entities; truncates to 300 chars. */
+  private stripHtml(text: string): string {
+    return text
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+      .slice(0, 300);
   }
 
   /**
