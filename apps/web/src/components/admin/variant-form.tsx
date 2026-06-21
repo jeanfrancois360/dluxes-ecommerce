@@ -8,7 +8,11 @@
 
 import React, { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { ProductVariant, CreateProductVariantDto, UpdateProductVariantDto } from '@/lib/api/variants';
+import {
+  ProductVariant,
+  CreateProductVariantDto,
+  UpdateProductVariantDto,
+} from '@/lib/api/variants';
 import { formatNumber } from '@/lib/utils/number-format';
 
 // Dynamically import EnhancedImageUpload to avoid SSR issues with framer-motion
@@ -25,14 +29,33 @@ interface VariantFormProps {
   loading?: boolean;
 }
 
-export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading }: VariantFormProps) {
+export function VariantForm({
+  variant,
+  productPrice,
+  onSubmit,
+  onCancel,
+  loading,
+}: VariantFormProps) {
+  // Separate Gelato-internal keys so they are never shown in the UI but are
+  // preserved when saving (otherwise the backend would lose them on update).
+  const gelatoAttributes = React.useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(variant?.options || {}).filter(([k]) => k.startsWith('gelato'))
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   const [formData, setFormData] = useState({
     name: variant?.name || '',
     sku: variant?.sku || '',
     price: variant?.price !== undefined ? variant.price : productPrice,
     compareAtPrice: variant?.compareAtPrice || undefined,
     inventory: variant?.inventory || 0,
-    attributes: variant?.options || {},
+    attributes: Object.fromEntries(
+      Object.entries(variant?.options || {}).filter(([k]) => !k.startsWith('gelato'))
+    ),
     image: variant?.image || '',
     colorHex: variant?.colorHex || '',
     colorName: variant?.colorName || '',
@@ -104,8 +127,10 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
     }
 
     // Validate compareAtPrice if provided
-    if (formData.compareAtPrice !== undefined &&
-        (isNaN(formData.compareAtPrice) || formData.compareAtPrice < 0)) {
+    if (
+      formData.compareAtPrice !== undefined &&
+      (isNaN(formData.compareAtPrice) || formData.compareAtPrice < 0)
+    ) {
       alert('Compare at price must be a valid number (0 or greater)');
       return;
     }
@@ -117,7 +142,7 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
         price: finalPrice,
         compareAtPrice: formData.compareAtPrice,
         inventory: formData.inventory,
-        attributes: formData.attributes,
+        attributes: { ...gelatoAttributes, ...formData.attributes },
         // Always include image field when updating (to allow clearing), but only when it has value when creating
         image: formData.image || (variant ? null : undefined), // null to clear on update, undefined to omit on create
         colorHex: formData.colorHex || undefined,
@@ -256,7 +281,9 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
               required={!productPrice}
             />
           </div>
-          <p className={`text-xs mt-1 ${!productPrice ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+          <p
+            className={`text-xs mt-1 ${!productPrice ? 'text-red-600 font-medium' : 'text-gray-500'}`}
+          >
             {productPrice
               ? `Leave empty to inherit product price of ${formatNumber(productPrice)}`
               : 'Product has no base price - you must enter a price for this variant'}
@@ -276,7 +303,10 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
               value={formData.compareAtPrice !== undefined ? formData.compareAtPrice : ''}
               onChange={(e) => {
                 const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
-                handleChange('compareAtPrice', value !== undefined && !isNaN(value) ? value : undefined);
+                handleChange(
+                  'compareAtPrice',
+                  value !== undefined && !isNaN(value) ? value : undefined
+                );
               }}
               className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent text-sm"
               placeholder="0.00"
@@ -321,9 +351,7 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
       {/* Color */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Color Hex Code
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Color Hex Code</label>
           <div className="flex gap-2">
             <input
               type="text"
@@ -342,9 +370,7 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Color Name
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Color Name</label>
           <input
             type="text"
             value={formData.colorName}
@@ -357,9 +383,7 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
 
       {/* Variant Image - Full Width */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Variant Image
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Variant Image</label>
         <div className="max-w-2xl">
           <EnhancedImageUpload
             onImagesChange={handleImageChange}
@@ -379,9 +403,7 @@ export function VariantForm({ variant, productPrice, onSubmit, onCancel, loading
             onChange={(e) => handleChange('isAvailable', e.target.checked)}
             className="w-4 h-4 text-[#CBB57B] border-gray-300 rounded focus:ring-[#CBB57B]"
           />
-          <span className="text-sm font-medium text-gray-700">
-            Available for purchase
-          </span>
+          <span className="text-sm font-medium text-gray-700">Available for purchase</span>
         </label>
         <p className="text-xs text-gray-500 mt-1 ml-6">
           Uncheck to hide this variant from customers without deleting it

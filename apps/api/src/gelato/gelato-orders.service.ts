@@ -85,72 +85,82 @@ export class GelatoOrdersService {
       );
     }
 
-    // Resolve the actual catalog productUid from the store product UUID
+    // Resolve the actual catalog productUid to submit to Gelato
     let catalogProductUid = orderItem.product.gelatoProductUid;
 
-    // If the stored productUid is a UUID (store product ID), fetch the actual catalog productUid
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      catalogProductUid
-    );
-
-    if (isUUID) {
+    // If the customer selected a specific variant, its options carry the exact catalog productUid
+    // (set by syncGelatoVariants when the seller configured the product).
+    const variantOptions = orderItem.variant?.options as Record<string, any> | null;
+    if (variantOptions?.gelatoProductUid) {
+      catalogProductUid = variantOptions.gelatoProductUid;
       this.logger.log(
-        `Detected store product UUID "${catalogProductUid}" - fetching catalog productUid from Gelato...`
+        `Using variant-specific Gelato productUid: ${catalogProductUid.substring(0, 60)}...`
+      );
+    } else {
+      // No variant selected — fall back to resolving from the store product UUID
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        catalogProductUid
       );
 
-      try {
-        // Get seller's Gelato credentials to fetch from their store
-        const sellerCreds = await this.gelatoService.getSellerCredentials(storeId);
+      if (isUUID) {
+        this.logger.log(
+          `Detected store product UUID "${catalogProductUid}" - fetching catalog productUid from Gelato...`
+        );
 
-        // Fetch store product using seller's credentials
-        const ecommerceUrl = `https://ecommerce.gelatoapis.com/v1/stores/${sellerCreds.storeId}/products/${catalogProductUid}`;
+        try {
+          // Get seller's Gelato credentials to fetch from their store
+          const sellerCreds = await this.gelatoService.getSellerCredentials(storeId);
 
-        const response = await fetch(ecommerceUrl, {
-          method: 'GET',
-          headers: {
-            'X-API-KEY': sellerCreds.apiKey,
-            'Content-Type': 'application/json',
-          },
-        });
+          // Fetch store product using seller's credentials
+          const ecommerceUrl = `https://ecommerce.gelatoapis.com/v1/stores/${sellerCreds.storeId}/products/${catalogProductUid}`;
 
-        if (!response.ok) {
-          throw new Error(`Gelato API returned ${response.status}`);
-        }
+          const response = await fetch(ecommerceUrl, {
+            method: 'GET',
+            headers: {
+              'X-API-KEY': sellerCreds.apiKey,
+              'Content-Type': 'application/json',
+            },
+          });
 
-        const storeProduct: any = await response.json();
+          if (!response.ok) {
+            throw new Error(`Gelato API returned ${response.status}`);
+          }
 
-        if (storeProduct.variants && storeProduct.variants.length > 0) {
-          // Get the first variant's productUid (catalog productUid)
-          const variantProductUid = storeProduct.variants[0].productUid;
+          const storeProduct: any = await response.json();
 
-          if (variantProductUid) {
-            catalogProductUid = variantProductUid;
-            this.logger.log(
-              `✅ Resolved catalog productUid: ${catalogProductUid.substring(0, 60)}...`
-            );
+          if (storeProduct.variants && storeProduct.variants.length > 0) {
+            // Get the first variant's productUid (catalog productUid)
+            const variantProductUid = storeProduct.variants[0].productUid;
+
+            if (variantProductUid) {
+              catalogProductUid = variantProductUid;
+              this.logger.log(
+                `✅ Resolved catalog productUid: ${catalogProductUid.substring(0, 60)}...`
+              );
+            } else {
+              throw new BadRequestException(
+                `Store product "${orderItem.product.name}" has no valid catalog productUid in variants`
+              );
+            }
           } else {
             throw new BadRequestException(
-              `Store product "${orderItem.product.name}" has no valid catalog productUid in variants`
+              `Store product "${orderItem.product.name}" has no variants configured`
             );
           }
-        } else {
+        } catch (error) {
+          this.logger.error(
+            `Failed to fetch catalog productUid for store product ${catalogProductUid}: ${error.message}`
+          );
           throw new BadRequestException(
-            `Store product "${orderItem.product.name}" has no variants configured`
+            `Could not resolve Gelato product. Please check the product configuration in your Gelato dashboard.`
           );
         }
-      } catch (error) {
-        this.logger.error(
-          `Failed to fetch catalog productUid for store product ${catalogProductUid}: ${error.message}`
-        );
-        throw new BadRequestException(
-          `Could not resolve Gelato product. Please check the product configuration in your Gelato dashboard.`
+      } else {
+        this.logger.debug(
+          `Using stored catalog productUid: ${catalogProductUid.substring(0, 60)}...`
         );
       }
-    } else {
-      this.logger.debug(
-        `Using stored catalog productUid: ${catalogProductUid.substring(0, 60)}...`
-      );
-    }
+    } // end: no-variant fallback
 
     const existingPodOrder = await this.prisma.gelatoPodOrder.findFirst({
       where: { orderId, orderItemId, status: { not: GelatoPodStatus.FAILED } },
