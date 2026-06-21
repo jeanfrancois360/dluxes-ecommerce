@@ -58,6 +58,8 @@ import { PodConfigurationSection } from '../gelato/pod-configuration-section';
 import { GelatoPreviewModal } from '../gelato/gelato-preview-modal';
 import { INVENTORY_DEFAULTS } from '@/lib/constants/inventory';
 import { useCanListProductType } from '@/hooks/use-subscription';
+import { CountrySelect } from '../ui/country-select';
+import { HsCodeInput } from '../ui/hs-code-input';
 
 // Product types that require a subscription
 const SUBSCRIPTION_REQUIRED_TYPES = ['SERVICE', 'RENTAL', 'VEHICLE', 'REAL_ESTATE'];
@@ -1843,18 +1845,11 @@ export default function ProductForm({
                   >
                     HS Code <span className="text-xs font-normal text-gray-400">(customs)</span>
                   </label>
-                  <input
+                  <HsCodeInput
                     id="hsCode"
-                    type="text"
                     value={formData.hsCode || ''}
-                    onChange={(e) => setFormData({ ...formData, hsCode: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
-                    placeholder="e.g. 6109.10"
-                    maxLength={20}
+                    onChange={(v) => setFormData({ ...formData, hsCode: v })}
                   />
-                  <p className="mt-1 text-xs text-gray-400">
-                    Harmonized System tariff code — required for international shipments
-                  </p>
                 </div>
 
                 {/* Country of Origin — required by customs for international shipments */}
@@ -1866,22 +1861,13 @@ export default function ProductForm({
                     Country of Origin{' '}
                     <span className="text-xs font-normal text-gray-400">(customs)</span>
                   </label>
-                  <input
+                  <CountrySelect
                     id="countryOfOrigin"
-                    type="text"
                     value={formData.countryOfOrigin || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        countryOfOrigin: e.target.value.toUpperCase().slice(0, 2),
-                      })
-                    }
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent uppercase"
-                    placeholder="e.g. CN"
-                    maxLength={2}
+                    onChange={(code) => setFormData({ ...formData, countryOfOrigin: code })}
                   />
                   <p className="mt-1 text-xs text-gray-400">
-                    ISO 2-letter code where the product was manufactured — required for customs
+                    Where the product was manufactured — required for customs
                   </p>
                 </div>
               </div>
