@@ -278,7 +278,7 @@ export function CountrySelect({
   };
 
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
+    <div ref={containerRef} className={`relative w-full ${className}`}>
       <div
         className="w-full flex items-center px-4 py-2.5 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-[#CBB57B] focus-within:border-transparent bg-white cursor-text"
         onClick={() => {
@@ -304,7 +304,7 @@ export function CountrySelect({
             onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={selected ? `${selected.code} — ${selected.name}` : placeholder}
-            className="flex-1 text-sm outline-none bg-transparent placeholder-gray-400"
+            className="flex-1 min-w-0 text-sm outline-none bg-transparent placeholder-gray-400"
           />
         )}
         <div className="flex items-center gap-1 ml-2">
