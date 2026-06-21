@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { EasyPostService } from './easypost.service';
+import { EasyPostCustomsService } from './easypost-customs.service';
 import { GetRatesDto } from './dto/get-rates.dto';
 
 @Injectable()
@@ -9,11 +10,43 @@ export class EasyPostRatesService {
 
   constructor(
     private readonly easyPostService: EasyPostService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly customsService: EasyPostCustomsService
   ) {}
 
   async getRates(dto: GetRatesDto) {
     const client = this.easyPostService.getClient();
+
+    // Auto-build customs info from order product data when crossing borders
+    let resolvedCustomsInfo: object | undefined;
+    if (dto.customsInfo) {
+      // Caller explicitly provided customs info — map DTO fields to EasyPost shape
+      resolvedCustomsInfo = {
+        contents_type: dto.customsInfo.contentsType || 'merchandise',
+        contents_explanation: dto.customsInfo.contentsExplanation,
+        customs_certify: true,
+        customs_signer: dto.customsInfo.signer,
+        eel_pfc: dto.customsInfo.eelPfc || 'NOEEI 30.37(a)',
+        non_delivery_option: dto.customsInfo.nonDeliveryOption || 'return',
+        restriction_type: 'none',
+        customs_items: dto.customsInfo.items?.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          value: item.value,
+          weight: item.weight,
+          hs_tariff_number: item.hsTariffNumber,
+          origin_country: item.originCountry || 'US',
+        })),
+      };
+    } else if (dto.orderId) {
+      // Auto-build from product hsCode / countryOfOrigin
+      resolvedCustomsInfo =
+        (await this.customsService.buildCustomsInfoFromOrder(
+          dto.orderId,
+          dto.fromAddress.country,
+          dto.toAddress.country
+        )) ?? undefined;
+    }
 
     const shipment = await client.Shipment.create({
       to_address: this.easyPostService.formatAddress(dto.toAddress),
@@ -24,25 +57,7 @@ export class EasyPostRatesService {
         height: dto.parcel.height,
         weight: dto.parcel.weight, // in oz
       },
-      customs_info: dto.customsInfo
-        ? {
-            contents_type: dto.customsInfo.contentsType || 'merchandise',
-            contents_explanation: dto.customsInfo.contentsExplanation,
-            customs_certify: true,
-            customs_signer: dto.customsInfo.signer,
-            eel_pfc: dto.customsInfo.eelPfc || 'NOEEI 30.37(a)',
-            non_delivery_option: dto.customsInfo.nonDeliveryOption || 'return',
-            restriction_type: 'none',
-            customs_items: dto.customsInfo.items?.map((item) => ({
-              description: item.description,
-              quantity: item.quantity,
-              value: item.value,
-              weight: item.weight,
-              hs_tariff_number: item.hsTariffNumber,
-              origin_country: item.originCountry || 'US',
-            })),
-          }
-        : undefined,
+      customs_info: resolvedCustomsInfo,
     });
 
     // Log detailed shipment info for debugging
