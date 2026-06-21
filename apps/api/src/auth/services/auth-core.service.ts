@@ -76,6 +76,10 @@ export class AuthCoreService {
     // between our findUnique check and the create)
     let user;
     try {
+      // Email OTP is the default 2FA method for enforced roles (SELLER, ADMIN, etc.).
+      // Auto-enable it at registration so these users are never subject to the grace period block.
+      const autoEnableEmailOTP = ENFORCED_ROLES.has(userRole);
+
       user = await this.prisma.user.create({
         data: {
           email: data.email,
@@ -85,6 +89,7 @@ export class AuthCoreService {
           phone: data.phone,
           role: userRole,
           lastLoginIp: ipAddress,
+          emailOTPEnabled: autoEnableEmailOTP,
         },
       });
     } catch (err) {
