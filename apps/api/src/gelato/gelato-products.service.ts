@@ -1,5 +1,12 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { createHash } from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import { GelatoService } from './gelato.service';
 import { UploadService } from '../upload/upload.service';
@@ -15,6 +22,23 @@ export class GelatoProductsService {
     private readonly gelatoService: GelatoService,
     private readonly uploadService: UploadService
   ) {}
+
+  /**
+   * Ensures a SELLER caller owns the given product's store.
+   * Admins and Super Admins are always allowed.
+   */
+  private async assertSellerOwnership(
+    product: { storeId: string | null },
+    callerId: string,
+    callerRole: string
+  ): Promise<void> {
+    if (callerRole === 'ADMIN' || callerRole === 'SUPER_ADMIN') return;
+
+    const store = await this.prisma.store.findFirst({ where: { userId: callerId } });
+    if (!store || store.id !== product.storeId) {
+      throw new ForbiddenException('You can only manage your own store products');
+    }
+  }
 
   async getCatalog(
     params?: {
@@ -100,13 +124,13 @@ export class GelatoProductsService {
     }
   }
 
-  async configurePodProduct(productId: string, dto: CreatePodProductDto) {
-    const gelatoProduct = await this.gelatoService.getProduct(dto.gelatoProductUid);
-    if (!gelatoProduct) {
-      throw new NotFoundException(`Gelato product ${dto.gelatoProductUid} not found`);
-    }
-
-    // Get product to access storeId and current price
+  async configurePodProduct(
+    productId: string,
+    dto: CreatePodProductDto,
+    callerId?: string,
+    callerRole?: string
+  ) {
+    // Fetch local product first to get storeId for seller credentials
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
       include: { store: true },
@@ -120,6 +144,20 @@ export class GelatoProductsService {
       throw new BadRequestException(
         'Product must be associated with a store to configure Gelato POD'
       );
+    }
+
+    if (callerId && callerRole) {
+      await this.assertSellerOwnership(product, callerId, callerRole);
+    }
+
+    // Fetch Gelato product using seller credentials (storeId) for accurate variant data
+    const gelatoProduct = await this.gelatoService.getProduct(
+      dto.gelatoProductUid,
+      undefined,
+      product.storeId
+    );
+    if (!gelatoProduct) {
+      throw new NotFoundException(`Gelato product ${dto.gelatoProductUid} not found`);
     }
 
     // Auto-fetch Gelato's production cost
@@ -194,7 +232,15 @@ export class GelatoProductsService {
       `Configured product ${productId} as Gelato POD with template ${dto.gelatoProductUid}`
     );
 
-    // Cache Gelato product images
+    // Sync Gelato variants as ProductVariant records for customer selection
+    try {
+      await this.syncGelatoVariants(productId, gelatoProduct, product.price);
+    } catch (error) {
+      this.logger.warn(`Failed to sync Gelato variants during configuration: ${error.message}`);
+      // Don't throw — product is still configured, variants can be synced later
+    }
+
+    // Cache Gelato product images (downloads S3 → re-uploads to Supabase for permanent URLs)
     try {
       await this.cacheGelatoProductImages(productId, gelatoProduct);
     } catch (error) {
@@ -202,10 +248,22 @@ export class GelatoProductsService {
       // Don't throw - product is still configured, images can be cached later
     }
 
+    // Replace any temporary S3 URLs in ProductVariant.image with permanent Supabase URLs
+    try {
+      await this.linkVariantImagesToCache(productId);
+    } catch (error) {
+      this.logger.warn(`Failed to link variant images to cache: ${error.message}`);
+    }
+
     return updatedProduct;
   }
 
-  async updatePodProduct(productId: string, dto: UpdatePodProductDto) {
+  async updatePodProduct(
+    productId: string,
+    dto: UpdatePodProductDto,
+    callerId?: string,
+    callerRole?: string
+  ) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
       include: { store: true },
@@ -214,6 +272,10 @@ export class GelatoProductsService {
     if (!product) throw new NotFoundException(`Product ${productId} not found`);
     if (product.fulfillmentType !== FulfillmentType.GELATO_POD) {
       throw new BadRequestException('Product is not configured as a POD product');
+    }
+
+    if (callerId && callerRole) {
+      await this.assertSellerOwnership(product, callerId, callerRole);
     }
 
     // If changing productUid, validate it exists and fetch new cost
@@ -274,20 +336,40 @@ export class GelatoProductsService {
       },
     });
 
-    // Cache images if product UID changed
+    // Re-sync variants and images when the Gelato product template changes
     if (gelatoProduct) {
+      try {
+        await this.syncGelatoVariants(productId, gelatoProduct, updatedProduct.price);
+      } catch (error) {
+        this.logger.warn(`Failed to sync Gelato variants during update: ${error.message}`);
+      }
+
       try {
         await this.cacheGelatoProductImages(productId, gelatoProduct);
       } catch (error) {
         this.logger.warn(`Failed to cache Gelato images during update: ${error.message}`);
-        // Don't throw - product is still updated, images can be cached later
+      }
+
+      try {
+        await this.linkVariantImagesToCache(productId);
+      } catch (error) {
+        this.logger.warn(`Failed to link variant images to cache during update: ${error.message}`);
       }
     }
 
     return updatedProduct;
   }
 
-  async removePodConfiguration(productId: string) {
+  async removePodConfiguration(productId: string, callerId?: string, callerRole?: string) {
+    if (callerId && callerRole) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: productId },
+        select: { storeId: true },
+      });
+      if (!product) throw new NotFoundException(`Product ${productId} not found`);
+      await this.assertSellerOwnership(product, callerId, callerRole);
+    }
+
     return this.prisma.product.update({
       where: { id: productId },
       data: {
@@ -517,6 +599,223 @@ export class GelatoProductsService {
       this.logger.error(`Failed to fetch Gelato pricing: ${error.message}`);
       throw new BadRequestException(`Failed to fetch pricing: ${error.message}`);
     }
+  }
+
+  /**
+   * Sync Gelato product variants as ProductVariant records.
+   *
+   * Each Gelato variant (size × color combination) is stored as a ProductVariant.
+   * The variant's catalog `productUid` — needed to order the correct size/color from Gelato —
+   * is saved inside the `options` JSON as `gelatoProductUid`.
+   *
+   * At order time, `gelato-orders.service.ts` reads `variant.options.gelatoProductUid` to
+   * submit the exact variant the customer selected, instead of falling back to the first variant.
+   *
+   * Re-sync on update: existing Gelato variants are upserted (SKU-keyed). Variants no longer
+   * present in the Gelato catalog are marked `isAvailable: false` rather than deleted, so that
+   * existing order item references are preserved.
+   */
+  private async syncGelatoVariants(
+    productId: string,
+    gelatoProduct: any,
+    productPrice: any
+  ): Promise<void> {
+    const variants: any[] = gelatoProduct?.variants;
+    if (!Array.isArray(variants) || variants.length === 0) {
+      this.logger.debug(
+        `No variants to sync for Gelato product ${gelatoProduct?.uid || productId}`
+      );
+      return;
+    }
+
+    // Find existing Gelato-synced variants (identified by gelatoVariantUid in options JSON)
+    const existing = await this.prisma.productVariant.findMany({
+      where: { productId },
+      select: { id: true, sku: true, options: true },
+    });
+    const existingGelatoSkus = new Set(
+      existing
+        .filter((v) => !!(v.options as Record<string, any>)?.gelatoVariantUid)
+        .map((v) => v.sku)
+    );
+
+    const currentSkus = new Set<string>();
+    let upserted = 0;
+
+    for (let i = 0; i < variants.length; i++) {
+      const variant = variants[i];
+      try {
+        // Normalize any options keys the catalog API may return (e.g. 'Color', 'Size' → lowercase)
+        const rawOpts: Record<string, string> = variant.options || {};
+        const normalizedOpts: Record<string, string> = {};
+        for (const [k, v] of Object.entries(rawOpts)) {
+          normalizedOpts[k.toLowerCase()] = String(v);
+        }
+
+        // Gelato's E-commerce API often returns empty options {}.
+        // Fall back to parsing color/size from the variant title.
+        // Typical title format: "White - M - DTG (Direct-to-garment)"
+        //                       "Black - XL - Embroidery"
+        if (!normalizedOpts.color || !normalizedOpts.size) {
+          const titleParsed = this.parseTitleOptions(variant.title || '');
+          if (!normalizedOpts.color && titleParsed.color) normalizedOpts.color = titleParsed.color;
+          if (!normalizedOpts.size && titleParsed.size) normalizedOpts.size = titleParsed.size;
+        }
+
+        // Store Gelato-specific identifiers alongside size/color inside the options JSON.
+        // gelatoProductUid is the catalog UID consumed by Gelato's /orders API for this variant.
+        const options = {
+          ...normalizedOpts,
+          gelatoProductUid: variant.productUid,
+          gelatoVariantUid: variant.variantUid ?? variant.productUid ?? String(i),
+        };
+
+        // SKU: stable MD5-based hash of the variant's catalog productUid so that
+        // re-syncs upsert correctly even when productUids are very long and share
+        // common suffixes (which breaks naive slice-based deduplication).
+        const uidForHash = variant.variantUid ?? variant.productUid ?? `${productId}-${i}`;
+        const hash = createHash('md5').update(uidForHash).digest('hex').slice(0, 14);
+        const sku = `glt-${productId.slice(-8)}-${hash}`;
+        currentSkus.add(sku);
+
+        // Gelato provides per-variant preview images (color-specific mockups).
+        // Store the first available image URL so the product page can swap
+        // the gallery image when the buyer picks a different color swatch.
+        const variantImage: string | null =
+          variant.previewUrl || variant.mockupUrl || variant.imageUrl || null;
+
+        await this.prisma.productVariant.upsert({
+          where: { sku },
+          create: {
+            productId,
+            name: variant.title || `Variant ${i + 1}`,
+            sku,
+            price: productPrice,
+            inventory: 9999, // Unlimited — Gelato prints on demand
+            options,
+            colorName: normalizedOpts.color ?? null,
+            image: variantImage,
+            isAvailable: true,
+            displayOrder: i,
+          },
+          update: {
+            name: variant.title || `Variant ${i + 1}`,
+            options,
+            colorName: normalizedOpts.color ?? null,
+            ...(variantImage && { image: variantImage }),
+            isAvailable: true,
+            displayOrder: i,
+          },
+        });
+        upserted++;
+      } catch (error) {
+        this.logger.warn(`Failed to sync Gelato variant "${variant.title ?? i}": ${error.message}`);
+      }
+    }
+
+    // Mark Gelato variants no longer in the catalog as unavailable (preserve order history)
+    const removedSkus = [...existingGelatoSkus].filter((sku) => !currentSkus.has(sku));
+    if (removedSkus.length > 0) {
+      await this.prisma.productVariant.updateMany({
+        where: { productId, sku: { in: removedSkus } },
+        data: { isAvailable: false },
+      });
+      this.logger.debug(
+        `Marked ${removedSkus.length} removed Gelato variant(s) as unavailable for product ${productId}`
+      );
+    }
+
+    this.logger.log(
+      `Synced ${upserted}/${variants.length} Gelato variants for product ${productId}`
+    );
+  }
+
+  /**
+   * Parse color and size from a Gelato variant title.
+   *
+   * Gelato's E-commerce API frequently returns `options: {}` (empty), so we
+   * extract structured attributes from the human-readable title instead.
+   *
+   * Supported title formats:
+   *   "White - M - DTG (Direct-to-garment)"
+   *   "Black / XL - Embroidery"
+   *   "Classic Red - Large"
+   *   "One Size"
+   */
+  /**
+   * After cacheGelatoProductImages() has uploaded variant images to Supabase,
+   * update ProductVariant.image fields that still hold temporary Gelato S3 URLs
+   * by matching them to the permanent Supabase URLs via ProductImage.originalUrl.
+   */
+  private async linkVariantImagesToCache(productId: string): Promise<void> {
+    // Build a map of originalUrl (Gelato S3) → permanent Supabase URL
+    const cachedImages = await this.prisma.productImage.findMany({
+      where: { productId, originalUrl: { not: null } },
+      select: { originalUrl: true, url: true },
+    });
+
+    if (cachedImages.length === 0) return;
+
+    const urlMap = new Map<string, string>();
+    for (const img of cachedImages) {
+      if (img.originalUrl) urlMap.set(img.originalUrl, img.url);
+    }
+
+    // Load variants that still have temporary (amazonaws.com) image URLs
+    const variants = await this.prisma.productVariant.findMany({
+      where: { productId, image: { contains: 'amazonaws.com' } },
+      select: { id: true, image: true },
+    });
+
+    let updated = 0;
+    for (const variant of variants) {
+      if (!variant.image) continue;
+      const permanentUrl = urlMap.get(variant.image);
+      if (permanentUrl) {
+        await this.prisma.productVariant.update({
+          where: { id: variant.id },
+          data: { image: permanentUrl },
+        });
+        updated++;
+      }
+    }
+
+    if (updated > 0) {
+      this.logger.log(`Linked ${updated} variant images to permanent Supabase URLs`);
+    }
+  }
+
+  private parseTitleOptions(title: string): { color?: string; size?: string } {
+    if (!title) return {};
+
+    // Normalise delimiter (Gelato uses ' - ' but sometimes '/')
+    const parts = title.split(/\s*[-\/]\s*/);
+
+    // Known size tokens (case-insensitive)
+    const sizePattern = /^(xs|s|m|l|xl|xxl|xxxl|2xl|3xl|4xl|5xl|6xl|one\s*size|os|\d+)$/i;
+
+    let color: string | undefined;
+    let size: string | undefined;
+
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+
+      if (!size && sizePattern.test(trimmed)) {
+        size = trimmed.toUpperCase().replace(/\s+/g, '');
+        continue;
+      }
+
+      // Skip technique descriptors like "DTG", "Embroidery", etc.
+      if (/dtg|embroidery|direct.to.garment|screen\s*print/i.test(trimmed)) continue;
+
+      // First non-size, non-technique part is the color
+      if (!color) {
+        color = trimmed;
+      }
+    }
+
+    return { color, size };
   }
 
   /**
