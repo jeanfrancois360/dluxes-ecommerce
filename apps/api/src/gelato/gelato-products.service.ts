@@ -240,12 +240,19 @@ export class GelatoProductsService {
       // Don't throw — product is still configured, variants can be synced later
     }
 
-    // Cache Gelato product images
+    // Cache Gelato product images (downloads S3 → re-uploads to Supabase for permanent URLs)
     try {
       await this.cacheGelatoProductImages(productId, gelatoProduct);
     } catch (error) {
       this.logger.warn(`Failed to cache Gelato images during configuration: ${error.message}`);
       // Don't throw - product is still configured, images can be cached later
+    }
+
+    // Replace any temporary S3 URLs in ProductVariant.image with permanent Supabase URLs
+    try {
+      await this.linkVariantImagesToCache(productId);
+    } catch (error) {
+      this.logger.warn(`Failed to link variant images to cache: ${error.message}`);
     }
 
     return updatedProduct;
@@ -341,7 +348,12 @@ export class GelatoProductsService {
         await this.cacheGelatoProductImages(productId, gelatoProduct);
       } catch (error) {
         this.logger.warn(`Failed to cache Gelato images during update: ${error.message}`);
-        // Don't throw - product is still updated, images can be cached later
+      }
+
+      try {
+        await this.linkVariantImagesToCache(productId);
+      } catch (error) {
+        this.logger.warn(`Failed to link variant images to cache during update: ${error.message}`);
       }
     }
 
@@ -666,6 +678,12 @@ export class GelatoProductsService {
         const sku = `glt-${productId.slice(-8)}-${hash}`;
         currentSkus.add(sku);
 
+        // Gelato provides per-variant preview images (color-specific mockups).
+        // Store the first available image URL so the product page can swap
+        // the gallery image when the buyer picks a different color swatch.
+        const variantImage: string | null =
+          variant.previewUrl || variant.mockupUrl || variant.imageUrl || null;
+
         await this.prisma.productVariant.upsert({
           where: { sku },
           create: {
@@ -676,6 +694,7 @@ export class GelatoProductsService {
             inventory: 9999, // Unlimited — Gelato prints on demand
             options,
             colorName: normalizedOpts.color ?? null,
+            image: variantImage,
             isAvailable: true,
             displayOrder: i,
           },
@@ -683,6 +702,7 @@ export class GelatoProductsService {
             name: variant.title || `Variant ${i + 1}`,
             options,
             colorName: normalizedOpts.color ?? null,
+            ...(variantImage && { image: variantImage }),
             isAvailable: true,
             displayOrder: i,
           },
@@ -722,6 +742,49 @@ export class GelatoProductsService {
    *   "Classic Red - Large"
    *   "One Size"
    */
+  /**
+   * After cacheGelatoProductImages() has uploaded variant images to Supabase,
+   * update ProductVariant.image fields that still hold temporary Gelato S3 URLs
+   * by matching them to the permanent Supabase URLs via ProductImage.originalUrl.
+   */
+  private async linkVariantImagesToCache(productId: string): Promise<void> {
+    // Build a map of originalUrl (Gelato S3) → permanent Supabase URL
+    const cachedImages = await this.prisma.productImage.findMany({
+      where: { productId, originalUrl: { not: null } },
+      select: { originalUrl: true, url: true },
+    });
+
+    if (cachedImages.length === 0) return;
+
+    const urlMap = new Map<string, string>();
+    for (const img of cachedImages) {
+      if (img.originalUrl) urlMap.set(img.originalUrl, img.url);
+    }
+
+    // Load variants that still have temporary (amazonaws.com) image URLs
+    const variants = await this.prisma.productVariant.findMany({
+      where: { productId, image: { contains: 'amazonaws.com' } },
+      select: { id: true, image: true },
+    });
+
+    let updated = 0;
+    for (const variant of variants) {
+      if (!variant.image) continue;
+      const permanentUrl = urlMap.get(variant.image);
+      if (permanentUrl) {
+        await this.prisma.productVariant.update({
+          where: { id: variant.id },
+          data: { image: permanentUrl },
+        });
+        updated++;
+      }
+    }
+
+    if (updated > 0) {
+      this.logger.log(`Linked ${updated} variant images to permanent Supabase URLs`);
+    }
+  }
+
   private parseTitleOptions(title: string): { color?: string; size?: string } {
     if (!title) return {};
 
