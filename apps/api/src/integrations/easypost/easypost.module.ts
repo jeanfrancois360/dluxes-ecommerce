@@ -12,6 +12,7 @@ import { EasyPostAddressService } from './easypost-address.service';
 import { EasyPostController } from './easypost.controller';
 import { EasyPostWebhookController } from './easypost-webhook.controller';
 import { EasyPostDispatchReminderCron } from './easypost-dispatch-reminder.cron';
+import { EasyPostCustomsService } from './easypost-customs.service';
 
 @Module({
   imports: [ConfigModule, DatabaseModule, SettingsModule, EmailModule],
@@ -22,6 +23,7 @@ import { EasyPostDispatchReminderCron } from './easypost-dispatch-reminder.cron'
     EasyPostShipmentService,
     EasyPostTrackingService,
     EasyPostAddressService,
+    EasyPostCustomsService,
     EasyPostDispatchReminderCron,
   ],
   exports: [
@@ -30,6 +32,7 @@ import { EasyPostDispatchReminderCron } from './easypost-dispatch-reminder.cron'
     EasyPostShipmentService,
     EasyPostTrackingService,
     EasyPostAddressService,
+    EasyPostCustomsService,
   ],
 })
 export class EasyPostModule {}

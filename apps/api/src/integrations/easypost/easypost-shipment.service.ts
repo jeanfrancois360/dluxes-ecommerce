@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { EasyPostService } from './easypost.service';
+import { EasyPostCustomsService } from './easypost-customs.service';
 import { PurchaseLabelDto } from './dto/purchase-label.dto';
 import { AuthenticatedUser } from '../../common/authorization/order-access.helper';
 import { assertShipmentAccess } from './shipment-access.helper';
@@ -11,7 +12,8 @@ export class EasyPostShipmentService {
 
   constructor(
     private readonly easyPostService: EasyPostService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly customsService: EasyPostCustomsService
   ) {}
 
   /**
@@ -23,10 +25,24 @@ export class EasyPostShipmentService {
     // Get or create shipment
     let shipment;
     if (dto.shipmentId) {
-      // Use existing shipment from rate shopping
+      // Use existing shipment from rate shopping (customs info already embedded)
       shipment = await client.Shipment.retrieve(dto.shipmentId);
     } else {
-      // Create new shipment with addresses
+      // Resolve customs info: explicit > auto-built from order > none
+      let resolvedCustomsInfo = dto.customsInfo ?? null;
+      if (
+        !resolvedCustomsInfo &&
+        dto.orderId &&
+        dto.toAddress?.country &&
+        dto.fromAddress?.country
+      ) {
+        resolvedCustomsInfo = await this.customsService.buildCustomsInfoFromOrder(
+          dto.orderId,
+          dto.fromAddress.country,
+          dto.toAddress.country
+        );
+      }
+
       shipment = await client.Shipment.create({
         to_address: this.easyPostService.formatAddress(dto.toAddress),
         from_address: this.easyPostService.formatAddress(dto.fromAddress),
@@ -36,7 +52,7 @@ export class EasyPostShipmentService {
           height: dto.parcel.height,
           weight: dto.parcel.weight,
         },
-        customs_info: dto.customsInfo,
+        customs_info: resolvedCustomsInfo ?? undefined,
         options: {
           label_format: dto.labelFormat || 'PNG',
           label_size: dto.labelSize || '4x6',
