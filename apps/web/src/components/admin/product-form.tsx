@@ -35,6 +35,8 @@ import {
 import { PodConfigurationSection } from '../gelato/pod-configuration-section';
 import { GelatoPreviewModal } from '../gelato/gelato-preview-modal';
 import { toast } from '@/lib/utils/toast';
+import { CountrySelect } from '../ui/country-select';
+import { HsCodeInput } from '../ui/hs-code-input';
 
 // Dynamically import EnhancedImageUpload to avoid SSR issues with framer-motion
 const EnhancedImageUpload = dynamic(() => import('../products/EnhancedImageUpload'), {
@@ -95,6 +97,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     // Additional fields
     featured: (product as any)?.featured || false,
     weight: (product as any)?.weight || undefined,
+    hsCode: (product as any)?.hsCode || '',
+    countryOfOrigin: (product as any)?.countryOfOrigin || '',
     // Real Estate Fields
     propertyType: (product as any)?.propertyType || '',
     bedrooms: (product as any)?.bedrooms || undefined,
@@ -259,6 +263,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         materials: (product as any)?.materials || [],
         featured: (product as any)?.featured || false,
         weight: (product as any)?.weight || undefined,
+        hsCode: (product as any)?.hsCode || '',
+        countryOfOrigin: (product as any)?.countryOfOrigin || '',
         // Real Estate Fields
         propertyType: (product as any)?.propertyType || '',
         bedrooms: (product as any)?.bedrooms || undefined,
@@ -512,6 +518,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           formData.weight === '' || formData.weight === undefined
             ? undefined
             : Number(formData.weight),
+        hsCode: formData.hsCode || undefined,
+        countryOfOrigin: formData.countryOfOrigin || undefined,
         status: formData.status,
         productType: formData.productType,
         purchaseType: formData.purchaseType,
@@ -1816,6 +1824,44 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             </div>
           </div>
         )}
+
+        {/* Customs & Shipping */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Customs & Shipping</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Required for international shipments and customs declarations
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label
+                htmlFor="admin-hsCode"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
+              >
+                HS Code <span className="text-xs font-normal text-gray-400">(customs)</span>
+              </label>
+              <HsCodeInput
+                id="admin-hsCode"
+                value={formData.hsCode || ''}
+                onChange={(v) => setFormData({ ...formData, hsCode: v })}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="admin-countryOfOrigin"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
+              >
+                Country of Origin{' '}
+                <span className="text-xs font-normal text-gray-400">(customs)</span>
+              </label>
+              <CountrySelect
+                id="admin-countryOfOrigin"
+                value={formData.countryOfOrigin || ''}
+                onChange={(code) => setFormData({ ...formData, countryOfOrigin: code })}
+              />
+              <p className="mt-1 text-xs text-gray-400">Where the product was manufactured</p>
+            </div>
+          </div>
+        </div>
 
         {/* Product Variants */}
         <VariantManager productId={product?.id} productPrice={formData.price} />
