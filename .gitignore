@@ -105,3 +105,15 @@ apps/web/public/version.json
 
 # Personal/client-facing notes (not for repo)
 CLIENT_PROGRESS_REPORT.md
+
+# Generated reports
+CODEBASE_SURVEY_REPORT.md
+
+# User-uploaded files (images, documents — never commit)
+apps/api/public/uploads/
+
+# Playwright test runner state
+apps/web/test-results/
+
+# Experimental/smoke test pages
+apps/web/src/app/tiptap-smoke/
