@@ -1320,11 +1320,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                       type="number"
                       step="1"
                       min="0"
-                      value={formData.markupPercentage || ''}
+                      value={formData.markupPercentage ?? ''}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          markupPercentage: parseFloat(e.target.value) || undefined,
+                          markupPercentage:
+                            e.target.value === '' ? undefined : parseFloat(e.target.value),
                         })
                       }
                       className="w-full pl-4 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
