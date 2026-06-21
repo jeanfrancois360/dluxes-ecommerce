@@ -9,6 +9,7 @@ import {
   IsObject,
   ValidateNested,
   Validate,
+  MaxLength,
 } from 'class-validator';
 import { ProductStatus, ProductType, PurchaseType, FulfillmentType } from '@prisma/client';
 import { Type } from 'class-transformer';
@@ -573,4 +574,13 @@ export class CreateProductDto {
   @Min(0)
   @Type(() => Number)
   markupPercentage?: number; // Seller's markup % over baseCost
+
+  @IsOptional()
+  @IsString()
+  hsCode?: string; // Harmonized System tariff code (e.g. "6109.10")
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2)
+  countryOfOrigin?: string; // ISO 2-letter country code (e.g. "CN", "TR")
 }
