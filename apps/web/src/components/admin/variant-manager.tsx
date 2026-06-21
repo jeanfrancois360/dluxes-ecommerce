@@ -7,7 +7,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { variantsApi, ProductVariant, CreateProductVariantDto, UpdateProductVariantDto } from '@/lib/api/variants';
+import {
+  variantsApi,
+  ProductVariant,
+  CreateProductVariantDto,
+  UpdateProductVariantDto,
+} from '@/lib/api/variants';
 import { VariantForm } from './variant-form';
 import { formatNumber } from '@/lib/utils/number-format';
 
@@ -86,7 +91,7 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
     try {
       const updated = await variantsApi.updateVariant(variantId, data);
       if (updated) {
-        setVariants(variants.map(v => v.id === variantId ? updated : v));
+        setVariants(variants.map((v) => (v.id === variantId ? updated : v)));
         setEditingVariant(null);
       } else {
         throw new Error('Variant update returned empty response');
@@ -101,7 +106,7 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
   };
 
   const handleDeleteVariant = async (variantId: string) => {
-    const variant = variants.find(v => v.id === variantId);
+    const variant = variants.find((v) => v.id === variantId);
     if (!variant) return;
 
     const confirmMessage = `Are you sure you want to delete this variant?\n\nVariant: ${variant.name}\nSKU: ${variant.sku}\n\nThis action cannot be undone.`;
@@ -113,18 +118,25 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
     setError(null);
     try {
       await variantsApi.deleteVariant(variantId);
-      setVariants(variants.filter(v => v.id !== variantId));
+      setVariants(variants.filter((v) => v.id !== variantId));
     } catch (err: any) {
       console.error('Failed to delete variant:', err);
       const errorMessage = err?.response?.data?.message;
 
       // Provide helpful error messages based on the error type
       if (errorMessage?.includes('cart')) {
-        setError(`Cannot delete this variant because it is currently in customer shopping carts. Please wait for customers to complete their purchases, or mark the variant as unavailable instead.`);
+        setError(
+          `Cannot delete this variant because it is currently in customer shopping carts. Please wait for customers to complete their purchases, or mark the variant as unavailable instead.`
+        );
       } else if (errorMessage?.includes('order')) {
-        setError(`Cannot delete this variant because it has been included in previous orders. To prevent this variant from being purchased, mark it as unavailable instead of deleting it.`);
+        setError(
+          `Cannot delete this variant because it has been included in previous orders. To prevent this variant from being purchased, mark it as unavailable instead of deleting it.`
+        );
       } else {
-        setError(errorMessage || 'Failed to delete variant. Please try again or contact support if the problem persists.');
+        setError(
+          errorMessage ||
+            'Failed to delete variant. Please try again or contact support if the problem persists.'
+        );
       }
     } finally {
       setLoading(false);
@@ -134,7 +146,7 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
   const handleReorder = async (variantId: string, direction: 'up' | 'down') => {
     if (!productId) return;
 
-    const currentIndex = variants.findIndex(v => v.id === variantId);
+    const currentIndex = variants.findIndex((v) => v.id === variantId);
     if (currentIndex === -1) return;
     if (direction === 'up' && currentIndex === 0) return;
     if (direction === 'down' && currentIndex === variants.length - 1) return;
@@ -168,13 +180,23 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Product Variants</h2>
         <div className="text-center py-8 text-gray-500">
-          <svg className="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-12 h-12 mx-auto mb-3 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <p className="text-sm font-medium mb-2">Product variants are not yet available</p>
           <p className="text-xs text-gray-400 max-w-md mx-auto">
-            Variants allow you to offer different options for this product (e.g., sizes, colors, materials).
-            Please save the product first, then return here to add variants.
+            Variants allow you to offer different options for this product (e.g., sizes, colors,
+            materials). Please save the product first, then return here to add variants.
           </p>
         </div>
       </div>
@@ -241,148 +263,194 @@ export function VariantManager({ productId, productPrice }: VariantManagerProps)
         </div>
       ) : variants.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          <svg className="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          <svg
+            className="w-12 h-12 mx-auto mb-3 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+            />
           </svg>
           <p className="text-sm">No variants yet. Click "Add Variant" to create one.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {variants.filter(v => v != null).map((variant, index) => (
-            <div
-              key={variant.id}
-              className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:border-[#CBB57B] transition-colors"
-            >
-              {/* Reorder Buttons */}
-              <div className="flex flex-col gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleReorder(variant.id, 'up')}
-                  disabled={index === 0 || loading}
-                  className="p-1 text-gray-400 hover:text-[#CBB57B] disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Move up"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleReorder(variant.id, 'down')}
-                  disabled={index === variants.length - 1 || loading}
-                  className="p-1 text-gray-400 hover:text-[#CBB57B] disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Move down"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Variant Image */}
-              {variant.image && (
-                <img
-                  src={variant.image}
-                  alt={variant.name}
-                  className="w-16 h-16 object-cover rounded border border-gray-200"
-                />
-              )}
-
-              {/* Color Swatch */}
-              {variant.colorHex && !variant.image && (
-                <div
-                  className="w-16 h-16 rounded border-2 border-gray-300"
-                  style={{ backgroundColor: variant.colorHex }}
-                  title={variant.colorName || variant.colorHex}
-                />
-              )}
-
-              {/* Variant Info */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-medium text-gray-900">{variant.name}</h4>
-                  {!variant.isAvailable && (
-                    <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded">
-                      Unavailable
-                    </span>
-                  )}
-                  {variant.inventory <= variant.lowStockThreshold && variant.inventory > 0 && (
-                    <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded">
-                      Low Stock
-                    </span>
-                  )}
-                  {variant.inventory === 0 && (
-                    <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded">
-                      Out of Stock
-                    </span>
-                  )}
+          {variants
+            .filter((v) => v != null)
+            .map((variant, index) => (
+              <div
+                key={variant.id}
+                className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:border-[#CBB57B] transition-colors"
+              >
+                {/* Reorder Buttons */}
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleReorder(variant.id, 'up')}
+                    disabled={index === 0 || loading}
+                    className="p-1 text-gray-400 hover:text-[#CBB57B] disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Move up"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 15l7-7 7 7"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleReorder(variant.id, 'down')}
+                    disabled={index === variants.length - 1 || loading}
+                    className="p-1 text-gray-400 hover:text-[#CBB57B] disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Move down"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  SKU: {variant.sku} • Stock: {variant.inventory}
-                </p>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {Object.entries(variant.options).map(([key, value]) => (
-                    <span
-                      key={key}
-                      className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                    >
-                      {key}: {value}
-                    </span>
-                  ))}
-                </div>
-              </div>
 
-              {/* Price */}
-              <div className="text-right">
-                <p className="text-lg font-semibold text-gray-900">
-                  ${formatNumber(variant.price)}
-                </p>
-                {variant.compareAtPrice && (
-                  <p className="text-sm text-gray-500 line-through">
-                    ${formatNumber(variant.compareAtPrice)}
-                  </p>
+                {/* Variant Image */}
+                {variant.image && (
+                  <img
+                    src={variant.image}
+                    alt={variant.name}
+                    className="w-16 h-16 object-cover rounded border border-gray-200"
+                  />
                 )}
-              </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Edit button clicked for variant:', variant.id);
-                    setShowForm(false); // Close create form if open
-                    setEditingVariant(variant);
-                  }}
-                  disabled={loading}
-                  className="p-2 text-gray-600 hover:text-[#CBB57B] hover:bg-[#CBB57B]/10 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-[#CBB57B] cursor-pointer"
-                  title="Edit variant"
-                  aria-label="Edit variant"
-                >
-                  <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleDeleteVariant(variant.id);
-                  }}
-                  disabled={loading}
-                  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-red-300 cursor-pointer"
-                  title="Delete variant"
-                  aria-label="Delete variant"
-                >
-                  <svg className="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+                {/* Color Swatch */}
+                {variant.colorHex && !variant.image && (
+                  <div
+                    className="w-16 h-16 rounded border-2 border-gray-300"
+                    style={{ backgroundColor: variant.colorHex }}
+                    title={variant.colorName || variant.colorHex}
+                  />
+                )}
+
+                {/* Variant Info */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium text-gray-900">{variant.name}</h4>
+                    {!variant.isAvailable && (
+                      <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded">
+                        Unavailable
+                      </span>
+                    )}
+                    {variant.inventory <= variant.lowStockThreshold && variant.inventory > 0 && (
+                      <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded">
+                        Low Stock
+                      </span>
+                    )}
+                    {variant.inventory === 0 && (
+                      <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded">
+                        Out of Stock
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">
+                    SKU: {variant.sku} • Stock: {variant.inventory}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {Object.entries(variant.options)
+                      .filter(([key]) => !key.startsWith('gelato'))
+                      .map(([key, value]) => (
+                        <span
+                          key={key}
+                          className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                        >
+                          {key}: {value as string}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Price */}
+                <div className="text-right">
+                  <p className="text-lg font-semibold text-gray-900">
+                    ${formatNumber(variant.price)}
+                  </p>
+                  {variant.compareAtPrice && (
+                    <p className="text-sm text-gray-500 line-through">
+                      ${formatNumber(variant.compareAtPrice)}
+                    </p>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log('Edit button clicked for variant:', variant.id);
+                      setShowForm(false); // Close create form if open
+                      setEditingVariant(variant);
+                    }}
+                    disabled={loading}
+                    className="p-2 text-gray-600 hover:text-[#CBB57B] hover:bg-[#CBB57B]/10 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-[#CBB57B] cursor-pointer"
+                    title="Edit variant"
+                    aria-label="Edit variant"
+                  >
+                    <svg
+                      className="w-5 h-5 pointer-events-none"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDeleteVariant(variant.id);
+                    }}
+                    disabled={loading}
+                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-transparent hover:border-red-300 cursor-pointer"
+                    title="Delete variant"
+                    aria-label="Delete variant"
+                  >
+                    <svg
+                      className="w-5 h-5 pointer-events-none"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       )}
     </div>

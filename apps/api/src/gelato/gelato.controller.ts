@@ -91,24 +91,43 @@ export class GelatoController {
   @Post('products/:productId/configure')
   @Roles('ADMIN', 'SUPER_ADMIN', 'SELLER')
   async configurePodProduct(
+    @Req() req: any,
     @Param('productId') productId: string,
     @Body() dto: CreatePodProductDto
   ) {
-    const product = await this.productsService.configurePodProduct(productId, dto);
+    const product = await this.productsService.configurePodProduct(
+      productId,
+      dto,
+      req.user.id,
+      req.user.role
+    );
     return { success: true, data: product };
   }
 
   @Patch('products/:productId/configure')
   @Roles('ADMIN', 'SUPER_ADMIN', 'SELLER')
-  async updatePodProduct(@Param('productId') productId: string, @Body() dto: UpdatePodProductDto) {
-    const product = await this.productsService.updatePodProduct(productId, dto);
+  async updatePodProduct(
+    @Req() req: any,
+    @Param('productId') productId: string,
+    @Body() dto: UpdatePodProductDto
+  ) {
+    const product = await this.productsService.updatePodProduct(
+      productId,
+      dto,
+      req.user.id,
+      req.user.role
+    );
     return { success: true, data: product };
   }
 
   @Delete('products/:productId/configure')
   @Roles('ADMIN', 'SUPER_ADMIN', 'SELLER')
-  async removePodConfiguration(@Param('productId') productId: string) {
-    const product = await this.productsService.removePodConfiguration(productId);
+  async removePodConfiguration(@Req() req: any, @Param('productId') productId: string) {
+    const product = await this.productsService.removePodConfiguration(
+      productId,
+      req.user.id,
+      req.user.role
+    );
     return { success: true, data: product };
   }
 

@@ -579,7 +579,21 @@ export class GelatoService implements OnModuleInit {
       }
     }
 
-    // No user provided - use platform if available
+    // Service-to-service call with storeId but no userId (e.g., from gelato-products.service)
+    if (!credentials && storeId) {
+      try {
+        credentials = await this.getSellerCredentials(storeId);
+        this.logger.debug(
+          `Using seller credentials for store ${storeId} (service call, no userId)`
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Cannot load seller credentials for store ${storeId}: ${error.message} — falling back to platform`
+        );
+      }
+    }
+
+    // No user or storeId — use platform credentials
     if (!credentials) {
       if (!this.isPlatformConfigured) {
         throw new HttpException('Gelato not configured.', HttpStatus.SERVICE_UNAVAILABLE);
