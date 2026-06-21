@@ -1631,11 +1631,12 @@ export default function ProductForm({
                         type="number"
                         step="0.01"
                         min="0"
-                        value={formData.baseCost != null ? formData.baseCost : ''}
+                        value={formData.baseCost ?? ''}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            baseCost: e.target.value ? parseFloat(e.target.value) : undefined,
+                            baseCost:
+                              e.target.value === '' ? undefined : parseFloat(e.target.value),
                           })
                         }
                         className="w-full pl-7 pr-4 py-2.5 border border-blue-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent bg-blue-50"
@@ -1659,11 +1660,12 @@ export default function ProductForm({
                         type="number"
                         step="1"
                         min="0"
-                        value={formData.markupPercentage || ''}
+                        value={formData.markupPercentage ?? ''}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            markupPercentage: parseFloat(e.target.value) || undefined,
+                            markupPercentage:
+                              e.target.value === '' ? undefined : parseFloat(e.target.value),
                           })
                         }
                         className="w-full pl-4 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
@@ -1711,9 +1713,12 @@ export default function ProductForm({
                     id="price"
                     type="number"
                     step="0.01"
-                    value={formData.price || ''}
+                    value={formData.price ?? ''}
                     onChange={(e) =>
-                      setFormData({ ...formData, price: parseFloat(e.target.value) || undefined })
+                      setFormData({
+                        ...formData,
+                        price: e.target.value === '' ? undefined : parseFloat(e.target.value),
+                      })
                     }
                     className={`w-full pl-7 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
                       errors.price ? 'border-red-400 bg-red-50' : 'border-gray-300'
@@ -1751,11 +1756,12 @@ export default function ProductForm({
                     id="compareAtPrice"
                     type="number"
                     step="0.01"
-                    value={formData.compareAtPrice || ''}
+                    value={formData.compareAtPrice ?? ''}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        compareAtPrice: parseFloat(e.target.value) || undefined,
+                        compareAtPrice:
+                          e.target.value === '' ? undefined : parseFloat(e.target.value),
                       })
                     }
                     className="w-full pl-7 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
@@ -1783,11 +1789,11 @@ export default function ProductForm({
                   <input
                     id="inventory"
                     type="number"
-                    value={formData.inventory || ''}
+                    value={formData.inventory ?? ''}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        inventory: parseInt(e.target.value) || undefined,
+                        inventory: e.target.value === '' ? undefined : parseInt(e.target.value, 10),
                       })
                     }
                     className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent ${
@@ -1825,11 +1831,11 @@ export default function ProductForm({
                     id="weight"
                     type="number"
                     step="0.01"
-                    value={formData.weight || ''}
+                    value={formData.weight ?? ''}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        weight: parseFloat(e.target.value) || undefined,
+                        weight: e.target.value === '' ? undefined : parseFloat(e.target.value),
                       })
                     }
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"

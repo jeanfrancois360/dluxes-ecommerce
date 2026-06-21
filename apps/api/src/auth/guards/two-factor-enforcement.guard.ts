@@ -120,19 +120,20 @@ export class TwoFactorEnforcementGuard implements CanActivate {
     const rows = await this.prisma.$queryRaw<
       {
         twoFactorEnabled: boolean;
+        emailOTPEnabled: boolean;
         twoFactorGracePeriodStartsAt: Date | null;
         createdAt: Date;
       }[]
     >`
-      SELECT "twoFactorEnabled", "twoFactorGracePeriodStartsAt", "createdAt"
+      SELECT "twoFactorEnabled", "emailOTPEnabled", "twoFactorGracePeriodStartsAt", "createdAt"
       FROM users WHERE id = ${userId} LIMIT 1
     `;
 
     const dbUser = rows[0];
     if (!dbUser) return true;
 
-    // User already has 2FA set up — allow
-    if (dbUser.twoFactorEnabled) return true;
+    // User already has 2FA set up (TOTP or email OTP) — allow
+    if (dbUser.twoFactorEnabled || dbUser.emailOTPEnabled) return true;
 
     // Check trusted device cookie
     const cookieHeader = request.headers['cookie'] as string | undefined;

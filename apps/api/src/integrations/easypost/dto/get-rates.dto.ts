@@ -26,4 +26,10 @@ export class GetRatesDto {
   @IsArray()
   @IsString({ each: true })
   carriers?: string[];
+
+  /** Optional order ID — when provided, customs info is auto-built from
+   *  product hsCode / countryOfOrigin for international shipments. */
+  @IsOptional()
+  @IsString()
+  orderId?: string;
 }
