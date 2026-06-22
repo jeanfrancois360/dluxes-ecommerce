@@ -21,6 +21,7 @@ import { EmailService } from '../../email/email.service';
 import { ReferralService } from '../../referral/referral.service';
 import { RegisterDto, LoginDto } from '../dto/auth.dto';
 import { SETTING_DEFAULTS } from '../../settings/settings.defaults';
+import { TWO_FA_ALLOWED_ROLES_SET } from '../constants/two-factor-roles';
 
 // Custom TooManyRequestsException for compatibility
 class TooManyRequestsException extends HttpException {
@@ -28,8 +29,6 @@ class TooManyRequestsException extends HttpException {
     super(message || 'Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
   }
 }
-
-const ENFORCED_ROLES = new Set(['SELLER', 'ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER']);
 
 @Injectable()
 export class AuthCoreService {
@@ -78,7 +77,7 @@ export class AuthCoreService {
     try {
       // Email OTP is the default 2FA method for enforced roles (SELLER, ADMIN, etc.).
       // Auto-enable it at registration so these users are never subject to the grace period block.
-      const autoEnableEmailOTP = ENFORCED_ROLES.has(userRole);
+      const autoEnableEmailOTP = TWO_FA_ALLOWED_ROLES_SET.has(userRole);
 
       user = await this.prisma.user.create({
         data: {
@@ -474,7 +473,7 @@ export class AuthCoreService {
     hardBlock: boolean;
     graceDaysRemaining?: number;
   }> {
-    if (!ENFORCED_ROLES.has(user.role)) return { hardBlock: false };
+    if (!TWO_FA_ALLOWED_ROLES_SET.has(user.role)) return { hardBlock: false };
     if (user.twoFactorEnabled || user.emailOTPEnabled) return { hardBlock: false };
 
     const required = await this.isRequiredForRole(user.role);
