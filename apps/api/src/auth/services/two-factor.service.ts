@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { randomBytes, createHash } from 'crypto';
@@ -8,6 +13,7 @@ import { EmailService } from '../../email/email.service';
 import { EmailOTPService } from '../email-otp.service';
 import { SessionService } from './session.service';
 import { LoggerService } from '../../logger/logger.service';
+import { TWO_FA_ALLOWED_ROLES_SET } from '../constants/two-factor-roles';
 
 @Injectable()
 export class TwoFactorService {
@@ -20,9 +26,27 @@ export class TwoFactorService {
   ) {}
 
   /**
+   * Throws ForbiddenException if the user's role is not allowed to use 2FA.
+   * BUYER and CUSTOMER are permanently excluded.
+   */
+  private async assertTwoFactorAllowed(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!user || !TWO_FA_ALLOWED_ROLES_SET.has(user.role)) {
+      throw new ForbiddenException(
+        'Two-factor authentication is not available for your account type'
+      );
+    }
+  }
+
+  /**
    * Setup 2FA for a user (generate QR code)
    */
   async setup2FA(userId: string) {
+    await this.assertTwoFactorAllowed(userId);
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -59,6 +83,7 @@ export class TwoFactorService {
    * Enable 2FA after user verifies they can generate codes
    */
   async enable2FA(userId: string, code: string) {
+    await this.assertTwoFactorAllowed(userId);
     const isValid = await this.verify2FA(userId, code);
 
     if (!isValid) {
@@ -243,6 +268,8 @@ export class TwoFactorService {
    * Returns masked email and expiry — does NOT enable email OTP yet.
    */
   async setupEmailOTP(userId: string) {
+    await this.assertTwoFactorAllowed(userId);
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { email: true, firstName: true },
@@ -281,6 +308,7 @@ export class TwoFactorService {
    * Verify the emailed OTP and set emailOTPEnabled = true.
    */
   async enableEmailOTP(userId: string, code: string) {
+    await this.assertTwoFactorAllowed(userId);
     // verifyEmailOTP throws UnauthorizedException if invalid/expired
     await this.emailOTPService.verifyEmailOTP(userId, code, EmailOTPType.TWO_FACTOR_BACKUP);
 

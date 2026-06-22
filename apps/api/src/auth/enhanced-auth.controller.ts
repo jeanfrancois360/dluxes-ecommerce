@@ -17,6 +17,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { Request, Response } from 'express';
 import { EmailOTPType } from '@prisma/client';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { LoginThrottlerGuard } from './guards/login-throttler.guard';
 // New refactored services
@@ -45,6 +46,8 @@ import {
   ChangePasswordDto,
 } from './dto/auth.dto';
 import { SkipTwoFactorCheck } from './decorators/skip-two-factor-check.decorator';
+import { Roles } from './decorators/roles.decorator';
+import { TWO_FA_ALLOWED_ROLES } from './constants/two-factor-roles';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -224,7 +227,8 @@ export class EnhancedAuthController {
 
   @Post('2fa/setup')
   @SkipTwoFactorCheck()
-  @UseGuards(JwtAuthGuard)
+  @Roles(...TWO_FA_ALLOWED_ROLES)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Setup TOTP 2FA — generates secret and QR code' })
   @ApiResponse({ status: 201, description: 'Returns secret, QR code data URL, and otpauth URL' })
@@ -234,7 +238,8 @@ export class EnhancedAuthController {
 
   @Post('2fa/enable')
   @SkipTwoFactorCheck()
-  @UseGuards(JwtAuthGuard)
+  @Roles(...TWO_FA_ALLOWED_ROLES)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Enable 2FA after verifying a TOTP code' })
   @ApiResponse({ status: 201, description: '2FA enabled; returns 10 one-time backup codes' })
@@ -244,7 +249,8 @@ export class EnhancedAuthController {
   }
 
   @Post('2fa/disable')
-  @UseGuards(JwtAuthGuard)
+  @Roles(...TWO_FA_ALLOWED_ROLES)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Disable 2FA (requires current TOTP code). All sessions revoked.' })
   @ApiResponse({ status: 200, description: '2FA disabled, backup codes cleared' })
@@ -255,7 +261,8 @@ export class EnhancedAuthController {
 
   @Post('2fa/email/setup')
   @SkipTwoFactorCheck()
-  @UseGuards(JwtAuthGuard)
+  @Roles(...TWO_FA_ALLOWED_ROLES)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send a 6-digit OTP to email to begin email-OTP 2FA setup' })
@@ -266,7 +273,8 @@ export class EnhancedAuthController {
 
   @Post('2fa/email/enable')
   @SkipTwoFactorCheck()
-  @UseGuards(JwtAuthGuard)
+  @Roles(...TWO_FA_ALLOWED_ROLES)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Enable email-OTP 2FA after verifying the emailed code' })
@@ -277,7 +285,8 @@ export class EnhancedAuthController {
   }
 
   @Post('2fa/email/disable')
-  @UseGuards(JwtAuthGuard)
+  @Roles(...TWO_FA_ALLOWED_ROLES)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Disable email-OTP 2FA (requires a fresh OTP from /2fa/email/setup)' })
@@ -288,7 +297,8 @@ export class EnhancedAuthController {
   }
 
   @Get('2fa/email/status')
-  @UseGuards(JwtAuthGuard)
+  @Roles(...TWO_FA_ALLOWED_ROLES)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Check if email-OTP 2FA is enabled for current user' })
   @ApiResponse({ status: 200, description: 'Returns { enabled: boolean }' })
@@ -298,7 +308,8 @@ export class EnhancedAuthController {
   }
 
   @Post('2fa/regenerate-backup-codes')
-  @UseGuards(JwtAuthGuard)
+  @Roles(...TWO_FA_ALLOWED_ROLES)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Regenerate 2FA backup codes (replaces existing set)' })

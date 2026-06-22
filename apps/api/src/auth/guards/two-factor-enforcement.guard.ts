@@ -13,8 +13,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { TrustedDeviceService } from '../services/trusted-device.service';
 import { SKIP_TWO_FACTOR_CHECK_KEY } from '../decorators/skip-two-factor-check.decorator';
 import { SETTING_DEFAULTS } from '../../settings/settings.defaults';
-
-const ENFORCED_ROLES = new Set(['SELLER', 'ADMIN', 'SUPER_ADMIN', 'DELIVERY_PARTNER']);
+import { TWO_FA_ALLOWED_ROLES_SET } from '../constants/two-factor-roles';
 
 /**
  * TwoFactorEnforcementGuard (v2.12.0)
@@ -108,7 +107,7 @@ export class TwoFactorEnforcementGuard implements CanActivate {
     }
 
     // Only enforce for designated roles
-    if (!ENFORCED_ROLES.has(role)) return true;
+    if (!TWO_FA_ALLOWED_ROLES_SET.has(role)) return true;
 
     // Check if enforcement is enabled for this role
     const required = await this.isRequiredForRole(role);
