@@ -457,11 +457,7 @@ const listCommissions = async (params?: {
 };
 
 const syncCommissionsFromAwin = async (params?: { startDate?: string; endDate?: string }) => {
-  const { data } = await api.post<{ data: AwinSyncResult }>(
-    '/affiliate/admin/commissions/awin-sync',
-    params ?? {}
-  );
-  return data;
+  return api.post<AwinSyncResult>('/affiliate/admin/commissions/awin-sync', params ?? {});
 };
 
 const getCommissionStats = async (advertiserId?: string) => {
