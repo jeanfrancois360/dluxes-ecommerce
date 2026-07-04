@@ -3,12 +3,12 @@ import { Cron } from '@nestjs/schedule';
 import { AffiliateService } from './affiliate.service';
 
 /**
- * Nightly Awin cron jobs.
+ * Awin cron jobs — run every 3 hours.
  *
- * 02:00 Europe/Paris — product feed sync (imports/refreshes products from Awin CSV feeds)
- * 03:00 Europe/Paris — commission sync (pulls last 48h of transactions from Publisher API)
+ * :00 every 3h Europe/Paris — product feed sync (imports/refreshes products from Awin CSV feeds)
+ * :30 every 3h Europe/Paris — commission sync (pulls last 48h of transactions from Publisher API)
  *
- * Feed sync runs first so that newly imported products are present when commissions
+ * Feed sync runs first (on the hour) so that newly imported products are present when commissions
  * are attributed to affiliateProductId via AffiliateClickLog.awinClickRef.
  */
 @Injectable()
@@ -17,7 +17,7 @@ export class AwinCronService {
 
   constructor(private readonly affiliateService: AffiliateService) {}
 
-  @Cron('0 2 * * *', {
+  @Cron('0 */3 * * *', {
     name: 'awin-feed-sync',
     timeZone: 'Europe/Paris',
   })
@@ -37,7 +37,7 @@ export class AwinCronService {
     }
   }
 
-  @Cron('0 3 * * *', {
+  @Cron('30 */3 * * *', {
     name: 'awin-commission-sync',
     timeZone: 'Europe/Paris',
   })
