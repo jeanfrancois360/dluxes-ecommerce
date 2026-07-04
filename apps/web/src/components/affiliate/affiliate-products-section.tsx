@@ -58,7 +58,7 @@ export function AffiliateProductsSection({
         {showViewAll && (
           <Link
             href="/affiliate"
-            className="flex items-center gap-1 text-sm font-medium text-neutral-500 hover:text-neutral-900 transition-colors shrink-0 mt-0.5"
+            className="flex items-center gap-1.5 text-sm font-semibold text-[#CBB57B] bg-neutral-900 rounded-full px-5 py-2 hover:bg-black transition-colors shrink-0 mt-0.5"
           >
             View all deals
             <ArrowRight className="w-3.5 h-3.5" />
