@@ -3837,7 +3837,9 @@
       "myProfile": "Mi Perfil",
       "security": "Seguridad",
       "storeSettings": "Configuración de la Tienda",
-      "vacationMode": "Modo Vacaciones"
+      "gelatoIntegration": "Gelato POD",
+      "vacationMode": "Modo Vacaciones",
+      "referrals": "Referencias"
     },
     "topbar": {
       "sellerDashboard": "Panel del Vendedor",
