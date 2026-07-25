@@ -12,6 +12,7 @@ import { useCheckout } from '@/hooks/use-checkout';
 import { useAuth } from '@/hooks/use-auth';
 import { useCurrencyConverter } from '@/hooks/use-currency';
 import { toast, standardToasts } from '@/lib/utils/toast';
+import { trackBeginCheckout } from '@/lib/analytics';
 import { CheckoutStepper, CheckoutStep } from '@/components/checkout/checkout-stepper';
 import {
   UniversalAddressForm,
@@ -418,6 +419,22 @@ export default function CheckoutPage() {
       router.push('/cart');
     }
   }, [items, router, isInitialized, user, t]);
+
+  // Fire begin_checkout once when user lands on the page with items in cart
+  useEffect(() => {
+    if (!isInitialized || !user || items.length === 0) return;
+    trackBeginCheckout({
+      value: totals.total,
+      currency: cartCurrency,
+      items: items.map((item) => ({
+        item_id: item.productId,
+        item_name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+      })),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitialized, user]);
 
   // Create order and payment intent when shipping method is confirmed
   useEffect(() => {

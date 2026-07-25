@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useCurrencyConverter, useSelectedCurrency } from '@/hooks/use-currency';
+import { trackRemoveFromCart } from '@/lib/analytics';
 
 export interface CartItem {
   id: string;
@@ -425,10 +426,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(true);
         setError(null);
 
+        const removedItem = items.find((item) => item.id === itemId);
+
         // Optimistic update
         setItems((prev) => prev.filter((item) => item.id !== itemId));
 
         await axios.delete(`${API_URL}/cart/items/${itemId}`);
+
+        if (removedItem) {
+          trackRemoveFromCart({
+            item_id: removedItem.productId,
+            item_name: removedItem.name,
+            price: removedItem.price,
+            quantity: removedItem.quantity,
+          });
+        }
 
         // Sync to localStorage
         if (typeof window !== 'undefined') {

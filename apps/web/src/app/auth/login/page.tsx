@@ -13,6 +13,7 @@ import { storeUser, setTokenExpiry, getAuthRedirectUrl } from '@/lib/auth-utils'
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { showAuthError } from '@/lib/utils/auth-errors';
 import { useTranslations } from 'next-intl';
+import { trackLogin } from '@/lib/analytics';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -242,6 +243,7 @@ export default function LoginPage() {
 
       // Show success toast only if not 2FA (2FA will show success after code verification)
       if (!show2FA) {
+        trackLogin('email');
         toast.success(t('welcomeBackRedirect'), {
           duration: 2000,
         });

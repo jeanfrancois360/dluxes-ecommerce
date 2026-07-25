@@ -11,6 +11,7 @@ import { FloatingInput, Button } from '@nextpik/ui';
 import type { UserRole } from '@/lib/api/types';
 import { toast, standardToasts } from '@/lib/utils/toast';
 import { showAuthError } from '@/lib/utils/auth-errors';
+import { trackSignUp } from '@/lib/analytics';
 import {
   PasswordStrengthIndicator,
   validatePassword,
@@ -159,6 +160,7 @@ export default function RegisterPage() {
       });
 
       // Show success animation
+      trackSignUp('email');
       setIsSuccess(true);
 
       // Start countdown and redirect
