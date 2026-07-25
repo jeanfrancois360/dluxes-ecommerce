@@ -164,11 +164,11 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network https://www.paypal.com https://www.paypalobjects.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network https://www.paypal.com https://www.paypalobjects.com https://www.googletagmanager.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https: http://localhost:*",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' https://api.nextpik.com https://api.stripe.com https://m.stripe.network https://*.supabase.co https://www.paypal.com http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
+              "connect-src 'self' https://api.nextpik.com https://api.stripe.com https://m.stripe.network https://*.supabase.co https://www.paypal.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
               "frame-src 'self' https://js.stripe.com https://m.stripe.network https://www.paypal.com",
               "object-src 'none'",
               "base-uri 'self'",
