@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { trackViewItem, trackAddToCart } from '@/lib/analytics';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { PageLayout } from '@/components/layout/page-layout';
@@ -246,6 +247,19 @@ export default function ProductDetailPage() {
     return product.images?.length > 0 ? product.images.map((img) => img.url) : [product.heroImage];
   }, [product, selectedVariant]);
 
+  // Fire view_item once when product data loads
+  const viewItemFired = useRef(false);
+  useEffect(() => {
+    if (!product || viewItemFired.current) return;
+    viewItemFired.current = true;
+    trackViewItem({
+      item_id: product.id,
+      item_name: product.name,
+      price: product.price,
+      category: (product as any).category?.name,
+    });
+  }, [product]);
+
   // Auto-switch to first image when variant changes (shows variant-specific image)
   useEffect(() => {
     setSelectedImage(0);
@@ -331,6 +345,12 @@ export default function ProductDetailPage() {
       }
 
       await addToCart(product.id, quantity, variantId);
+      trackAddToCart({
+        item_id: product.id,
+        item_name: product.name,
+        price: product.price,
+        quantity,
+      });
       toast.success(t('addedToCart', { name: product.name }));
     } catch (error: any) {
       console.error('Failed to add to cart:', error);

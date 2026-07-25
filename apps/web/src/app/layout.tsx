@@ -11,6 +11,7 @@ import { WhatsAppChat } from '@/components/whatsapp-chat';
 import { VersionChecker } from '@/components/version-checker';
 import { Toaster } from 'sonner';
 import { siteConfig } from '@/lib/seo';
+import { GoogleAnalytics } from '@/components/providers/google-analytics';
 import './globals.css';
 
 const poppins = Poppins({
@@ -125,6 +126,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
         <link rel="dns-prefetch" href="https://js.stripe.com" />
         <link rel="dns-prefetch" href="https://m.stripe.com" />
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
       </head>
       <body
         className="font-sans antialiased bg-white text-black overflow-x-hidden"
@@ -162,6 +166,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </LocaleProvider>
           </RouteLoadingProvider>
         </NextIntlClientProvider>
+        <GoogleAnalytics />
       </body>
     </html>
   );

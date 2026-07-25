@@ -26,7 +26,7 @@ if git diff --cached --name-only | grep -E "apps/web/src/components/layout/foote
     # Check for unexpected external links (excluding trusted domains)
     if git diff --cached apps/web/src/components/layout/ apps/web/src/app/layout.tsx 2>/dev/null | \
        grep -E "https?://" | \
-       grep -v "localhost\|nextpik\|instagram\|facebook\|twitter\|linkedin\|pinterest\|youtube\|tiktok\|fonts\|wikimedia\|stripe\|paypal\|supabase\|unsplash" > /dev/null 2>&1; then
+       grep -v "localhost\|nextpik\|instagram\|facebook\|twitter\|linkedin\|pinterest\|youtube\|tiktok\|fonts\|wikimedia\|stripe\|paypal\|supabase\|unsplash\|googletagmanager\|google-analytics" > /dev/null 2>&1; then
         echo "⚠️  WARNING: New external links detected in layout files."
         echo "Review the changes carefully to ensure they're legitimate."
         read -p "Continue with commit? (y/N) " -n 1 -r
