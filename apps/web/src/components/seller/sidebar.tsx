@@ -24,6 +24,7 @@ import {
   Shield,
   Zap,
   Lock,
+  Gift,
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
@@ -101,6 +102,7 @@ const navigationGroups: NavGroup[] = [
         icon: Receipt,
         requiresActiveStore: true,
       },
+      { nameKey: 'referrals', href: '/account/referrals', icon: Gift },
     ],
   },
   {

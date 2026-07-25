@@ -3564,7 +3564,8 @@
       "security": "Security",
       "storeSettings": "Store Settings",
       "gelatoIntegration": "Gelato POD",
-      "vacationMode": "Vacation Mode"
+      "vacationMode": "Vacation Mode",
+      "referrals": "Referrals"
     },
     "topbar": {
       "sellerDashboard": "Seller Dashboard",

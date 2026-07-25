@@ -3455,7 +3455,9 @@
       "myProfile": "Mon Profil",
       "security": "Sécurité",
       "storeSettings": "Paramètres de la Boutique",
-      "vacationMode": "Mode Vacances"
+      "gelatoIntegration": "Gelato POD",
+      "vacationMode": "Mode Vacances",
+      "referrals": "Parrainages"
     },
     "topbar": {
       "sellerDashboard": "Tableau de Bord Vendeur",
