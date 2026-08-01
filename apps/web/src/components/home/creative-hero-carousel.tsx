@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, AnimatePresence, PanInfo, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Pause, Play, Sparkles, Zap, TrendingUp } from 'lucide-react';
 
 export interface CreativeHeroSlide {
@@ -42,20 +42,14 @@ export function CreativeHeroCarousel({
 }: CreativeHeroCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [direction, setDirection] = useState(0);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
-  const dragConstraints = useRef(null);
+  const touchStartX = useRef<number | null>(null);
 
   // Mouse tracking for parallax
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
   const currentSlide = slides[currentIndex];
-
-  const swipeConfidenceThreshold = 10000;
-  const swipePower = (offset: number, velocity: number) => {
-    return Math.abs(offset) * velocity;
-  };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -66,35 +60,34 @@ export function CreativeHeroCarousel({
   };
 
   const nextSlide = useCallback(() => {
-    setDirection(1);
     setCurrentIndex((prev) => (prev + 1) % slides.length);
   }, [slides.length]);
 
   const prevSlide = useCallback(() => {
-    setDirection(-1);
     setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
   }, [slides.length]);
 
-  const goToSlide = useCallback(
-    (index: number) => {
-      setDirection(index > currentIndex ? 1 : -1);
-      setCurrentIndex(index);
-    },
-    [currentIndex]
-  );
+  const goToSlide = useCallback((index: number) => {
+    setCurrentIndex(index);
+  }, []);
 
   const togglePlayPause = useCallback(() => {
     setIsPlaying((prev) => !prev);
   }, []);
 
-  const handleDragEnd = useCallback(
-    (e: any, { offset, velocity }: PanInfo) => {
-      const swipe = swipePower(offset.x, velocity.x);
-      if (swipe < -swipeConfidenceThreshold) {
-        nextSlide();
-      } else if (swipe > swipeConfidenceThreshold) {
-        prevSlide();
+  // Touch swipe — no drag transform applied to the element
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (touchStartX.current === null) return;
+      const delta = touchStartX.current - e.changedTouches[0].clientX;
+      if (Math.abs(delta) > 50) {
+        delta > 0 ? nextSlide() : prevSlide();
       }
+      touchStartX.current = null;
     },
     [nextSlide, prevSlide]
   );
@@ -124,25 +117,11 @@ export function CreativeHeroCarousel({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nextSlide, prevSlide, togglePlayPause]);
 
+  // Fade+scale transition — no horizontal x movement, zero overflow risk
   const slideVariants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 1000 : -1000,
-      opacity: 0,
-      scale: 0.8,
-      rotateY: direction > 0 ? 45 : -45,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      scale: 1,
-      rotateY: 0,
-    },
-    exit: (direction: number) => ({
-      x: direction < 0 ? 1000 : -1000,
-      opacity: 0,
-      scale: 0.8,
-      rotateY: direction < 0 ? 45 : -45,
-    }),
+    enter: { opacity: 0, scale: 0.97 },
+    center: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.97 },
   };
 
   const renderLayout = () => {
@@ -211,55 +190,59 @@ export function CreativeHeroCarousel({
   };
 
   return (
-    <div className="relative w-full overflow-hidden -mt-[168px] pt-[168px]" ref={dragConstraints}>
-      <AnimatePresence initial={false} custom={direction} mode="wait">
+    <div
+      className="relative w-full overflow-hidden -mt-[168px] pt-[168px]"
+      style={{ contain: 'paint' }}
+    >
+      <AnimatePresence initial={false} mode="wait">
         <motion.div
           key={currentSlide.id}
-          custom={direction}
           variants={slideVariants}
           initial="enter"
           animate="center"
           exit="exit"
           transition={{
-            x: { type: 'spring', stiffness: 300, damping: 30 },
             opacity: { duration: 0.4 },
             scale: { duration: 0.4 },
-            rotateY: { duration: 0.5 },
           }}
-          drag="x"
-          dragConstraints={dragConstraints}
-          dragElastic={0.2}
-          onDragEnd={handleDragEnd}
           onMouseMove={handleMouseMove}
-          className="relative h-[400px] sm:h-[420px] md:h-[450px] lg:h-[450px] cursor-grab active:cursor-grabbing overflow-hidden"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="relative h-[400px] sm:h-[420px] md:h-[450px] lg:h-[450px] overflow-hidden"
           style={{
             background: currentSlide.gradient,
+            contain: 'paint',
           }}
         >
-          {/* Animated background shapes */}
-          {currentSlide.shapes?.map((shape, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 0.6, scale: 1 }}
-              transition={{ delay: idx * 0.1, duration: 0.8 }}
-              className="absolute pointer-events-none"
-              style={{
-                left: `${shape.position.x}%`,
-                top: `${shape.position.y}%`,
-                width: shape.size,
-                height: shape.size,
-                backgroundColor: shape.color,
-                borderRadius:
-                  shape.type === 'circle'
-                    ? '50%'
-                    : shape.type === 'blob'
-                      ? '30% 70% 70% 30% / 30% 30% 70% 70%'
-                      : '0',
-                filter: shape.blur ? 'blur(60px)' : 'none',
-              }}
-            />
-          ))}
+          {/* Animated background shapes — clip-path contains filter:blur GPU layers */}
+          <div
+            className="absolute inset-0 pointer-events-none overflow-hidden"
+            style={{ clipPath: 'inset(0)', contain: 'paint' }}
+          >
+            {currentSlide.shapes?.map((shape, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 0.6, scale: 1 }}
+                transition={{ delay: idx * 0.1, duration: 0.8 }}
+                className="absolute"
+                style={{
+                  left: `${shape.position.x}%`,
+                  top: `${shape.position.y}%`,
+                  width: shape.size,
+                  height: shape.size,
+                  backgroundColor: shape.color,
+                  borderRadius:
+                    shape.type === 'circle'
+                      ? '50%'
+                      : shape.type === 'blob'
+                        ? '30% 70% 70% 30% / 30% 30% 70% 70%'
+                        : '0',
+                  filter: shape.blur ? 'blur(60px)' : 'none',
+                }}
+              />
+            ))}
+          </div>
 
           {/* Content */}
           <div className="relative z-10 h-full">{renderLayout()}</div>
@@ -268,8 +251,8 @@ export function CreativeHeroCarousel({
 
       {/* Modern Navigation Dots */}
       <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
         className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 sm:gap-3 z-20 backdrop-blur-xl bg-white/20 px-2 sm:px-3 py-3 sm:py-4 rounded-full border border-white/30 shadow-lg"
       >
@@ -296,8 +279,8 @@ export function CreativeHeroCarousel({
 
       {/* Glassmorphic Control Buttons */}
       <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
         className="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 flex items-center gap-1.5 sm:gap-2 z-20"
       >
@@ -325,8 +308,8 @@ export function CreativeHeroCarousel({
 
       {/* Slide counter - Bottom left, hidden on mobile, visible on desktop */}
       <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
         className="hidden md:flex absolute bottom-4 sm:bottom-6 md:bottom-8 left-4 sm:left-6 md:left-8 z-20 backdrop-blur-xl bg-white/20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-white/30 shadow-lg"
       >
@@ -348,8 +331,8 @@ function SplitLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: any) 
       <div className="w-full grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-16 items-center">
         {/* Left Content */}
         <motion.div
-          initial={{ opacity: 0, x: -100 }}
-          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="space-y-3 sm:space-y-4 md:space-y-5"
         >
@@ -533,8 +516,8 @@ function AsymmetricLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: 
           {slide.images.slice(0, 2).map((img: any, idx: number) => (
             <motion.div
               key={idx}
-              initial={{ opacity: 0, x: 100, rotate: 10 }}
-              animate={{ opacity: 1, x: 0, rotate: idx * 5 }}
+              initial={{ opacity: 0, y: 24, rotate: 10 }}
+              animate={{ opacity: 1, y: 0, rotate: idx * 5 }}
               transition={{ delay: 0.3 + idx * 0.1 }}
               whileHover={{ scale: 1.1, rotate: idx * 8 }}
               className="w-56 h-72 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl bg-white/10 border border-white/20"
@@ -552,8 +535,8 @@ function AsymmetricLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: 
 
         {/* Bottom left content */}
         <motion.div
-          initial={{ opacity: 0, x: -100 }}
-          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           className="absolute bottom-8 left-8 max-w-lg space-y-4 p-6 rounded-2xl backdrop-blur-2xl bg-black/40 border border-white/10"
         >
@@ -661,8 +644,8 @@ function DiagonalLayout({ slide, mouseX, mouseY, imageErrors, onImageError }: an
       <div className="max-w-[1920px] mx-auto px-8 lg:px-16 h-full flex items-center">
         {/* Content */}
         <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="max-w-xl space-y-5 z-10"
         >

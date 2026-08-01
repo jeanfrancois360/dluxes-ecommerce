@@ -46,6 +46,13 @@
 
   html {
     @apply scroll-smooth;
+    overflow-x: hidden !important; /* Prevent horizontal viewport scroll on all devices */
+    max-width: 100%;
+  }
+
+  body {
+    overflow-x: hidden !important;
+    max-width: 100%;
   }
 
   body {
