@@ -239,7 +239,7 @@ function HeroPlaceholder({ className = '' }: { className?: string }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className={`relative w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] ${className}`}
+      className={`relative w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden ${className}`}
     >
       {/* Dark elegant background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-zinc-900">

@@ -108,7 +108,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang={locale}
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={`${poppins.variable} [overflow-x:clip]`}
+      className={`${poppins.variable}`}
     >
       <head>
         {/* Preconnect to critical origins */}
