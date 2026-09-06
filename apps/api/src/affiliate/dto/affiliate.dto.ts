@@ -303,6 +303,10 @@ export class ListProductsQueryDto {
   tag?: string;
 
   @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
   @Transform(({ value }) => value === 'true')
   @IsBoolean()
   inStock?: boolean;

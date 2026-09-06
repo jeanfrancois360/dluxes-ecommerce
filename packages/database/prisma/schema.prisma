@@ -4203,6 +4203,7 @@ model AffiliateProduct {
   // Categorization (soft links — arrays of IDs from existing Category model)
   productCategoryIds  String[]                   // Links to Category (existing model)
   tags                String[]                   // Free-form tags
+  merchantCategory    String?                    // From feed: google_product_category / product_type
   brandName           String?                    // From feed: brand_name
 
   // State
@@ -4241,6 +4242,7 @@ model AffiliateProduct {
   @@index([isActive, displayOrder])
   @@index([fulfillmentSource])
   @@index([merchantProductId])
+  @@index([merchantCategory])
   @@index([slug])
   @@index([deletedAt])
   @@map("affiliate_products")

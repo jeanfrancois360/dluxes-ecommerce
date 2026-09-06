@@ -5,10 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { PageLayout } from '@/components/layout/page-layout';
 import { AffiliateProductCard } from '@/components/affiliate/affiliate-product-card';
 import { useAffiliatePublicProducts } from '@/hooks/use-affiliate';
+import { affiliateApi } from '@/lib/api/affiliate';
 import { useLocale } from '@/contexts/locale-context';
 import { ProductGridSkeleton } from '@/components/loading/skeleton';
 import { ScrollToTop } from '@/components/scroll-to-top';
-import { Filter, Search, Star, X, Percent, CheckCircle2 } from 'lucide-react';
+import { Filter, Search, Star, X, Percent, CheckCircle2, ChevronDown } from 'lucide-react';
 
 const LIMIT = 20;
 
@@ -20,13 +21,15 @@ function buildParams(
   page: number,
   isFeatured: boolean,
   inStockOnly: boolean,
-  tag: string
+  tag: string,
+  category: string
 ): URLSearchParams {
   const p = new URLSearchParams();
   if (page > 1) p.set('page', String(page));
   if (isFeatured) p.set('featured', '1');
   if (inStockOnly) p.set('inStock', '1');
   if (tag.trim()) p.set('tag', tag.trim());
+  if (category.trim()) p.set('category', category.trim());
   return p;
 }
 
@@ -47,6 +50,15 @@ export default function AffiliateListingPage() {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [activeTag, setActiveTag] = useState('');
+  const [activeCategory, setActiveCategory] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    affiliateApi
+      .listCategories()
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setPage(parseInt(searchParams.get('page') || '1', 10));
@@ -55,14 +67,21 @@ export default function AffiliateListingPage() {
     const t = searchParams.get('tag') || '';
     setTagInput(t);
     setActiveTag(t);
+    setActiveCategory(searchParams.get('category') || '');
   }, [searchParams]);
 
   // ---------------------------------------------------------------------------
   // Push new URL when filters change
   // ---------------------------------------------------------------------------
   const pushParams = useCallback(
-    (nextPage: number, nextFeatured: boolean, nextInStock: boolean, nextTag: string) => {
-      const p = buildParams(nextPage, nextFeatured, nextInStock, nextTag);
+    (
+      nextPage: number,
+      nextFeatured: boolean,
+      nextInStock: boolean,
+      nextTag: string,
+      nextCategory: string
+    ) => {
+      const p = buildParams(nextPage, nextFeatured, nextInStock, nextTag, nextCategory);
       const qs = p.toString();
       router.push(`/affiliate${qs ? '?' + qs : ''}`);
     },
@@ -70,32 +89,37 @@ export default function AffiliateListingPage() {
   );
 
   const handleFeaturedToggle = () => {
-    pushParams(1, !isFeatured, inStockOnly, activeTag);
+    pushParams(1, !isFeatured, inStockOnly, activeTag, activeCategory);
   };
 
   const handleInStockToggle = () => {
-    pushParams(1, isFeatured, !inStockOnly, activeTag);
+    pushParams(1, isFeatured, !inStockOnly, activeTag, activeCategory);
   };
 
   const handleTagSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    pushParams(1, isFeatured, inStockOnly, tagInput);
+    pushParams(1, isFeatured, inStockOnly, tagInput, activeCategory);
   };
 
   const handleClearTag = () => {
     setTagInput('');
-    pushParams(1, isFeatured, inStockOnly, '');
+    pushParams(1, isFeatured, inStockOnly, '', activeCategory);
+  };
+
+  const handleCategoryChange = (cat: string) => {
+    pushParams(1, isFeatured, inStockOnly, activeTag, cat);
   };
 
   const handlePageChange = (p: number) => {
-    pushParams(p, isFeatured, inStockOnly, activeTag);
+    pushParams(p, isFeatured, inStockOnly, activeTag, activeCategory);
   };
 
-  const hasActiveFilters = isFeatured || inStockOnly || Boolean(activeTag);
+  const hasActiveFilters =
+    isFeatured || inStockOnly || Boolean(activeTag) || Boolean(activeCategory);
 
   const clearAll = () => {
     setTagInput('');
-    pushParams(1, false, false, '');
+    pushParams(1, false, false, '', '');
   };
 
   // ---------------------------------------------------------------------------
@@ -108,9 +132,10 @@ export default function AffiliateListingPage() {
       isFeatured: isFeatured || undefined,
       inStock: inStockOnly || undefined,
       tag: activeTag || undefined,
+      category: activeCategory || undefined,
       locale,
     }),
-    [page, isFeatured, inStockOnly, activeTag, locale]
+    [page, isFeatured, inStockOnly, activeTag, activeCategory, locale]
   );
 
   const { products, pagination, loading, error } = useAffiliatePublicProducts(queryParams);
@@ -168,6 +193,25 @@ export default function AffiliateListingPage() {
               <CheckCircle2 className="w-3.5 h-3.5" />
               In stock
             </button>
+
+            {/* Category dropdown */}
+            {categories.length > 0 && (
+              <div className="relative">
+                <select
+                  value={activeCategory}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                  className="appearance-none pl-3 pr-8 py-1.5 border border-neutral-200 rounded-full text-sm bg-white text-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-900 cursor-pointer"
+                >
+                  <option value="">All categories</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
+              </div>
+            )}
 
             {/* Tag search */}
             <form onSubmit={handleTagSearch} className="flex items-center gap-2">

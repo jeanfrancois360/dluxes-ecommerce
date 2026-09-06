@@ -211,6 +211,9 @@ export class AffiliateService {
       ...(query.advertiserId && { advertiserId: query.advertiserId }),
       ...(query.isFeatured !== undefined && { isFeatured: query.isFeatured }),
       ...(query.tag && { tags: { has: query.tag } }),
+      ...(query.category && {
+        merchantCategory: { contains: query.category, mode: 'insensitive' },
+      }),
       ...(query.inStock !== undefined && { inStock: query.inStock }),
     };
 
@@ -237,6 +240,19 @@ export class AffiliateService {
   }
 
   /**
+   * Returns distinct non-null merchant categories for active products (used by filter dropdowns)
+   */
+  async listCategories(): Promise<string[]> {
+    const rows = await this.prisma.affiliateProduct.findMany({
+      where: { isActive: true, deletedAt: null, merchantCategory: { not: null } },
+      select: { merchantCategory: true },
+      distinct: ['merchantCategory'],
+      orderBy: { merchantCategory: 'asc' },
+    });
+    return rows.map((r) => r.merchantCategory as string);
+  }
+
+  /**
    * Admin listing: includes inactive + soft-deleted
    */
   async adminListProducts(query: AdminListProductsQueryDto) {
@@ -249,6 +265,9 @@ export class AffiliateService {
       ...(query.isFeatured !== undefined && { isFeatured: query.isFeatured }),
       ...(query.isActive !== undefined && { isActive: query.isActive }),
       ...(query.tag && { tags: { has: query.tag } }),
+      ...(query.category && {
+        merchantCategory: { contains: query.category, mode: 'insensitive' },
+      }),
       ...(query.fulfillmentSource && { fulfillmentSource: query.fulfillmentSource }),
       ...(!query.includeDeleted && { deletedAt: null }),
     };

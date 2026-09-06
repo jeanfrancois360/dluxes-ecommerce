@@ -48,6 +48,7 @@ export interface AffiliateProduct {
   productCategoryIds: string[];
   tags: string[];
   brandName?: string;
+  merchantCategory?: string;
   inStock?: boolean;
   fulfillmentSource?: AffiliateFulfillmentSource;
   merchantProductId?: string;
@@ -214,12 +215,19 @@ const listProducts = async (params?: {
   limit?: number;
   advertiserId?: string;
   isFeatured?: boolean;
+  inStock?: boolean;
   tag?: string;
+  category?: string;
   locale?: string;
 }) => {
   return api.get<PaginatedResponse<AffiliateProduct>>(
     `/affiliate/products${buildQueryString(params)}`
   );
+};
+
+const listCategories = async (): Promise<string[]> => {
+  const result = await api.get<{ data: string[] }>('/affiliate/products/categories');
+  return result.data;
 };
 
 const getProductBySlug = async (slug: string, locale?: string) =>
@@ -508,6 +516,7 @@ const listClickLogs = async (params?: {
 export const affiliateApi = {
   // Public
   listProducts,
+  listCategories,
   getProductBySlug,
   // Admin advertisers
   createAdvertiser,
