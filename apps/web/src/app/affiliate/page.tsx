@@ -131,14 +131,7 @@ export default function AffiliateListingPage() {
               </span>
             </div>
             <h1 className="text-3xl font-bold text-neutral-900">Partner Deals</h1>
-            <p className="text-neutral-500 mt-1">
-              Curated products from our trusted partners
-              {pagination.total > 0 && (
-                <span className="ml-1.5 font-medium text-neutral-700">
-                  · {pagination.total.toLocaleString()} products
-                </span>
-              )}
-            </p>
+            <p className="text-neutral-500 mt-1">Curated products from our trusted partners</p>
           </div>
         </div>
 
