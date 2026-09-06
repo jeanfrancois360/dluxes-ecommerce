@@ -8,6 +8,7 @@ import { WishlistProvider } from '@/contexts/wishlist-context';
 import { LocaleProvider } from '@/contexts/locale-context';
 import { RouteLoadingProvider } from '@/components/providers/route-loading-provider';
 import { WhatsAppChat } from '@/components/whatsapp-chat';
+import { FloatingButtons } from '@/components/floating-buttons';
 import { VersionChecker } from '@/components/version-checker';
 import { Toaster } from 'sonner';
 import { siteConfig } from '@/lib/seo';
@@ -150,6 +151,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         duration: 4000,
                       }}
                     />
+                    <FloatingButtons />
                     <WhatsAppChat
                       phoneNumber={process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '1234567890'}
                       businessName={process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NAME || 'NextPik'}
