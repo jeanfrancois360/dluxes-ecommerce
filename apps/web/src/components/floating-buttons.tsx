@@ -10,8 +10,9 @@ export function FloatingButtons() {
   const [hotDealsVisible, setHotDealsVisible] = useState(true);
   const [addProductVisible, setAddProductVisible] = useState(true);
 
-  const isSeller =
-    user?.role === 'SELLER' || user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const isSeller = user?.role === 'SELLER' || isAdmin;
+  const addProductHref = isAdmin ? '/admin/products/new' : '/seller/products/new';
 
   return (
     <>
@@ -47,7 +48,7 @@ export function FloatingButtons() {
             <X className="w-3 h-3" />
           </button>
           <Link
-            href="/seller/products/new"
+            href={addProductHref}
             className="flex items-center gap-2 bg-neutral-900 hover:bg-black text-white text-sm font-semibold px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
             aria-label="Add a new product"
           >
