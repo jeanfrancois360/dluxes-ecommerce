@@ -2109,6 +2109,19 @@ export class SellerService {
             storeName: updatedStore.name,
             submittedAt: new Date(),
           });
+
+          // Notify admins — non-blocking
+          this.emailService
+            .notifyAdminsSellerEvent({
+              action: 'application_resubmitted',
+              sellerName: `${user.firstName} ${user.lastName}`,
+              sellerEmail: user.email,
+              storeName: updatedStore.name,
+              submittedAt: new Date(),
+            })
+            .catch((err) =>
+              this.logger.warn(`Admin seller alert (resubmitted) failed: ${err.message}`)
+            );
         }
 
         const isPending = existingStore.status === 'PENDING';
@@ -2197,6 +2210,19 @@ export class SellerService {
       storeName: store.name,
       submittedAt: new Date(),
     });
+
+    // Notify admins — non-blocking
+    this.emailService
+      .notifyAdminsSellerEvent({
+        action: 'application_submitted',
+        sellerName: `${user.firstName} ${user.lastName}`,
+        sellerEmail: user.email,
+        storeName: store.name,
+        submittedAt: new Date(),
+      })
+      .catch((err) =>
+        this.logger.warn(`Admin seller alert (application_submitted) failed: ${err.message}`)
+      );
 
     return {
       success: true,

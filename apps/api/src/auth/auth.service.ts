@@ -13,6 +13,7 @@ import { CartService } from '../cart/cart.service';
 import { SettingsService } from '../settings/settings.service';
 import { PrismaService } from '../database/prisma.service';
 import { ReferralService } from '../referral/referral.service';
+import { EmailService } from '../email/email.service';
 
 // Account lockout configuration — MAX_LOGIN_ATTEMPTS is now read dynamically from SystemSettings
 // This constant is the safe fallback when the setting cannot be read
@@ -29,7 +30,8 @@ export class AuthService {
     private cartService: CartService,
     private settingsService: SettingsService,
     private prisma: PrismaService,
-    private referralService: ReferralService
+    private referralService: ReferralService,
+    private emailService: EmailService
   ) {}
 
   /**
@@ -389,6 +391,17 @@ export class AuthService {
           status: 'PENDING',
         },
       });
+
+      // Notify admins — non-blocking
+      this.emailService
+        .notifyAdminsSellerEvent({
+          action: 'new_registration',
+          sellerName: `${user.firstName} ${user.lastName}`,
+          sellerEmail: user.email,
+          storeName: data.storeName,
+          submittedAt: new Date(),
+        })
+        .catch((err) => this.logger.warn(`Admin seller alert failed: ${err.message}`));
     }
 
     // Referral System (v2.11.0) - NON-BLOCKING
