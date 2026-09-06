@@ -240,16 +240,22 @@ export class AffiliateService {
   }
 
   /**
-   * Returns distinct non-null merchant categories for active products (used by filter dropdowns)
+   * Returns distinct top-level merchant categories for active products (used by filter dropdowns).
+   * Extracts the first segment before '>' or '/' to keep the list concise.
    */
   async listCategories(): Promise<string[]> {
     const rows = await this.prisma.affiliateProduct.findMany({
       where: { isActive: true, deletedAt: null, merchantCategory: { not: null } },
       select: { merchantCategory: true },
-      distinct: ['merchantCategory'],
-      orderBy: { merchantCategory: 'asc' },
     });
-    return rows.map((r) => r.merchantCategory as string);
+    const topLevel = new Set(
+      rows.map((r) => {
+        const raw = r.merchantCategory as string;
+        // Split on ' > ' (Google taxonomy) or '/' (merchant taxonomy), take first segment
+        return raw.split(/\s*>\s*|\//)[0].trim();
+      })
+    );
+    return [...topLevel].sort();
   }
 
   /**
