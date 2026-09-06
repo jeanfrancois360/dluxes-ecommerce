@@ -299,6 +299,7 @@ export class AwinFeedService {
       originalPrice,
       displayCurrency: currency,
       brandName: row.brandName || null,
+      merchantCategory: row.merchantCategory || null,
       inStock,
       fulfillmentSource: AffiliateFulfillmentSource.FEED,
       feedId: row.dataFeedId || null,

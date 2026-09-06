@@ -196,10 +196,16 @@ function CampaignsContent() {
 
   // ─── Save (create / update) ─────────────────────────────────────────────────
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!formData.subject.trim()) return toast.error('Subject is required');
-    if (!formData.body.trim()) return toast.error('Body is required');
+    if (!formData.subject.trim()) {
+      toast.error('Subject is required');
+      return;
+    }
+    if (!formData.body.trim()) {
+      toast.error('Body is required');
+      return;
+    }
 
     setSaving(true);
     try {

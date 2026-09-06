@@ -23,6 +23,7 @@ export function useAffiliatePublicProducts(params?: {
   isFeatured?: boolean;
   inStock?: boolean;
   tag?: string;
+  category?: string;
   locale?: string;
 }) {
   const [products, setProducts] = useState<AffiliateProduct[]>([]);
@@ -46,6 +47,7 @@ export function useAffiliatePublicProducts(params?: {
       params?.isFeatured,
       params?.inStock,
       params?.tag,
+      params?.category,
       params?.locale,
     ]
   );

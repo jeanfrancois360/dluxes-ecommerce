@@ -44,6 +44,7 @@ export interface AwinFeedProduct {
   currency: string; // currency
   description: string; // description
   brandName: string; // brand_name
+  merchantCategory: string; // google_product_category or product_type
   inStock: string; // in_stock ('yes'/'no' or '1'/'0')
   merchantId: string; // merchant_id
   merchantName: string; // merchant_name
@@ -297,6 +298,10 @@ export class AwinApiClient {
         currency: extractCurrency(rawPrice || rawSalePrice),
         description: ((obj['description'] as string | undefined) ?? '').trim(),
         brandName: ((obj['brand'] as string | undefined) ?? '').trim(),
+        merchantCategory: (
+          ((obj['google_product_category'] as string | undefined) ?? '') ||
+          ((obj['product_type'] as string | undefined) ?? '')
+        ).trim(),
         inStock: ((obj['availability'] as string | undefined) ?? '').trim(),
         merchantId: '',
         merchantName: '',

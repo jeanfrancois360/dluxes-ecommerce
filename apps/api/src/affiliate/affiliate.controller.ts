@@ -64,6 +64,16 @@ export class AffiliateController {
   }
 
   /**
+   * GET /affiliate/products/categories
+   * Distinct merchant categories for active products (public — used by filter dropdowns)
+   */
+  @Get('products/categories')
+  async listCategories() {
+    const categories = await this.affiliateService.listCategories();
+    return { success: true, data: categories };
+  }
+
+  /**
    * GET /affiliate/products/:slug
    * Get a single active product by slug (public)
    */
