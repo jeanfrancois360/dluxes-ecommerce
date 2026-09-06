@@ -226,8 +226,7 @@ const listProducts = async (params?: {
 };
 
 const listCategories = async (): Promise<string[]> => {
-  const result = await api.get<{ data: string[] }>('/affiliate/products/categories');
-  return result.data;
+  return api.get<string[]>('/affiliate/products/categories');
 };
 
 const getProductBySlug = async (slug: string, locale?: string) =>
