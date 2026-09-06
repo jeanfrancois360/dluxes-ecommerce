@@ -47,7 +47,7 @@ export class AnnouncementController {
    */
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getAllAnnouncements(
     @Query('isActive') isActive?: string,
     @Query('type') type?: AnnouncementType
@@ -63,7 +63,7 @@ export class AnnouncementController {
    */
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async getAnnouncementById(@Param('id') id: string) {
     return this.announcementService.getAnnouncementById(id);
   }
@@ -73,7 +73,7 @@ export class AnnouncementController {
    */
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async createAnnouncement(@Body() dto: CreateAnnouncementDto, @Request() req: any) {
     return this.announcementService.createAnnouncement({
       ...dto,
@@ -86,7 +86,7 @@ export class AnnouncementController {
    */
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async updateAnnouncement(
     @Param('id') id: string,
     @Body() dto: UpdateAnnouncementDto,
@@ -103,7 +103,7 @@ export class AnnouncementController {
    */
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async deleteAnnouncement(@Param('id') id: string) {
     return this.announcementService.deleteAnnouncement(id);
   }
@@ -113,7 +113,7 @@ export class AnnouncementController {
    */
   @Post('reorder')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   async reorderAnnouncements(@Body() dto: ReorderAnnouncementsDto) {
     return this.announcementService.reorderAnnouncements(dto.announcementIds);
   }
