@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Resend } from 'resend';
 import { EmailOTPType } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
@@ -48,7 +48,7 @@ export class EmailService {
   private readonly fromEmail: string;
   private readonly frontendUrl: string;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(@Optional() private readonly prisma?: PrismaService) {
     const apiKey = process.env.RESEND_API_KEY;
 
     if (!apiKey) {
@@ -1877,6 +1877,13 @@ export class EmailService {
     submittedAt: Date;
   }): Promise<void> {
     try {
+      if (!this.prisma) {
+        this.logger.warn(
+          'notifyAdminsSellerEvent: PrismaService not available (direct instantiation)'
+        );
+        return;
+      }
+
       const admins = await this.prisma.user.findMany({
         where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] }, isActive: true },
         select: { email: true },
