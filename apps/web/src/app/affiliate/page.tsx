@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageLayout } from '@/components/layout/page-layout';
 import { AffiliateProductCard } from '@/components/affiliate/affiliate-product-card';
@@ -9,7 +9,17 @@ import { affiliateApi } from '@/lib/api/affiliate';
 import { useLocale } from '@/contexts/locale-context';
 import { ProductGridSkeleton } from '@/components/loading/skeleton';
 import { ScrollToTop } from '@/components/scroll-to-top';
-import { Filter, Search, Star, X, Percent, CheckCircle2, ChevronDown } from 'lucide-react';
+import {
+  Filter,
+  Search,
+  Star,
+  X,
+  Percent,
+  CheckCircle2,
+  ChevronDown,
+  Check,
+  Tag,
+} from 'lucide-react';
 
 const LIMIT = 20;
 
@@ -31,6 +41,126 @@ function buildParams(
   if (tag.trim()) p.set('tag', tag.trim());
   if (category.trim()) p.set('category', category.trim());
   return p;
+}
+
+// ---------------------------------------------------------------------------
+// Searchable category combobox
+// ---------------------------------------------------------------------------
+
+function CategoryCombobox({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: string[];
+  value: string;
+  onChange: (cat: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = categories.filter((c) => c.toLowerCase().includes(search.toLowerCase()));
+
+  const handleSelect = (cat: string) => {
+    onChange(cat === value ? '' : cat);
+    setOpen(false);
+    setSearch('');
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+          value
+            ? 'bg-neutral-900 border-neutral-900 text-white'
+            : 'bg-white border-neutral-200 text-neutral-600 hover:border-neutral-400'
+        }`}
+      >
+        <Tag className="w-3.5 h-3.5 shrink-0" />
+        <span className="max-w-[140px] truncate">{value || 'Category'}</span>
+        {value ? (
+          <X
+            className="w-3 h-3 shrink-0 opacity-70 hover:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange('');
+              setSearch('');
+            }}
+          />
+        ) : (
+          <ChevronDown
+            className={`w-3.5 h-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-1.5 z-50 w-64 bg-white border border-neutral-200 rounded-xl shadow-lg overflow-hidden">
+          {/* Search input */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-100">
+            <Search className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <input
+              autoFocus
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search categories…"
+              className="flex-1 text-sm outline-none bg-transparent placeholder:text-neutral-400"
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch('')}>
+                <X className="w-3 h-3 text-neutral-400 hover:text-neutral-600" />
+              </button>
+            )}
+          </div>
+
+          {/* Options list */}
+          <ul className="max-h-60 overflow-y-auto py-1">
+            {/* All categories option */}
+            <li>
+              <button
+                type="button"
+                onClick={() => handleSelect('')}
+                className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-neutral-50 transition-colors ${!value ? 'text-neutral-900 font-medium' : 'text-neutral-600'}`}
+              >
+                All categories
+                {!value && <Check className="w-3.5 h-3.5 text-neutral-900" />}
+              </button>
+            </li>
+
+            {filtered.length === 0 ? (
+              <li className="px-3 py-4 text-sm text-center text-neutral-400">No results</li>
+            ) : (
+              filtered.map((cat) => (
+                <li key={cat}>
+                  <button
+                    type="button"
+                    onClick={() => handleSelect(cat)}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-neutral-50 transition-colors ${value === cat ? 'text-neutral-900 font-medium' : 'text-neutral-600'}`}
+                  >
+                    <span className="truncate">{cat}</span>
+                    {value === cat && <Check className="w-3.5 h-3.5 text-neutral-900 shrink-0" />}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -194,23 +324,13 @@ export default function AffiliateListingPage() {
               In stock
             </button>
 
-            {/* Category dropdown */}
+            {/* Category searchable combobox */}
             {(categories?.length ?? 0) > 0 && (
-              <div className="relative">
-                <select
-                  value={activeCategory}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
-                  className="appearance-none pl-3 pr-8 py-1.5 border border-neutral-200 rounded-full text-sm bg-white text-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-900 cursor-pointer"
-                >
-                  <option value="">All categories</option>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
-              </div>
+              <CategoryCombobox
+                categories={categories}
+                value={activeCategory}
+                onChange={handleCategoryChange}
+              />
             )}
 
             {/* Tag search */}
