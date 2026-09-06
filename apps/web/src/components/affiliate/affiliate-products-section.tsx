@@ -43,9 +43,6 @@ export function AffiliateProductsSection({
           <div className="flex items-center gap-3">
             <span className="w-1 h-5 bg-[#CBB57B] rounded-full shrink-0" />
             <h2 className="text-base font-semibold text-neutral-900">{heading}</h2>
-            <span className="px-2 py-0.5 bg-neutral-100 text-neutral-500 text-xs font-medium rounded-full">
-              {products.length}
-            </span>
           </div>
         </div>
         {showViewAll && (
