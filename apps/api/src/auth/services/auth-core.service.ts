@@ -134,6 +134,19 @@ export class AuthCoreService {
           verified: autoApprove,
         },
       });
+
+      // Notify admins — non-blocking
+      this.emailService
+        .notifyAdminsSellerEvent({
+          action: 'new_registration',
+          sellerName: `${user.firstName} ${user.lastName}`,
+          sellerEmail: user.email,
+          storeName,
+          submittedAt: new Date(),
+        })
+        .catch((err) =>
+          this.logger.warn(`Admin seller alert (new_registration) failed: ${err.message}`)
+        );
     }
 
     // Apply referral code if provided (non-blocking)
