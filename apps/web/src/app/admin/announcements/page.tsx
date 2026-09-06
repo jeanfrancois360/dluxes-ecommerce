@@ -1,7 +1,8 @@
 'use client';
 import { safeJson } from '@/lib/safe-fetch';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import {
@@ -26,9 +27,17 @@ import {
   TableHeader,
   TableRow,
   Badge,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from '@nextpik/ui';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff, Smile, X } from 'lucide-react';
+
+// Dynamically import Picker to avoid SSR issues
+const EmojiPicker = dynamic(() => import('@emoji-mart/react').then((mod) => mod.default ?? mod), {
+  ssr: false,
+});
 
 // Helper function to format dates
 const formatDate = (dateString: string) => {
@@ -61,6 +70,76 @@ const ANNOUNCEMENT_TYPES = [
   { value: 'WARNING', label: 'Warning', color: 'bg-amber-100 text-amber-700' },
   { value: 'SUCCESS', label: 'Success', color: 'bg-green-100 text-green-700' },
 ];
+
+// ---------------------------------------------------------------------------
+// EmojiPickerField — button trigger + emoji-mart popover + clear button
+// ---------------------------------------------------------------------------
+function EmojiPickerField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (emoji: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const handleSelect = useCallback(
+    (data: { native: string }) => {
+      onChange(data.native);
+      setOpen(false);
+    },
+    [onChange]
+  );
+
+  return (
+    <div className="flex items-center gap-2">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-2 h-10 px-3 rounded-md border border-input bg-background text-sm hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring w-full"
+          >
+            {value ? (
+              <span className="text-2xl leading-none">{value}</span>
+            ) : (
+              <Smile className="h-5 w-5 text-muted-foreground" />
+            )}
+            <span className="text-muted-foreground">
+              {value ? 'Change emoji' : 'Pick an emoji'}
+            </span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="p-0 border-0 shadow-xl w-auto"
+          align="start"
+          side="bottom"
+          sideOffset={4}
+        >
+          <EmojiPicker
+            onEmojiSelect={handleSelect}
+            theme="light"
+            previewPosition="none"
+            skinTonePosition="none"
+            navPosition="top"
+            perLine={8}
+            maxFrequentRows={1}
+          />
+        </PopoverContent>
+      </Popover>
+
+      {value && (
+        <button
+          type="button"
+          title="Clear emoji"
+          onClick={() => onChange('')}
+          className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-md border border-input bg-background hover:bg-destructive/10 hover:text-destructive transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 function AnnouncementsContent() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -400,15 +479,11 @@ function AnnouncementsContent() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="icon">Icon (Emoji)</Label>
-                <Input
-                  id="icon"
-                  placeholder="✨ 🚚 💎"
+                <Label>Icon (Emoji)</Label>
+                <EmojiPickerField
                   value={formData.icon}
-                  onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                  maxLength={10}
+                  onChange={(emoji) => setFormData({ ...formData, icon: emoji })}
                 />
-                <p className="text-xs text-muted-foreground">Use emoji or leave empty</p>
               </div>
 
               <div className="space-y-2">
