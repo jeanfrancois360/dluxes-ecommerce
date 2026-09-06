@@ -195,7 +195,7 @@ export default function AffiliateListingPage() {
             </button>
 
             {/* Category dropdown */}
-            {categories.length > 0 && (
+            {(categories?.length ?? 0) > 0 && (
               <div className="relative">
                 <select
                   value={activeCategory}
