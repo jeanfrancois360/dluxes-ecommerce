@@ -58,7 +58,7 @@ export function FloatingButtons() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
-            className="fixed right-6 bottom-[7rem] z-50 flex items-center gap-1"
+            className="fixed right-6 bottom-[5.5rem] z-50 flex items-center gap-1"
           >
             <button
               onClick={() => setAddProductVisible(false)}
