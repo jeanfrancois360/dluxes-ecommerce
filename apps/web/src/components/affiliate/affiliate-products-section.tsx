@@ -19,8 +19,6 @@ interface AffiliateProductsSectionProps {
   products: AffiliateProduct[];
   /** Section heading. Defaults to i18n key affiliate.fromOurPartners. */
   title?: string;
-  /** Show the Awin disclosure line. Default true (required by Awin + EU law). */
-  showDisclosure?: boolean;
   /** Show "View all deals →" link. Default true. */
   showViewAll?: boolean;
   locale: string;
@@ -29,12 +27,10 @@ interface AffiliateProductsSectionProps {
 export function AffiliateProductsSection({
   products,
   title,
-  showDisclosure = true,
   showViewAll = true,
   locale,
 }: AffiliateProductsSectionProps) {
   const ta = useTranslations('affiliate');
-  const tb = useTranslations('blog');
 
   if (products.length === 0) return null;
 
@@ -51,9 +47,6 @@ export function AffiliateProductsSection({
               {products.length}
             </span>
           </div>
-          {showDisclosure && (
-            <p className="mt-1 ml-4 text-xs text-neutral-400">{tb('featuredProductsDisclosure')}</p>
-          )}
         </div>
         {showViewAll && (
           <Link
