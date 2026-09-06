@@ -39,6 +39,10 @@ const EmojiPicker = dynamic(() => import('@emoji-mart/react').then((mod) => mod.
   ssr: false,
 });
 
+// Bundled emoji data — avoids CDN fetch that fails under strict CSP / offline
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const emojiData = require('@emoji-mart/data');
+
 // Helper function to format dates
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -116,6 +120,7 @@ function EmojiPickerField({
           sideOffset={4}
         >
           <EmojiPicker
+            data={emojiData}
             onEmojiSelect={handleSelect}
             theme="light"
             previewPosition="none"
