@@ -4470,6 +4470,49 @@ model BlogPostComment {
 }
 
 // =============================================================================
+// Email Campaigns
+// =============================================================================
+
+enum CampaignAudience {
+  ALL
+  SELLERS
+  BUYERS
+  ADMINS
+  DELIVERY_PARTNERS
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+model EmailCampaign {
+  id             String           @id @default(cuid())
+  subject        String
+  previewText    String?
+  body           String           @db.Text
+  audience       CampaignAudience @default(ALL)
+  status         CampaignStatus   @default(DRAFT)
+  scheduledAt    DateTime?
+  sentAt         DateTime?
+  recipientCount Int              @default(0)
+  sentCount      Int              @default(0)
+  failedCount    Int              @default(0)
+  createdBy      String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([status])
+  @@index([audience])
+  @@index([scheduledAt])
+  @@map("email_campaigns")
+}
+
+// =============================================================================
 // Digital downloads — log table (used by downloads.service.ts)
 // =============================================================================
 model DownloadLog {
