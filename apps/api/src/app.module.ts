@@ -52,6 +52,7 @@ import { GelatoModule } from './gelato/gelato.module';
 import { ReferralModule } from './referral/referral.module';
 import { AffiliateModule } from './affiliate/affiliate.module';
 import { BlogModule } from './blog/blog.module';
+import { CampaignModule } from './campaign/campaign.module';
 import { MaintenanceModeGuard } from './guards/maintenance-mode.guard';
 import { TwoFactorEnforcementGuard } from './auth/guards/two-factor-enforcement.guard';
 import { SellerCreditsCronService } from './cron/seller-credits.cron';
@@ -123,6 +124,7 @@ import { EmailModule } from './email/email.module';
     ReferralModule,
     AffiliateModule,
     BlogModule,
+    CampaignModule,
     EmailModule,
   ],
   providers: [

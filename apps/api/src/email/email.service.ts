@@ -1859,4 +1859,35 @@ export class EmailService {
       this.logger.error('Error sending charge captured seller email', error);
     }
   }
+
+  /**
+   * Send a campaign email to a single recipient.
+   * Called by CampaignService in batches.
+   */
+  async sendCampaignEmail(email: string, subject: string, html: string): Promise<boolean> {
+    try {
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn(`[CAMPAIGN DEV] Would send "${subject}" to ${email}`);
+        return true;
+      }
+
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject,
+        html,
+      });
+
+      if (error) {
+        this.logger.error(`Campaign email failed for ${email}`, error);
+        return false;
+      }
+
+      this.logger.log(`Campaign email sent to ${email} (ID: ${data?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Error sending campaign email to ${email}`, error);
+      return false;
+    }
+  }
 }
