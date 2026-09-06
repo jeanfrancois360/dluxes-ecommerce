@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
 import { EmailOTPType } from '@prisma/client';
+import { PrismaService } from '../database/prisma.service';
+import {
+  adminSellerAlertTemplate,
+  SellerAlertAction,
+} from './templates/admin-seller-alert.template';
 import { magicLinkTemplate } from './templates/magic-link.template';
 import { passwordResetTemplate } from './templates/password-reset.template';
 import { welcomeTemplate } from './templates/welcome.template';
@@ -43,7 +48,7 @@ export class EmailService {
   private readonly fromEmail: string;
   private readonly frontendUrl: string;
 
-  constructor() {
+  constructor(private readonly prisma: PrismaService) {
     const apiKey = process.env.RESEND_API_KEY;
 
     if (!apiKey) {
@@ -1857,6 +1862,79 @@ export class EmailService {
       }
     } catch (error) {
       this.logger.error('Error sending charge captured seller email', error);
+    }
+  }
+
+  /**
+   * Notify all ADMIN and SUPER_ADMIN users about a seller-related event.
+   * Fire-and-forget safe: errors are logged but never thrown.
+   */
+  async notifyAdminsSellerEvent(data: {
+    action: SellerAlertAction;
+    sellerName: string;
+    sellerEmail: string;
+    storeName: string;
+    submittedAt: Date;
+  }): Promise<void> {
+    try {
+      const admins = await this.prisma.user.findMany({
+        where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] }, isActive: true },
+        select: { email: true },
+      });
+
+      if (admins.length === 0) {
+        this.logger.warn('notifyAdminsSellerEvent: no active admins found');
+        return;
+      }
+
+      const reviewUrl = `${this.frontendUrl}/admin/sellers`;
+      const actionLabels: Record<SellerAlertAction, string> = {
+        new_registration: 'New Seller Registration',
+        application_submitted: 'Seller Application Received',
+        application_resubmitted: 'Seller Application Updated',
+      };
+      const subject = `[NextPik Admin] ${actionLabels[data.action]}: ${data.sellerName}`;
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 ADMIN SELLER ALERT FOR DEVELOPMENT`);
+        this.logger.log(`Action: ${data.action}`);
+        this.logger.log(`Seller: ${data.sellerName} <${data.sellerEmail}>`);
+        this.logger.log(`Store: ${data.storeName}`);
+        this.logger.log(`Notifying: ${admins.map((a) => a.email).join(', ')}`);
+        this.logger.warn('='.repeat(80));
+        return;
+      }
+
+      const html = adminSellerAlertTemplate({
+        action: data.action,
+        sellerName: data.sellerName,
+        sellerEmail: data.sellerEmail,
+        storeName: data.storeName,
+        submittedAt: data.submittedAt,
+        reviewUrl,
+        frontendUrl: this.frontendUrl,
+      });
+
+      for (const admin of admins) {
+        try {
+          const { error } = await this.resend.emails.send({
+            from: this.fromEmail,
+            to: admin.email,
+            subject,
+            html,
+          });
+          if (error) {
+            this.logger.error(`Failed to send admin seller alert to ${admin.email}`, error);
+          } else {
+            this.logger.log(`Admin seller alert (${data.action}) sent to ${admin.email}`);
+          }
+        } catch (err) {
+          this.logger.error(`Error sending admin seller alert to ${admin.email}`, err);
+        }
+      }
+    } catch (error) {
+      this.logger.error('Error in notifyAdminsSellerEvent', error);
     }
   }
 
