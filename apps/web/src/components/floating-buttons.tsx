@@ -7,12 +7,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 
 export function FloatingButtons() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [hotDealsVisible, setHotDealsVisible] = useState(true);
   const [addProductVisible, setAddProductVisible] = useState(true);
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
-  const isSeller = user?.role === 'SELLER' || isAdmin;
+  const canAddProduct = isAuthenticated && !isLoading && (user?.role === 'SELLER' || isAdmin);
   const addProductHref = isAdmin ? '/admin/products/new' : '/seller/products/new';
 
   return (
@@ -52,7 +52,7 @@ export function FloatingButtons() {
 
       {/* Add Product — bottom-right above WhatsApp, sellers & admins only */}
       <AnimatePresence>
-        {isSeller && addProductVisible && (
+        {canAddProduct && addProductVisible && (
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
