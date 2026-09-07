@@ -14,6 +14,7 @@ import { SettingsService } from '../settings/settings.service';
 import { PrismaService } from '../database/prisma.service';
 import { ReferralService } from '../referral/referral.service';
 import { EmailService } from '../email/email.service';
+import { SellerPromotionsService } from '../seller-promotions/seller-promotions.service';
 
 // Account lockout configuration — MAX_LOGIN_ATTEMPTS is now read dynamically from SystemSettings
 // This constant is the safe fallback when the setting cannot be read
@@ -31,7 +32,8 @@ export class AuthService {
     private settingsService: SettingsService,
     private prisma: PrismaService,
     private referralService: ReferralService,
-    private emailService: EmailService
+    private emailService: EmailService,
+    private sellerPromotionsService: SellerPromotionsService
   ) {}
 
   /**
@@ -381,7 +383,7 @@ export class AuthService {
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
         .slice(0, 50);
-      await this.prisma.store.create({
+      const store = await this.prisma.store.create({
         data: {
           userId: user.id,
           name: data.storeName,
@@ -391,6 +393,11 @@ export class AuthService {
           status: 'PENDING',
         },
       });
+
+      // Auto-apply active seller promotion — non-blocking
+      this.sellerPromotionsService
+        .applyPromotionToNewStore(store.id, user.id)
+        .catch((err) => this.logger.warn(`Promotion auto-apply failed: ${(err as Error).message}`));
 
       // Notify admins — non-blocking
       this.emailService

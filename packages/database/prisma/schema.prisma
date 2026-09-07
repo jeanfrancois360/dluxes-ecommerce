@@ -450,6 +450,7 @@ model SellerCreditTransaction {
 }
 
 enum SellerCreditTransactionType {
+  PROMOTION // Promotional free credits
   PURCHASE // Seller bought credits
   DEDUCTION // Monthly auto-deduction
   REFUND // Admin refund
@@ -4548,4 +4549,45 @@ model TrustedPartner {
   @@index([isActive])
   @@index([displayOrder])
   @@map("trusted_partners")
+}
+
+// =============================================================================
+// Seller Promotions — admin-created promotions granting free credits to new sellers
+// =============================================================================
+model SellerPromotion {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?  @db.Text
+  creditsAmount Int      @default(1) // months of free listing credits
+  validFrom     DateTime
+  validTo       DateTime
+  isActive      Boolean  @default(true)
+  maxUses       Int?     // null = unlimited
+  usedCount     Int      @default(0)
+  createdBy     String?  // admin user ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications SellerPromotionApplication[]
+
+  @@index([isActive])
+  @@index([validFrom, validTo])
+  @@map("seller_promotions")
+}
+
+model SellerPromotionApplication {
+  id          String   @id @default(cuid())
+  promotionId String
+  storeId     String
+  userId      String
+  appliedAt   DateTime @default(now())
+  transactionId String? // linked SellerCreditTransaction id
+
+  promotion SellerPromotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, storeId])
+  @@index([storeId])
+  @@index([promotionId])
+  @@map("seller_promotion_applications")
 }

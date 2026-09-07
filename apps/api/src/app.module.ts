@@ -27,6 +27,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { AdvertisementModule } from './advertisements/advertisement.module';
 import { AnnouncementModule } from './announcement/announcement.module';
 import { PartnersModule } from './partners/partners.module';
+import { SellerPromotionsModule } from './seller-promotions/seller-promotions.module';
 import { CurrencyModule } from './currency/currency.module';
 import { EscrowModule } from './escrow/escrow.module';
 import { SettingsModule } from './settings/settings.module';
@@ -107,6 +108,7 @@ import { EmailModule } from './email/email.module';
     AdvertisementModule,
     AnnouncementModule,
     PartnersModule,
+    SellerPromotionsModule,
     CurrencyModule,
     EscrowModule,
     SettingsModule,
