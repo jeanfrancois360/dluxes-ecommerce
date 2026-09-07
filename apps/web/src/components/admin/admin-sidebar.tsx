@@ -109,6 +109,7 @@ const navigationGroups: NavGroup[] = [
       { nameKey: 'campaigns', href: '/admin/campaigns', icon: Megaphone },
       { nameKey: 'referrals', href: '/admin/referrals', icon: Gift },
       { nameKey: 'partners', href: '/admin/partners', icon: Handshake },
+      { nameKey: 'sellerPromotions', href: '/admin/seller-promotions', icon: Gift },
     ],
   },
   {

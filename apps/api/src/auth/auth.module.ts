@@ -27,6 +27,7 @@ import { DatabaseModule } from '../database/database.module';
 import { CartModule } from '../cart/cart.module';
 import { SettingsModule } from '../settings/settings.module';
 import { ReferralModule } from '../referral/referral.module';
+import { SellerPromotionsModule } from '../seller-promotions/seller-promotions.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ReferralModule } from '../referral/referral.module';
     CartModule,
     SettingsModule,
     ReferralModule,
+    SellerPromotionsModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
