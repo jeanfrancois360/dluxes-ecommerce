@@ -19,6 +19,7 @@ import { SettingsService } from '../../settings/settings.service';
 import { EmailOTPService } from '../email-otp.service';
 import { EmailService } from '../../email/email.service';
 import { ReferralService } from '../../referral/referral.service';
+import { SellerPromotionsService } from '../../seller-promotions/seller-promotions.service';
 import { RegisterDto, LoginDto } from '../dto/auth.dto';
 import { SETTING_DEFAULTS } from '../../settings/settings.defaults';
 import { TWO_FA_ALLOWED_ROLES_SET } from '../constants/two-factor-roles';
@@ -47,7 +48,8 @@ export class AuthCoreService {
     private settingsService: SettingsService,
     private emailOTPService: EmailOTPService,
     private emailService: EmailService,
-    @Optional() private referralService?: ReferralService
+    @Optional() private referralService?: ReferralService,
+    @Optional() private sellerPromotionsService?: SellerPromotionsService
   ) {}
 
   /**
@@ -134,6 +136,15 @@ export class AuthCoreService {
           verified: autoApprove,
         },
       });
+
+      // Auto-apply active seller promotion — non-blocking
+      if (this.sellerPromotionsService) {
+        this.sellerPromotionsService
+          .applyPromotionToNewStore(store.id, user.id)
+          .catch((err) =>
+            this.logger.warn(`Promotion auto-apply failed: ${(err as Error).message}`)
+          );
+      }
 
       // Notify admins — non-blocking
       this.emailService
