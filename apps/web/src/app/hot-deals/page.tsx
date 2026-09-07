@@ -14,16 +14,6 @@ import {
   ChevronRight,
   X,
   Zap,
-  Home,
-  Car,
-  Truck,
-  Monitor,
-  BookOpen,
-  Activity,
-  Sparkles,
-  Heart,
-  Star,
-  MoreHorizontal,
   Users,
   ArrowRight,
   Image as ImageIcon,
@@ -36,48 +26,25 @@ import {
   hotDealsApi,
   HotDeal,
   HotDealFilters,
-  CATEGORY_LABELS,
+  HotDealCategoryConfig,
   URGENCY_CONFIG,
-  HotDealCategory,
   UrgencyLevel,
   BudgetType,
+  getCategoryColors,
 } from '@/lib/api/hot-deals';
-
-// ─── Category config ───────────────────────────────────────────────────────────
-
-const CATEGORY_CONFIG: Record<
-  HotDealCategory,
-  { Icon: React.ComponentType<{ className?: string }>; color: string; bg: string }
-> = {
-  CHILDCARE: { Icon: Heart, color: 'text-pink-600', bg: 'bg-pink-50' },
-  HOME_SERVICES: { Icon: Home, color: 'text-blue-600', bg: 'bg-blue-50' },
-  AUTOMOTIVE: { Icon: Car, color: 'text-slate-600', bg: 'bg-slate-50' },
-  PET_SERVICES: { Icon: Star, color: 'text-amber-600', bg: 'bg-amber-50' },
-  MOVING_DELIVERY: { Icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
-  TECH_SUPPORT: { Icon: Monitor, color: 'text-violet-600', bg: 'bg-violet-50' },
-  TUTORING: { Icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  HEALTH_WELLNESS: { Icon: Activity, color: 'text-red-600', bg: 'bg-red-50' },
-  CLEANING: { Icon: Sparkles, color: 'text-cyan-600', bg: 'bg-cyan-50' },
-  OTHER: { Icon: MoreHorizontal, color: 'text-gray-600', bg: 'bg-gray-50' },
-};
+import { getIconComponent } from '@/lib/hot-deal-icons';
 
 // ─── Urgency card styles ───────────────────────────────────────────────────────
 
-const URGENCY_CARD: Record<UrgencyLevel, { topBar: string; badge: string; badgeText: string }> = {
-  NORMAL: {
-    topBar: 'bg-gray-200',
-    badge: 'bg-gray-100 text-gray-600',
-    badgeText: '',
-  },
+const URGENCY_CARD: Record<UrgencyLevel, { topBar: string; badge: string }> = {
+  NORMAL: { topBar: 'bg-gray-200', badge: 'bg-gray-100 text-gray-600' },
   URGENT: {
     topBar: 'bg-gradient-to-r from-[#CBB57B] to-amber-400',
     badge: 'bg-amber-50 text-amber-700',
-    badgeText: '',
   },
   EMERGENCY: {
     topBar: 'bg-gradient-to-r from-red-500 to-rose-400',
     badge: 'bg-red-50 text-red-700',
-    badgeText: '',
   },
 };
 
@@ -119,7 +86,9 @@ function Countdown({ expiresAt }: { expiresAt: string }) {
 
 function HotDealCard({ deal, index }: { deal: HotDeal; index: number }) {
   const uc = URGENCY_CARD[deal.urgency];
-  const catConf = CATEGORY_CONFIG[deal.category];
+  const catConfig = deal.categoryConfig;
+  const catColors = catConfig ? getCategoryColors(catConfig.color) : getCategoryColors('gray');
+  const CatIcon = catConfig ? getIconComponent(catConfig.icon) : null;
   const isEmergency = deal.urgency === 'EMERGENCY';
   const isUrgent = deal.urgency === 'URGENT';
   const responseCount = deal._count?.responses ?? 0;
@@ -135,10 +104,8 @@ function HotDealCard({ deal, index }: { deal: HotDeal; index: number }) {
       transition={{ duration: 0.28, delay: index * 0.045, ease: [0.22, 1, 0.36, 1] }}
       className="group relative flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
     >
-      {/* Top urgency bar */}
       <div className={`h-1 w-full flex-shrink-0 ${uc.topBar}`} />
 
-      {/* Image */}
       {firstImage && (
         <div className="relative h-40 overflow-hidden bg-gray-50">
           <img
@@ -156,7 +123,6 @@ function HotDealCard({ deal, index }: { deal: HotDeal; index: number }) {
       )}
 
       <div className="flex flex-col flex-1 p-5">
-        {/* Urgency + timer */}
         <div className="flex items-center justify-between mb-3">
           <span
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${uc.badge}`}
@@ -170,26 +136,25 @@ function HotDealCard({ deal, index }: { deal: HotDeal; index: number }) {
           <Countdown expiresAt={deal.expiresAt} />
         </div>
 
-        {/* Title */}
         <Link href={`/hot-deals/${deal.id}`} className="block mb-2">
           <h3 className="text-[15px] font-bold text-gray-900 group-hover:text-[#CBB57B] transition-colors line-clamp-2 leading-snug">
             {deal.title}
           </h3>
         </Link>
 
-        {/* Description */}
         <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed flex-1 mb-4">
           {deal.description}
         </p>
 
-        {/* Tags */}
         <div className="flex flex-wrap gap-1.5 mb-4">
-          <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${catConf.bg} ${catConf.color}`}
-          >
-            <catConf.Icon className="w-3 h-3" />
-            {CATEGORY_LABELS[deal.category]}
-          </span>
+          {catConfig && CatIcon && (
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${catColors.bg} ${catColors.text}`}
+            >
+              <CatIcon className="w-3 h-3" />
+              {catConfig.label}
+            </span>
+          )}
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500">
             <MapPin className="w-3 h-3" />
             {deal.city}
@@ -207,7 +172,6 @@ function HotDealCard({ deal, index }: { deal: HotDeal; index: number }) {
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <div className="flex items-center gap-3">
             <span
@@ -268,6 +232,7 @@ export default function HotDealsPage() {
   const t = useTranslations('pages.hotDeals');
   const { isAuthenticated } = useAuth();
   const [deals, setDeals] = useState<HotDeal[]>([]);
+  const [categories, setCategories] = useState<HotDealCategoryConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<HotDealFilters>({});
@@ -275,7 +240,13 @@ export default function HotDealsPage() {
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, totalPages: 0 });
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const categories = Object.entries(CATEGORY_LABELS) as [HotDealCategory, string][];
+  // Fetch categories once
+  useEffect(() => {
+    hotDealsApi
+      .getCategories()
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     async function fetchDeals() {
@@ -309,9 +280,9 @@ export default function HotDealsPage() {
     setFilters(rest);
   };
 
-  const handleCategoryChange = (category: HotDealCategory | '') => {
-    if (category) {
-      setFilters((prev) => ({ ...prev, category, page: 1 }));
+  const handleCategoryChange = (slug: string) => {
+    if (slug) {
+      setFilters((prev) => ({ ...prev, category: slug, page: 1 }));
     } else {
       const { category: _cat, ...rest } = filters;
       setFilters({ ...rest, page: 1 });
@@ -324,6 +295,7 @@ export default function HotDealsPage() {
   };
 
   const hasActiveFilters = !!(filters.category || filters.city);
+  const activeCategoryLabel = categories.find((c) => c.slug === filters.category)?.label;
 
   return (
     <PageLayout showCategoryNav={false}>
@@ -332,7 +304,6 @@ export default function HotDealsPage() {
         <div style={{ backgroundColor: '#0D0D0D' }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-              {/* Left: Brand block */}
               <div className="flex items-center gap-4">
                 <div
                   className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
@@ -351,7 +322,6 @@ export default function HotDealsPage() {
                     >
                       Hot Deals
                     </h1>
-                    {/* Live indicator */}
                     <span
                       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold"
                       style={{
@@ -361,7 +331,7 @@ export default function HotDealsPage() {
                       }}
                     >
                       <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                      {isLoading ? '…' : pagination.total} live
+                      {isLoading ? '...' : pagination.total} live
                     </span>
                   </div>
                   <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.5)' }}>
@@ -373,9 +343,7 @@ export default function HotDealsPage() {
                 </div>
               </div>
 
-              {/* Right: CTA + search */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-2 flex-shrink-0">
-                {/* City search */}
                 <div className="relative">
                   <Search
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
@@ -384,7 +352,7 @@ export default function HotDealsPage() {
                   <input
                     ref={searchRef}
                     type="text"
-                    placeholder="Search by city…"
+                    placeholder="Search by city..."
                     value={citySearch}
                     onChange={(e) => setCitySearch(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCitySearch()}
@@ -441,7 +409,6 @@ export default function HotDealsPage() {
         <div className="bg-white border-b border-gray-100 sticky top-0 z-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-              {/* All */}
               <button
                 onClick={() => handleCategoryChange('')}
                 className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
@@ -454,21 +421,22 @@ export default function HotDealsPage() {
                 All
               </button>
 
-              {categories.map(([key, label]) => {
-                const conf = CATEGORY_CONFIG[key];
-                const isActive = filters.category === key;
+              {categories.map((cat) => {
+                const colors = getCategoryColors(cat.color);
+                const Icon = getIconComponent(cat.icon);
+                const isActive = filters.category === cat.slug;
                 return (
                   <button
-                    key={key}
-                    onClick={() => handleCategoryChange(isActive ? '' : key)}
+                    key={cat.slug}
+                    onClick={() => handleCategoryChange(isActive ? '' : cat.slug)}
                     className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
                       isActive
-                        ? `${conf.bg} ${conf.color} ring-1 ring-current/20`
+                        ? `${colors.bg} ${colors.text} ring-1 ring-current/20`
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    <conf.Icon className="w-3 h-3" />
-                    {label}
+                    <Icon className="w-3 h-3" />
+                    {cat.label}
                   </button>
                 );
               })}
@@ -488,19 +456,18 @@ export default function HotDealsPage() {
 
         {/* ── CONTENT ───────────────────────────────────────────────────────── */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Toolbar row */}
           <div className="flex items-center justify-between mb-6 gap-4">
             <div className="flex items-center gap-2 flex-wrap">
               {!isLoading && !error && (
                 <p className="text-sm text-gray-500">
                   <span className="text-gray-900 font-bold">{pagination.total}</span>{' '}
                   {pagination.total === 1 ? 'deal' : 'deals'}
-                  {filters.category && (
+                  {activeCategoryLabel && (
                     <>
                       {' '}
                       in{' '}
                       <span className="font-semibold" style={{ color: '#CBB57B' }}>
-                        {CATEGORY_LABELS[filters.category]}
+                        {activeCategoryLabel}
                       </span>
                     </>
                   )}
@@ -545,7 +512,6 @@ export default function HotDealsPage() {
             )}
           </div>
 
-          {/* Loading */}
           {isLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -554,7 +520,6 @@ export default function HotDealsPage() {
             </div>
           )}
 
-          {/* Error */}
           {!isLoading && error && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -575,7 +540,6 @@ export default function HotDealsPage() {
             </motion.div>
           )}
 
-          {/* Empty */}
           {!isLoading && !error && deals.length === 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.97 }}
@@ -618,7 +582,6 @@ export default function HotDealsPage() {
             </motion.div>
           )}
 
-          {/* Grid */}
           {!isLoading && !error && deals.length > 0 && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -627,7 +590,6 @@ export default function HotDealsPage() {
                 ))}
               </div>
 
-              {/* Pagination */}
               {pagination.totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 mt-10">
                   <button

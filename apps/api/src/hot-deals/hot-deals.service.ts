@@ -15,6 +15,7 @@ import {
   UrgencyLevel,
   ContactMethod,
 } from './dto/create-hot-deal.dto';
+import { HotDealCategoriesService } from './hot-deal-categories.service';
 import { RespondToDealDto } from './dto/respond-to-deal.dto';
 import { HotDealQueryDto } from './dto/hot-deal-query.dto';
 import { PaymentStatus } from '@prisma/client';
@@ -26,7 +27,8 @@ export class HotDealsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly categoriesService: HotDealCategoriesService
   ) {}
 
   private getStripe(): Stripe {
@@ -114,6 +116,9 @@ export class HotDealsService {
    * Create a new hot deal (status: PENDING until payment is confirmed)
    */
   async create(userId: string, dto: CreateHotDealDto) {
+    // Validate category exists and is active
+    await this.categoriesService.findBySlug(dto.category);
+
     // Calculate expiry time (24 hours from now)
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
@@ -123,7 +128,7 @@ export class HotDealsService {
         userId,
         title: dto.title,
         description: dto.description,
-        category: dto.category,
+        categoryId: dto.category,
         urgency: dto.urgency || UrgencyLevel.NORMAL,
         contactName: dto.contactName,
         contactPhone: dto.contactPhone,
@@ -181,7 +186,7 @@ export class HotDealsService {
     };
 
     if (query.category) {
-      where.category = query.category;
+      where.categoryId = query.category;
     }
 
     if (query.city) {
@@ -202,6 +207,7 @@ export class HotDealsService {
               lastName: true,
             },
           },
+          categoryConfig: true,
           _count: {
             select: {
               responses: true,
@@ -242,6 +248,7 @@ export class HotDealsService {
             lastName: true,
           },
         },
+        categoryConfig: true,
         responses: {
           include: {
             user: {
@@ -282,6 +289,7 @@ export class HotDealsService {
     const deals = await this.hotDeal.findMany({
       where: { userId },
       include: {
+        categoryConfig: true,
         _count: {
           select: {
             responses: true,
@@ -486,7 +494,7 @@ export class HotDealsService {
    */
   async getCategoryStats() {
     const stats = await this.hotDeal.groupBy({
-      by: ['category'],
+      by: ['categoryId'],
       where: {
         status: HotDealStatus.ACTIVE,
         expiresAt: {
@@ -494,13 +502,13 @@ export class HotDealsService {
         },
       },
       _count: {
-        category: true,
+        categoryId: true,
       },
     });
 
     return stats.map((s) => ({
-      category: s.category,
-      count: s._count.category,
+      category: s.categoryId,
+      count: s._count.categoryId,
     }));
   }
 }

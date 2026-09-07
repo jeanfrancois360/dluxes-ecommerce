@@ -69,26 +69,6 @@ export class HotDealsController {
   }
 
   /**
-   * Get category statistics for filters
-   * @route GET /hot-deals/categories/stats
-   */
-  @Get('categories/stats')
-  async getCategoryStats() {
-    try {
-      const data = await this.hotDealsService.getCategoryStats();
-      return {
-        success: true,
-        data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to fetch category stats',
-      };
-    }
-  }
-
-  /**
    * Get user's own hot deals
    * @route GET /hot-deals/my-deals
    */

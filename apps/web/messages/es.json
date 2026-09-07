@@ -11,6 +11,7 @@
       "marketing": "Marketing",
       "affiliate": "[ES-TODO] Affiliate",
       "blog": "Blog",
+      "hotDeals": "Ofertas",
       "system": "Sistema"
     },
     "items": {
@@ -44,6 +45,7 @@
       "affiliateCommissions": "[ES-TODO] Commissions",
       "affiliateClicks": "[ES-TODO] Click Analytics",
       "affiliateFeeds": "[ES-TODO] Feed Syncs",
+      "hotDealCategories": "Categorías de Ofertas",
       "blogPosts": "[ES-TODO] Blog Posts",
       "settings": "Configuración",
       "security": "Seguridad",

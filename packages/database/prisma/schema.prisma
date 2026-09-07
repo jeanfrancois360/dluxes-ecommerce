@@ -3621,6 +3621,25 @@ model GelatoWebhookEvent {
 // Hot Deals - Emergency Services Marketplace
 // ============================================================================
 
+// Admin-managed hot deal categories (fully dynamic)
+model HotDealCategoryConfig {
+  id           String  @id @default(cuid())
+  slug         String  @unique @db.VarChar(50)   // e.g. "CHILDCARE", "HOME_SERVICES"
+  label        String  @db.VarChar(100)           // e.g. "Childcare & Babysitting"
+  icon         String  @default("MoreHorizontal") @db.VarChar(50) // Lucide icon name
+  color        String  @default("gray") @db.VarChar(30)           // Tailwind color key
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  hotDeals HotDeal[]
+
+  @@index([isActive, displayOrder])
+  @@map("hot_deal_categories")
+}
+
 // Hot Deals - Emergency Service Requests ($1 per post)
 model HotDeal {
   id     String @id @default(cuid())
@@ -3629,7 +3648,7 @@ model HotDeal {
   // Content
   title       String          @db.VarChar(100)
   description String          @db.Text
-  category    HotDealCategory
+  categoryId  String          @db.VarChar(50)     // References HotDealCategoryConfig.slug
   urgency     UrgencyLevel    @default(NORMAL)
   images      Json            @default("[]") // Array of image URLs (jsonb). Default: empty array.
 
@@ -3661,12 +3680,13 @@ model HotDeal {
   updatedAt   DateTime      @updatedAt
 
   // Relations
-  user      User              @relation("UserHotDeals", fields: [userId], references: [id], onDelete: Cascade)
-  responses HotDealResponse[]
+  user           User                    @relation("UserHotDeals", fields: [userId], references: [id], onDelete: Cascade)
+  categoryConfig HotDealCategoryConfig   @relation(fields: [categoryId], references: [slug])
+  responses      HotDealResponse[]
 
   @@index([userId])
   @@index([status, expiresAt])
-  @@index([category, status])
+  @@index([categoryId, status])
   @@index([city, status])
   @@index([createdAt])
   @@map("hot_deals")
@@ -3693,19 +3713,6 @@ model HotDealResponse {
 }
 
 // Hot Deal Enums
-enum HotDealCategory {
-  CHILDCARE
-  HOME_SERVICES
-  AUTOMOTIVE
-  PET_SERVICES
-  MOVING_DELIVERY
-  TECH_SUPPORT
-  TUTORING
-  HEALTH_WELLNESS
-  CLEANING
-  OTHER
-}
-
 enum UrgencyLevel {
   NORMAL
   URGENT
