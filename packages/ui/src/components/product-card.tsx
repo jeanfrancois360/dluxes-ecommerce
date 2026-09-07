@@ -204,7 +204,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
                   className={cn(
-                    'px-1.5 sm:px-2.5 md:px-3.5 py-0.5 sm:py-1 text-[8px] xs:text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wider rounded-full',
+                    'px-2 sm:px-2.5 md:px-3.5 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-full',
                     'backdrop-blur-md shadow-lg',
                     badge.toLowerCase() === 'new' && 'bg-black/90 text-white',
                     badge.toLowerCase() === 'sale' && 'bg-red-500/90 text-white',
@@ -343,7 +343,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                 animate={{ scale: 1, rotate: 0 }}
                 className="w-9 h-9 sm:w-11 sm:h-11 md:w-13 md:h-13 rounded-full bg-red-500 flex items-center justify-center shadow-xl"
               >
-                <span className="text-white font-bold text-[9px] xs:text-[10px] sm:text-xs md:text-sm">
+                <span className="text-white font-bold text-xs sm:text-xs md:text-sm">
                   -{discount}%
                 </span>
               </motion.div>
@@ -358,7 +358,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                 animate={{ scale: 1, opacity: 1 }}
                 className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-neutral-900/95 backdrop-blur-md rounded-full shadow-xl flex items-center justify-center"
               >
-                <span className="text-white font-bold text-[8px] xs:text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider leading-none">
+                <span className="text-white font-bold text-[10px] sm:text-xs uppercase tracking-wider leading-none">
                   {translations.outOfStock}
                 </span>
               </motion.div>
@@ -371,7 +371,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                 animate={{ scale: 1, opacity: 1 }}
                 className="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-orange-500/95 backdrop-blur-md rounded-full shadow-xl flex items-center justify-center"
               >
-                <span className="text-white font-bold text-[8px] xs:text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider leading-none">
+                <span className="text-white font-bold text-[10px] sm:text-xs uppercase tracking-wider leading-none">
                   {translations.onlyLeft
                     ? translations.onlyLeft.replace('{count}', String(stockQuantity))
                     : `Only ${stockQuantity} Left`}
@@ -382,16 +382,16 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
         </div>
 
         {/* Product Info */}
-        <div className="p-3 sm:p-4 md:p-5 lg:p-6 space-y-2 sm:space-y-2.5 md:space-y-3">
+        <div className="p-3 sm:p-4 md:p-5 space-y-2 sm:space-y-2.5 md:space-y-3">
           {/* Brand */}
           {brand && (
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] text-neutral-500 font-semibold">
+            <p className="text-xs uppercase tracking-[0.15em] text-neutral-500 font-semibold">
               {brand}
             </p>
           )}
 
           {/* Product Name */}
-          <h3 className="font-serif text-sm sm:text-base md:text-lg font-bold text-black line-clamp-2 leading-tight group-hover:text-gold transition-colors duration-200">
+          <h3 className="font-serif text-sm sm:text-sm md:text-base font-bold text-black line-clamp-2 leading-tight group-hover:text-gold transition-colors duration-200">
             {name}
           </h3>
 
@@ -415,9 +415,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                 ))}
               </div>
               {reviewCount !== undefined && reviewCount > 0 && (
-                <span className="text-[10px] sm:text-xs text-neutral-500 font-medium">
-                  ({reviewCount})
-                </span>
+                <span className="text-xs text-neutral-500 font-medium">({reviewCount})</span>
               )}
             </div>
           )}
@@ -426,21 +424,21 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
           <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3 pt-1 sm:pt-1.5 md:pt-2">
             {isInquiryProduct ? (
               <div className="flex flex-col">
-                <span className="font-serif text-base sm:text-lg md:text-xl font-bold text-gold">
+                <span className="font-serif text-base sm:text-base md:text-lg font-bold text-gold">
                   {translations.contactForPrice}
                 </span>
-                <span className="text-[10px] sm:text-xs text-neutral-500 mt-0.5">
+                <span className="text-xs text-neutral-500 mt-0.5">
                   {translations.inquiryRequired}
                 </span>
               </div>
             ) : (
               <>
-                <span className="font-serif text-lg sm:text-xl md:text-2xl font-bold text-black">
+                <span className="font-serif text-base sm:text-lg md:text-xl font-bold text-black">
                   {currencySymbol}
                   {formatCurrencyAmount(validPrice, 2)}
                 </span>
                 {validCompareAtPrice && (
-                  <span className="text-xs sm:text-sm text-neutral-400 line-through font-medium">
+                  <span className="text-xs sm:text-xs md:text-sm text-neutral-400 line-through font-medium">
                     {currencySymbol}
                     {formatCurrencyAmount(validCompareAtPrice, 2)}
                   </span>
@@ -454,7 +452,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
             <a
               href={`/store/${store.slug}`}
               onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-neutral-500 hover:text-gold transition-colors pt-0.5 sm:pt-1"
+              className="flex items-center gap-1 sm:gap-1.5 text-xs text-neutral-500 hover:text-gold transition-colors pt-0.5 sm:pt-1"
             >
               <svg
                 className="w-3 h-3 sm:w-3.5 sm:h-3.5"
