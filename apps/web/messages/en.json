@@ -11,6 +11,7 @@
       "marketing": "Marketing",
       "affiliate": "Affiliate",
       "blog": "Blog",
+      "hotDeals": "Hot Deals",
       "system": "System"
     },
     "items": {
@@ -49,6 +50,7 @@
       "affiliateCommissions": "Commissions",
       "affiliateClicks": "Click Analytics",
       "affiliateFeeds": "Feed Syncs",
+      "hotDealCategories": "Deal Categories",
       "blogPosts": "Blog Posts",
       "settings": "Settings",
       "security": "Security",

@@ -36,7 +36,6 @@ import { useAuth } from '@/hooks/use-auth';
 import {
   hotDealsApi,
   HotDeal,
-  CATEGORY_LABELS,
   URGENCY_CONFIG,
   STATUS_CONFIG,
   UrgencyLevel,
@@ -523,7 +522,7 @@ export default function HotDealDetailPage() {
                       {statusConfig.label}
                     </span>
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
-                      {CATEGORY_LABELS[deal.category]}
+                      {deal.categoryConfig?.label ?? deal.categoryId}
                     </span>
                   </div>
 

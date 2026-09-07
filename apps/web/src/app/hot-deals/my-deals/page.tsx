@@ -33,7 +33,6 @@ import { useAuth } from '@/hooks/use-auth';
 import {
   hotDealsApi,
   HotDeal,
-  CATEGORY_LABELS,
   URGENCY_CONFIG,
   STATUS_CONFIG,
   HotDealStatus,
@@ -675,7 +674,7 @@ function DealCard({
                 {URGENCY_CONFIG[deal.urgency].label}
               </span>
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                {CATEGORY_LABELS[deal.category]}
+                {deal.categoryConfig?.label ?? deal.categoryId}
               </span>
               {(budget || budgetType) && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-100">

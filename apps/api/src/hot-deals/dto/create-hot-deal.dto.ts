@@ -13,20 +13,6 @@ import {
   Min,
 } from 'class-validator';
 
-// Define enums locally until Prisma client is regenerated
-export enum HotDealCategory {
-  CHILDCARE = 'CHILDCARE',
-  HOME_SERVICES = 'HOME_SERVICES',
-  AUTOMOTIVE = 'AUTOMOTIVE',
-  PET_SERVICES = 'PET_SERVICES',
-  MOVING_DELIVERY = 'MOVING_DELIVERY',
-  TECH_SUPPORT = 'TECH_SUPPORT',
-  TUTORING = 'TUTORING',
-  HEALTH_WELLNESS = 'HEALTH_WELLNESS',
-  CLEANING = 'CLEANING',
-  OTHER = 'OTHER',
-}
-
 export enum UrgencyLevel {
   NORMAL = 'NORMAL',
   URGENT = 'URGENT',
@@ -64,8 +50,10 @@ export class CreateHotDealDto {
   @MaxLength(500, { message: 'Description cannot exceed 500 characters' })
   description: string;
 
-  @IsEnum(HotDealCategory, { message: 'Invalid category' })
-  category: HotDealCategory;
+  @IsString()
+  @MinLength(2, { message: 'Category is required' })
+  @MaxLength(50)
+  category: string;
 
   @IsEnum(UrgencyLevel, { message: 'Invalid urgency level' })
   @IsOptional()

@@ -17,16 +17,7 @@ import {
   Shield,
   ImagePlus,
   X,
-  Home,
-  Car,
-  Truck,
-  Monitor,
-  BookOpen,
-  Activity,
-  Sparkles,
-  Heart,
   Users,
-  MoreHorizontal,
   Phone,
   Mail,
   CheckCheck,
@@ -48,13 +39,14 @@ import api from '@/lib/api/client';
 import {
   hotDealsApi,
   CreateHotDealData,
-  CATEGORY_LABELS,
-  HotDealCategory,
+  HotDealCategoryConfig,
   UrgencyLevel,
   ContactMethod,
   BudgetType,
   URGENCY_CONFIG,
+  getCategoryColors,
 } from '@/lib/api/hot-deals';
+import { getIconComponent } from '@/lib/hot-deal-icons';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -64,7 +56,7 @@ type Step = 'form' | 'payment' | 'success';
 interface DraftState {
   formValues?: Partial<FormData>;
   selectedUrgency?: UrgencyLevel;
-  selectedCategory?: HotDealCategory | '';
+  selectedCategory?: string;
   selectedBudgetType?: BudgetType | '';
   uploadedImages?: string[];
   step?: 'form' | 'payment';
@@ -96,79 +88,6 @@ function clearDraft() {
   if (typeof window === 'undefined') return;
   sessionStorage.removeItem(DRAFT_KEY);
 }
-
-// ─── Category config ──────────────────────────────────────────────────────────
-
-const CATEGORY_CONFIG: Record<
-  HotDealCategory,
-  {
-    Icon: React.ComponentType<{ className?: string }>;
-    color: string;
-    bg: string;
-    ring: string;
-  }
-> = {
-  CHILDCARE: {
-    Icon: Heart,
-    color: 'text-pink-600',
-    bg: 'bg-pink-50',
-    ring: 'ring-pink-200',
-  },
-  HOME_SERVICES: {
-    Icon: Home,
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
-    ring: 'ring-blue-200',
-  },
-  AUTOMOTIVE: {
-    Icon: Car,
-    color: 'text-slate-600',
-    bg: 'bg-slate-50',
-    ring: 'ring-slate-200',
-  },
-  PET_SERVICES: {
-    Icon: Star,
-    color: 'text-amber-600',
-    bg: 'bg-amber-50',
-    ring: 'ring-amber-200',
-  },
-  MOVING_DELIVERY: {
-    Icon: Truck,
-    color: 'text-orange-600',
-    bg: 'bg-orange-50',
-    ring: 'ring-orange-200',
-  },
-  TECH_SUPPORT: {
-    Icon: Monitor,
-    color: 'text-violet-600',
-    bg: 'bg-violet-50',
-    ring: 'ring-violet-200',
-  },
-  TUTORING: {
-    Icon: BookOpen,
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-50',
-    ring: 'ring-emerald-200',
-  },
-  HEALTH_WELLNESS: {
-    Icon: Activity,
-    color: 'text-red-600',
-    bg: 'bg-red-50',
-    ring: 'ring-red-200',
-  },
-  CLEANING: {
-    Icon: Sparkles,
-    color: 'text-cyan-600',
-    bg: 'bg-cyan-50',
-    ring: 'ring-cyan-200',
-  },
-  OTHER: {
-    Icon: MoreHorizontal,
-    color: 'text-gray-600',
-    bg: 'bg-gray-50',
-    ring: 'ring-gray-200',
-  },
-};
 
 // ─── StepProgress ─────────────────────────────────────────────────────────────
 
@@ -241,7 +160,7 @@ function StepProgress({ step }: { step: Step }) {
 function LivePreview({
   title,
   description,
-  category,
+  categoryConfig,
   urgency,
   city,
   contactName,
@@ -249,16 +168,18 @@ function LivePreview({
 }: {
   title: string;
   description: string;
-  category: HotDealCategory | '';
+  categoryConfig: HotDealCategoryConfig | null;
   urgency: UrgencyLevel;
   city: string;
   contactName: string;
   images: string[];
 }) {
-  const hasContent = title || description || category || city;
+  const hasContent = title || description || categoryConfig || city;
   const urgencyConf = URGENCY_CONFIG[urgency];
-  const catConf = category ? CATEGORY_CONFIG[category] : null;
-  const catIcon = catConf ? <catConf.Icon className={`w-3.5 h-3.5 ${catConf.color}`} /> : null;
+  const catColors = categoryConfig ? getCategoryColors(categoryConfig.color) : null;
+  const CatIcon = categoryConfig ? getIconComponent(categoryConfig.icon) : null;
+  const catIcon =
+    CatIcon && catColors ? <CatIcon className={`w-3.5 h-3.5 ${catColors.text}`} /> : null;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -281,7 +202,7 @@ function LivePreview({
           </div>
         ) : (
           <motion.div
-            key={`${title}-${category}`}
+            key={`${title}-${categoryConfig?.slug}`}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-3"
@@ -326,12 +247,12 @@ function LivePreview({
 
             {/* Tags row */}
             <div className="flex flex-wrap gap-1.5">
-              {category && catConf && (
+              {categoryConfig && catColors && (
                 <span
-                  className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${catConf.bg} ${catConf.color}`}
+                  className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${catColors.bg} ${catColors.text}`}
                 >
                   {catIcon}
-                  {CATEGORY_LABELS[category]}
+                  {categoryConfig.label}
                 </span>
               )}
               {city && (
@@ -611,7 +532,8 @@ function HotDealFormInner({
   const [step, setStepInternal] = useState<Step>('form');
   const [createdDealId, setCreatedDealId] = useState<string | null>(null);
   const [selectedUrgency, setSelectedUrgency] = useState<UrgencyLevel>('NORMAL');
-  const [selectedCategory, setSelectedCategory] = useState<HotDealCategory | ''>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [dbCategories, setDbCategories] = useState<HotDealCategoryConfig[]>([]);
   const [selectedBudgetType, setSelectedBudgetType] = useState<BudgetType | ''>('');
   const [cardComplete, setCardComplete] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
@@ -627,6 +549,14 @@ function HotDealFormInner({
     },
     [onStepChange]
   );
+
+  // Fetch dynamic categories
+  useEffect(() => {
+    hotDealsApi
+      .getCategories()
+      .then(setDbCategories)
+      .catch(() => {});
+  }, []);
 
   const {
     register,
@@ -676,7 +606,7 @@ function HotDealFormInner({
       if (draft.selectedUrgency) setSelectedUrgency(draft.selectedUrgency);
       if (draft.selectedCategory) {
         setSelectedCategory(draft.selectedCategory);
-        setValue('category', draft.selectedCategory as HotDealCategory);
+        setValue('category', draft.selectedCategory);
       }
       if (draft.selectedBudgetType !== undefined) setSelectedBudgetType(draft.selectedBudgetType);
       if (draft.uploadedImages?.length) setUploadedImages(draft.uploadedImages);
@@ -752,7 +682,7 @@ function HotDealFormInner({
           : undefined;
       const deal = await hotDealsApi.create({
         ...data,
-        category: selectedCategory as HotDealCategory,
+        category: selectedCategory,
         urgency: selectedUrgency,
         images: uploadedImages,
         ...(selectedBudgetType ? { budgetType: selectedBudgetType } : {}),
@@ -1082,13 +1012,19 @@ function HotDealFormInner({
                   <MapPin className="w-3.5 h-3.5" /> {watchedCity}
                 </p>
               )}
-              {selectedCategory && (
-                <span
-                  className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${CATEGORY_CONFIG[selectedCategory as HotDealCategory].bg} ${CATEGORY_CONFIG[selectedCategory as HotDealCategory].color}`}
-                >
-                  {CATEGORY_LABELS[selectedCategory as HotDealCategory]}
-                </span>
-              )}
+              {selectedCategory &&
+                (() => {
+                  const cat = dbCategories.find((c) => c.slug === selectedCategory);
+                  if (!cat) return null;
+                  const colors = getCategoryColors(cat.color);
+                  return (
+                    <span
+                      className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${colors.bg} ${colors.text}`}
+                    >
+                      {cat.label}
+                    </span>
+                  );
+                })()}
             </div>
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
@@ -1141,7 +1077,6 @@ function HotDealFormInner({
   }
 
   // ── FORM ──
-  const categories = Object.entries(CATEGORY_LABELS) as [HotDealCategory, string][];
 
   const URGENCY_OPTIONS: Array<{
     value: UrgencyLevel;
@@ -1345,34 +1280,35 @@ function HotDealFormInner({
                   {...register('category', { required: t('categoryRequired') })}
                 />
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {categories.map(([key, label]) => {
-                    const conf = CATEGORY_CONFIG[key];
-                    const isSelected = selectedCategory === key;
+                  {dbCategories.map((cat) => {
+                    const colors = getCategoryColors(cat.color);
+                    const Icon = getIconComponent(cat.icon);
+                    const isSelected = selectedCategory === cat.slug;
                     return (
                       <button
-                        key={key}
+                        key={cat.slug}
                         type="button"
                         onClick={() => {
-                          setSelectedCategory(key);
-                          setValue('category', key, { shouldValidate: true });
+                          setSelectedCategory(cat.slug);
+                          setValue('category', cat.slug, { shouldValidate: true });
                         }}
                         className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${
                           isSelected
-                            ? `${conf.bg} border-current ring-2 ${conf.ring} ${conf.color}`
+                            ? `${colors.bg} border-current ring-2 ${colors.ring} ${colors.text}`
                             : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                         }`}
                       >
                         <div
-                          className={`w-9 h-9 rounded-lg flex items-center justify-center ${isSelected ? conf.bg : 'bg-gray-100'}`}
+                          className={`w-9 h-9 rounded-lg flex items-center justify-center ${isSelected ? colors.bg : 'bg-gray-100'}`}
                         >
-                          <conf.Icon
-                            className={`w-5 h-5 ${isSelected ? conf.color : 'text-gray-400'}`}
+                          <Icon
+                            className={`w-5 h-5 ${isSelected ? colors.text : 'text-gray-400'}`}
                           />
                         </div>
                         <span
-                          className={`text-xs font-semibold leading-tight ${isSelected ? conf.color : 'text-gray-600'}`}
+                          className={`text-xs font-semibold leading-tight ${isSelected ? colors.text : 'text-gray-600'}`}
                         >
-                          {label}
+                          {cat.label}
                         </span>
                       </button>
                     );
@@ -1669,7 +1605,7 @@ function HotDealFormInner({
           <LivePreview
             title={watchedTitle}
             description={watchedDescription}
-            category={selectedCategory}
+            categoryConfig={dbCategories.find((c) => c.slug === selectedCategory) ?? null}
             urgency={selectedUrgency}
             city={watchedCity}
             contactName={watchedContactName}

@@ -1,10 +1,9 @@
-import { IsString, IsEnum, IsOptional } from 'class-validator';
-import { HotDealCategory } from './create-hot-deal.dto';
+import { IsString, IsOptional } from 'class-validator';
 
 export class HotDealQueryDto {
-  @IsEnum(HotDealCategory, { message: 'Invalid category' })
+  @IsString()
   @IsOptional()
-  category?: HotDealCategory;
+  category?: string;
 
   @IsString()
   @IsOptional()

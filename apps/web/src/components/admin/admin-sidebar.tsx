@@ -34,6 +34,8 @@ import {
   RefreshCw,
   FileText,
   Handshake,
+  Flame,
+  LayoutGrid,
 } from 'lucide-react';
 
 interface NavItem {
@@ -120,6 +122,12 @@ const navigationGroups: NavGroup[] = [
       { nameKey: 'affiliateCommissions', href: '/admin/affiliate/commissions', icon: TrendingUp },
       { nameKey: 'affiliateClicks', href: '/admin/affiliate/clicks', icon: MousePointerClick },
       { nameKey: 'affiliateFeeds', href: '/admin/affiliate/feeds', icon: RefreshCw },
+    ],
+  },
+  {
+    titleKey: 'hotDeals',
+    items: [
+      { nameKey: 'hotDealCategories', href: '/admin/hot-deals/categories', icon: LayoutGrid },
     ],
   },
   {
