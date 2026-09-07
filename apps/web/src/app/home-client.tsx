@@ -75,6 +75,9 @@ export default function HomeClient() {
   const affiliateCount = Number(
     publicSettings?.find((s) => s.key === 'affiliate_products_per_section')?.value ?? 6
   );
+  const partnersPlacement =
+    (publicSettings?.find((s) => s.key === 'trusted_partners_placement')?.value as string) ??
+    'above_footer';
 
   // Affiliate products for home row (only fetch when enabled)
   const { products: affiliateProducts } = useAffiliatePublicProducts(
@@ -445,6 +448,9 @@ export default function HomeClient() {
         <CreativeHeroCarousel slides={heroSlides} autoPlayInterval={6000} />
       </Suspense>
 
+      {/* Trusted Partners — below hero placement */}
+      {partnersPlacement === 'below_hero' && <TrustedPartnersSection />}
+
       {/* Featured Products */}
       <section className="max-w-[1920px] mx-auto px-4 lg:px-8 pt-8 pb-0 bg-white">
         <ProductCarousel
@@ -563,8 +569,8 @@ export default function HomeClient() {
         </div>
       </section>
 
-      {/* Trusted Partners */}
-      <TrustedPartnersSection />
+      {/* Trusted Partners — above footer placement */}
+      {partnersPlacement === 'above_footer' && <TrustedPartnersSection />}
 
       {/* Quick View Modal */}
       <Suspense fallback={null}>

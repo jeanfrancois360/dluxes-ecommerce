@@ -37,6 +37,7 @@ import {
 import { safeJson } from '@/lib/safe-fetch';
 import { createClient } from '@supabase/supabase-js';
 import { api } from '@/lib/api/client';
+import { LayoutTemplate } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Logo Upload — Supabase primary, API fallback (same pattern as categories)
@@ -234,10 +235,49 @@ function PartnersContent() {
   const [editing, setEditing] = useState<Partner | null>(null);
   const [form, setForm] = useState(emptyForm);
 
+  const [placement, setPlacement] = useState<'below_hero' | 'above_footer'>('above_footer');
+  const [placementSaving, setPlacementSaving] = useState(false);
+
   const API = process.env.NEXT_PUBLIC_API_URL;
   const authHeader = () => ({
     Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
   });
+
+  const fetchPlacement = async () => {
+    try {
+      const res = await fetch(`${API}/settings/trusted_partners_placement`, {
+        headers: authHeader(),
+      });
+      if (res.ok) {
+        const data = await safeJson(res);
+        const val = data?.value ?? data?.data?.value ?? 'above_footer';
+        if (val === 'below_hero' || val === 'above_footer') setPlacement(val);
+      }
+    } catch {
+      // silently ignore — default stays
+    }
+  };
+
+  const savePlacement = async (value: 'below_hero' | 'above_footer') => {
+    setPlacementSaving(true);
+    try {
+      const res = await fetch(`${API}/settings/trusted_partners_placement`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ value }),
+      });
+      if (res.ok) {
+        setPlacement(value);
+        toast.success('Placement updated');
+      } else {
+        toast.error('Failed to update placement');
+      }
+    } catch {
+      toast.error('Failed to update placement');
+    } finally {
+      setPlacementSaving(false);
+    }
+  };
 
   const fetchPartners = async () => {
     try {
@@ -257,6 +297,7 @@ function PartnersContent() {
 
   useEffect(() => {
     fetchPartners();
+    fetchPlacement();
   }, []);
 
   const openCreate = () => {
@@ -373,6 +414,52 @@ function PartnersContent() {
           <Plus className="h-4 w-4 mr-2" />
           Add Partner
         </Button>
+      </div>
+
+      {/* Placement Setting */}
+      <div className="bg-white rounded-lg shadow p-5 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <LayoutTemplate className="h-5 w-5 text-muted-foreground" />
+          <h2 className="font-semibold text-base">Section Placement</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Choose where the Trusted Partners section appears on the homepage.
+        </p>
+        <div className="grid grid-cols-2 gap-3 max-w-lg">
+          {(
+            [
+              {
+                value: 'below_hero' as const,
+                label: 'Below Hero',
+                description: 'Directly after the hero carousel',
+              },
+              {
+                value: 'above_footer' as const,
+                label: 'Above Footer',
+                description: 'Just before the footer',
+              },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              disabled={placementSaving}
+              onClick={() => placement !== option.value && savePlacement(option.value)}
+              className={`flex flex-col gap-1 p-4 rounded-lg border-2 text-left transition-colors disabled:opacity-60 ${
+                placement === option.value
+                  ? 'border-black bg-black text-white'
+                  : 'border-gray-200 hover:border-gray-400'
+              }`}
+            >
+              <span className="font-medium text-sm">{option.label}</span>
+              <span
+                className={`text-xs ${placement === option.value ? 'text-gray-300' : 'text-muted-foreground'}`}
+              >
+                {option.description}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow">
