@@ -1292,6 +1292,7 @@ export default function ProductsPage() {
                     inWishlist: isInWishlist(product.id),
                   }))}
                   layout={layout}
+                  columns={4}
                   onQuickView={handleQuickView}
                   onAddToWishlist={handleAddToWishlist}
                   onQuickAdd={handleAddToCart}
