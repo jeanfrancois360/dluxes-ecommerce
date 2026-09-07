@@ -77,14 +77,14 @@ export default function ProductsPage() {
   // Parse URL parameters
   const [filters, setFilters] = useState<SearchFilters>({
     page: 1,
-    limit: 12,
+    limit: 100,
     sortBy: 'relevance',
   });
 
   useEffect(() => {
     const newFilters: SearchFilters = {
       page: parseInt(searchParams.get('page') || '1'),
-      limit: parseInt(searchParams.get('limit') || '12'),
+      limit: parseInt(searchParams.get('limit') || '100'),
       category: searchParams.get('category') || undefined,
       search: searchParams.get('q') || undefined,
       sortBy: (searchParams.get('sortBy') as any) || 'relevance',
