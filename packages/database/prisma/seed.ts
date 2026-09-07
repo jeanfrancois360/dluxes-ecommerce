@@ -2868,6 +2868,32 @@ async function main() {
   console.log(`✅ Created ${affiliateSettings.length} affiliate settings`);
 
   // ============================================================================
+  // TRUSTED PARTNERS SETTINGS
+  // ============================================================================
+  const partnerSettings = [
+    {
+      key: 'trusted_partners_placement',
+      value: 'above_footer',
+      valueType: 'STRING',
+      category: 'partners',
+      label: 'Trusted Partners Section Placement',
+      description:
+        'Where the Trusted Partners section appears on the home page. "below_hero" = directly after the hero carousel. "above_footer" = just before the footer.',
+      isPublic: true,
+      isEditable: true,
+    },
+  ];
+
+  for (const setting of partnerSettings) {
+    await prisma.systemSetting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
+    });
+  }
+  console.log(`✅ Created ${partnerSettings.length} partner settings`);
+
+  // ============================================================================
   // SUBSCRIPTION PLANS
   // ============================================================================
   console.log('📦 Creating subscription plans...');
