@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AdminRoute } from '@/components/admin-route';
 import { AdminLayout } from '@/components/admin/admin-layout';
 import {
@@ -22,8 +22,190 @@ import {
   Badge,
 } from '@nextpik/ui';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Upload,
+  Loader2,
+  ImageIcon,
+  X,
+} from 'lucide-react';
 import { safeJson } from '@/lib/safe-fetch';
+import { createClient } from '@supabase/supabase-js';
+import { api } from '@/lib/api/client';
+
+// ---------------------------------------------------------------------------
+// Logo Upload — Supabase primary, API fallback (same pattern as categories)
+// ---------------------------------------------------------------------------
+function PartnerLogoUpload({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isSupabaseConfigured =
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  const supabase = isSupabaseConfigured
+    ? createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
+    : null;
+
+  const uploadToSupabase = async (file: File): Promise<string> => {
+    if (!supabase) throw new Error('Supabase not configured');
+    const ext = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+    const filePath = `partners/${fileName}`;
+    const { error } = await supabase.storage
+      .from(process.env.NEXT_PUBLIC_SUPABASE_BUCKET_NAME || 'product-images')
+      .upload(filePath, file, { cacheControl: '3600', upsert: false });
+    if (error) throw error;
+    const { data: publicData } = supabase.storage
+      .from(process.env.NEXT_PUBLIC_SUPABASE_BUCKET_NAME || 'product-images')
+      .getPublicUrl(filePath);
+    return publicData.publicUrl;
+  };
+
+  const uploadViaAPI = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await api.post('/upload/image?folder=partners', formData);
+    if (!response?.url) throw new Error('No URL returned from server');
+    if (response.url.startsWith('http')) return response.url;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+    return `${apiUrl.replace('/api/v1', '')}${response.url}`;
+  };
+
+  const handleFile = useCallback(
+    async (file: File) => {
+      const validTypes = [
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp',
+        'image/svg+xml',
+        'image/gif',
+      ];
+      if (!validTypes.includes(file.type)) {
+        toast.error('Invalid file type. Use JPEG, PNG, WebP, SVG or GIF.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File too large. Maximum 5 MB.');
+        return;
+      }
+      setUploading(true);
+      try {
+        let url: string;
+        if (isSupabaseConfigured) {
+          try {
+            url = await uploadToSupabase(file);
+          } catch {
+            url = await uploadViaAPI(file);
+          }
+        } else {
+          url = await uploadViaAPI(file);
+        }
+        onChange(url);
+      } catch {
+        toast.error('Logo upload failed. Please try again.');
+      } finally {
+        setUploading(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isSupabaseConfigured, supabase]
+  );
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  return (
+    <div className="space-y-2">
+      {value && !uploading ? (
+        <div className="relative w-full h-28 rounded-lg overflow-hidden bg-gray-50 border border-gray-200 group flex items-center justify-center">
+          <img src={value} alt="Logo" className="max-h-24 max-w-full object-contain p-2" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1.5 bg-white text-black text-xs font-medium rounded-md shadow hover:bg-gray-100"
+            >
+              Replace
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="p-1.5 bg-white text-red-600 rounded-md shadow hover:bg-red-50"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          className={`w-full h-28 rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors ${
+            isDragging
+              ? 'border-black bg-gray-50'
+              : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+          }`}
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <span className="text-xs text-gray-500">Uploading…</span>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 text-gray-400">
+                <ImageIcon className="h-5 w-5" />
+                <Upload className="h-5 w-5" />
+              </div>
+              <span className="text-xs text-gray-500 text-center px-4">
+                Click or drag & drop logo
+                <br />
+                PNG, SVG, WebP · max 5 MB
+              </span>
+            </>
+          )}
+        </div>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp,image/svg+xml,image/gif"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          e.target.value = '';
+        }}
+      />
+    </div>
+  );
+}
 
 interface Partner {
   id: string;
@@ -99,7 +281,7 @@ function PartnersContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.logo.trim()) {
-      toast.error('Name and logo URL are required');
+      toast.error('Name and logo are required');
       return;
     }
 
@@ -314,29 +496,13 @@ function PartnersContent() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="logo">
-                Logo URL <span className="text-red-500">*</span>
+              <Label>
+                Logo <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="logo"
-                placeholder="https://example.com/logo.png"
+              <PartnerLogoUpload
                 value={form.logo}
-                onChange={(e) => setForm({ ...form, logo: e.target.value })}
-                required
+                onChange={(url) => setForm({ ...form, logo: url })}
               />
-              {form.logo && (
-                <div className="mt-2 p-3 border rounded-lg bg-gray-50 flex items-center justify-center h-16">
-                  <img
-                    src={form.logo}
-                    alt="Logo preview"
-                    className="max-h-full max-w-full object-contain"
-                    onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
-                  />
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Paste a direct URL to the company logo (PNG, SVG, WebP recommended)
-              </p>
             </div>
 
             <div className="space-y-2">
