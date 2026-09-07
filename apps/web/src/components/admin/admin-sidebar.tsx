@@ -33,6 +33,7 @@ import {
   MousePointerClick,
   RefreshCw,
   FileText,
+  Handshake,
 } from 'lucide-react';
 
 interface NavItem {
@@ -107,6 +108,7 @@ const navigationGroups: NavGroup[] = [
       { nameKey: 'announcements', href: '/admin/announcements', icon: Bell },
       { nameKey: 'campaigns', href: '/admin/campaigns', icon: Megaphone },
       { nameKey: 'referrals', href: '/admin/referrals', icon: Gift },
+      { nameKey: 'partners', href: '/admin/partners', icon: Handshake },
     ],
   },
   {

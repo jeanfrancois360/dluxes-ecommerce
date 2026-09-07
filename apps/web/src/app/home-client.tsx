@@ -28,6 +28,7 @@ import { settingsApi } from '@/lib/api/settings';
 import { useLocale } from '@/contexts/locale-context';
 import { useAffiliatePublicProducts } from '@/hooks/use-affiliate';
 import { AffiliateProductsSection } from '@/components/affiliate/affiliate-products-section';
+import { TrustedPartnersSection } from '@/components/home/trusted-partners-section';
 
 // Lazy load heavy components
 const InlineAd = lazy(() => import('@/components/ads').then((m) => ({ default: m.InlineAd })));
@@ -561,6 +562,9 @@ export default function HomeClient() {
           </div>
         </div>
       </section>
+
+      {/* Trusted Partners */}
+      <TrustedPartnersSection />
 
       {/* Quick View Modal */}
       <Suspense fallback={null}>
