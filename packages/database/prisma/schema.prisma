@@ -4529,3 +4529,23 @@ model DownloadLog {
   @@index([downloadedAt], map: "download_logs_downloaded_at_idx")
   @@map("download_logs")
 }
+
+// =============================================================================
+// Trusted Partners — showcased companies on the homepage
+// =============================================================================
+model TrustedPartner {
+  id           String  @id @default(cuid())
+  name         String
+  logo         String  // URL to logo image
+  website      String? // Optional website URL
+  description  String? @db.Text
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([displayOrder])
+  @@map("trusted_partners")
+}

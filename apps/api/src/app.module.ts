@@ -26,6 +26,7 @@ import { CommissionModule } from './commission/commission.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { AdvertisementModule } from './advertisements/advertisement.module';
 import { AnnouncementModule } from './announcement/announcement.module';
+import { PartnersModule } from './partners/partners.module';
 import { CurrencyModule } from './currency/currency.module';
 import { EscrowModule } from './escrow/escrow.module';
 import { SettingsModule } from './settings/settings.module';
@@ -105,6 +106,7 @@ import { EmailModule } from './email/email.module';
     InventoryModule,
     AdvertisementModule,
     AnnouncementModule,
+    PartnersModule,
     CurrencyModule,
     EscrowModule,
     SettingsModule,
