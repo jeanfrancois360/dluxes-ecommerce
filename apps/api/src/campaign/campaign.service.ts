@@ -139,43 +139,46 @@ export class CampaignService {
 
     this.logger.log(`Campaign "${campaign.subject}" sending to ${recipients.length} recipients`);
 
-    // Send in batches of 50 to avoid rate limits
+    // Send sequentially with delay to avoid rate limits
     let sent = 0;
     let failed = 0;
-    const BATCH = 50;
+    const BATCH = 10;
+    const DELAY_BETWEEN_EMAILS_MS = 250;
+    const DELAY_BETWEEN_BATCHES_MS = 2000;
 
     for (let i = 0; i < recipients.length; i += BATCH) {
       const batch = recipients.slice(i, i + BATCH);
 
-      await Promise.allSettled(
-        batch.map(async (user) => {
-          try {
-            const html = campaignEmailTemplate(
-              campaign.subject,
-              campaign.body,
-              campaign.previewText ?? undefined
-            );
-            const ok = await this.emailService.sendCampaignEmail(
-              user.email,
-              campaign.subject,
-              html
-            );
-            if (ok) {
-              sent++;
-            } else {
-              failed++;
-            }
-          } catch {
+      for (const user of batch) {
+        try {
+          const html = campaignEmailTemplate(
+            campaign.subject,
+            campaign.body,
+            campaign.previewText ?? undefined
+          );
+          const ok = await this.emailService.sendCampaignEmail(user.email, campaign.subject, html);
+          if (ok) {
+            sent++;
+          } else {
             failed++;
           }
-        })
-      );
+        } catch {
+          failed++;
+        }
+        // Delay between individual emails
+        await new Promise((r) => setTimeout(r, DELAY_BETWEEN_EMAILS_MS));
+      }
 
       // Update progress after each batch
       await this.prisma.emailCampaign.update({
         where: { id },
         data: { sentCount: sent, failedCount: failed },
       });
+
+      // Longer delay between batches
+      if (i + BATCH < recipients.length) {
+        await new Promise((r) => setTimeout(r, DELAY_BETWEEN_BATCHES_MS));
+      }
     }
 
     const finalStatus = failed === recipients.length ? CampaignStatus.FAILED : CampaignStatus.SENT;
