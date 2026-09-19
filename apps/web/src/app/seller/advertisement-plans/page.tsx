@@ -192,16 +192,6 @@ export default function SellerAdvertisementPlansPage() {
                   </div>
                 </div>
 
-                {subscription.status === 'TRIAL' && (
-                  <div className="bg-[#CBB57B]/10 border border-[#CBB57B]/30 rounded-lg p-4">
-                    <p className="text-sm text-[#A89968]">
-                      {t('currentSubscription.trialMessage', {
-                        date: new Date(subscription.currentPeriodEnd).toLocaleDateString(),
-                      })}
-                    </p>
-                  </div>
-                )}
-
                 {subscription.status === 'PAST_DUE' && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <p className="text-sm text-red-700">
@@ -221,8 +211,7 @@ export default function SellerAdvertisementPlansPage() {
                 )}
               </div>
 
-              {subscription.status === 'ACTIVE' &&
-                subscription.autoRenew &&
+              {(subscription.status === 'ACTIVE' || subscription.status === 'TRIAL') &&
                 !subscription.cancelledAt && (
                   <button
                     onClick={() => setShowCancelModal(true)}
@@ -235,36 +224,7 @@ export default function SellerAdvertisementPlansPage() {
           </div>
         )}
 
-        {/* Billing Period Toggle */}
-        {!isActive && (
-          <div className="mb-8 flex justify-center">
-            <div className="inline-flex items-center bg-white rounded-lg shadow-sm border border-gray-200 p-1">
-              <button
-                onClick={() => setBillingPeriod('MONTHLY')}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                  billingPeriod === 'MONTHLY'
-                    ? 'bg-[#CBB57B] text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                {t('billingPeriod.monthly')}
-              </button>
-              <button
-                onClick={() => setBillingPeriod('YEARLY')}
-                className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-                  billingPeriod === 'YEARLY'
-                    ? 'bg-[#CBB57B] text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                {t('billingPeriod.yearly')}
-                <span className="ml-1.5 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
-                  {t('billingPeriod.save')}
-                </span>
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Plans are monthly only */}
 
         {/* Plans Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -313,11 +273,6 @@ export default function SellerAdvertisementPlansPage() {
                         {t('planCard.billedAnnually', {
                           amount: formatCurrency(yearlyTotal, plan.currency),
                         })}
-                      </p>
-                    )}
-                    {plan.trialDays > 0 && !isActive && (
-                      <p className="mt-2 text-sm text-green-600 font-medium">
-                        {t('planCard.freeTrialDays', { days: plan.trialDays })}
                       </p>
                     )}
                   </div>
@@ -407,12 +362,20 @@ export default function SellerAdvertisementPlansPage() {
                           : t('planCard.placementLocations')}
                       </span>
                     </li>
-                    {plan.allowedPlacements.length <= 3 && (
+                    {plan.allowedPlacements.length <= 4 && (
                       <li className="ml-7 mt-1">
                         <ul className="space-y-1 text-xs text-gray-600">
-                          {plan.allowedPlacements.map((placement) => (
-                            <li key={placement}>• {placement.replace(/_/g, ' ').toLowerCase()}</li>
-                          ))}
+                          {plan.allowedPlacements.map((placement) => {
+                            const labels: Record<string, string> = {
+                              HOMEPAGE_FEATURED: 'Homepage banner',
+                              PRODUCTS_INLINE: 'Homepage inline',
+                              PRODUCTS_BANNER: 'Products page banner',
+                              PRODUCT_DETAIL_SIDEBAR: 'Product page sidebar',
+                              CHECKOUT_UPSELL: 'Checkout upsell',
+                              SEARCH_RESULTS: 'Search sponsored',
+                            };
+                            return <li key={placement}>• {labels[placement] || placement}</li>;
+                          })}
                         </ul>
                       </li>
                     )}
@@ -427,12 +390,9 @@ export default function SellerAdvertisementPlansPage() {
                       {t('planCard.currentPlan')}
                     </button>
                   ) : isActive ? (
-                    <button
-                      disabled
-                      className="w-full px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium cursor-not-allowed"
-                    >
-                      {t('planCard.alreadySubscribed')}
-                    </button>
+                    <p className="w-full px-4 py-2 bg-gray-50 text-gray-400 rounded-lg font-medium text-center text-sm">
+                      Cancel current plan to switch
+                    </p>
                   ) : (
                     <button
                       onClick={() => handleSubscribe(plan.slug)}
@@ -445,9 +405,7 @@ export default function SellerAdvertisementPlansPage() {
                     >
                       {subscribing === plan.slug
                         ? t('planCard.subscribing')
-                        : plan.trialDays > 0
-                          ? t('planCard.startFreeTrial')
-                          : t('planCard.subscribeNow')}
+                        : t('planCard.subscribeNow')}
                     </button>
                   )}
                 </div>

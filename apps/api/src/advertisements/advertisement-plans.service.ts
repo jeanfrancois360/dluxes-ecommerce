@@ -353,17 +353,21 @@ export class AdvertisementPlansService {
 
     const { sellerId, planId, billingPeriod, autoRenew } = session.metadata;
 
-    // Idempotency: check if already processed
+    // Validate required metadata fields
+    if (!sellerId || !planId) {
+      this.logger.error(
+        `Missing metadata in Stripe session ${sessionId}: sellerId=${sellerId}, planId=${planId}`
+      );
+      return;
+    }
+
+    // Idempotency: check by sessionId (covers all statuses, not just ACTIVE)
     const existing = await this.prisma.sellerPlanSubscription.findFirst({
-      where: {
-        sellerId,
-        planId,
-        status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL] },
-      },
+      where: { stripeSubscriptionId: sessionId },
     });
 
     if (existing) {
-      this.logger.log(`Ad plan subscription already active for seller ${sellerId}, skipping`);
+      this.logger.log(`Ad plan subscription already processed for session ${sessionId}, skipping`);
       return existing;
     }
 
@@ -376,13 +380,17 @@ export class AdvertisementPlansService {
     }
 
     const now = new Date();
-    const periodEnd = this.calculatePeriodEnd(billingPeriod as PlanBillingPeriod, now);
+    const periodEnd = this.calculatePeriodEnd(
+      (billingPeriod as PlanBillingPeriod) || plan.billingPeriod,
+      now
+    );
 
+    // Paid plans are always ACTIVE (no trial for paid subscriptions)
     const subscription = await this.prisma.sellerPlanSubscription.create({
       data: {
         sellerId,
         planId,
-        status: plan.trialDays > 0 ? SubscriptionStatus.TRIAL : SubscriptionStatus.ACTIVE,
+        status: SubscriptionStatus.ACTIVE,
         currentPeriodStart: now,
         currentPeriodEnd: periodEnd,
         autoRenew: autoRenew === 'true',
@@ -414,6 +422,19 @@ export class AdvertisementPlansService {
     if (subscription.status === SubscriptionStatus.CANCELLED) {
       throw new BadRequestException('Subscription already cancelled');
     }
+
+    // Pause all active ads for this seller
+    await this.prisma.advertisement.updateMany({
+      where: {
+        advertiserId: subscription.sellerId,
+        status: { in: ['ACTIVE', 'APPROVED'] },
+      },
+      data: { status: 'PAUSED' },
+    });
+
+    this.logger.log(
+      `Paused all active ads for seller ${subscription.sellerId} (subscription cancelled)`
+    );
 
     return this.prisma.sellerPlanSubscription.update({
       where: { id: subscriptionId },
@@ -525,6 +546,15 @@ export class AdvertisementPlansService {
 
     for (const subscription of expiredSubscriptions) {
       try {
+        // Pause all active ads for this seller
+        await this.prisma.advertisement.updateMany({
+          where: {
+            advertiserId: subscription.sellerId,
+            status: { in: ['ACTIVE', 'APPROVED'] },
+          },
+          data: { status: 'PAUSED' },
+        });
+
         await this.prisma.sellerPlanSubscription.update({
           where: { id: subscription.id },
           data: {
