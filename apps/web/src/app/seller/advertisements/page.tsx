@@ -95,8 +95,20 @@ export default function SellerAdvertisementsPage() {
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   });
 
-  // Get allowed placements from subscription
-  const allowedPlacements = subscription?.plan?.allowedPlacements || ['PRODUCTS_SIDEBAR'];
+  // Placements that are actually integrated on the storefront
+  const FUNCTIONAL_PLACEMENTS = [
+    'HOMEPAGE_FEATURED',
+    'PRODUCTS_INLINE',
+    'PRODUCTS_BANNER',
+    'PRODUCT_DETAIL_SIDEBAR',
+    'CHECKOUT_UPSELL',
+    'SEARCH_RESULTS',
+  ];
+
+  // Get allowed placements from subscription, filtered to only functional ones
+  const allowedPlacements = (subscription?.plan?.allowedPlacements || ['PRODUCTS_BANNER']).filter(
+    (p: string) => FUNCTIONAL_PLACEMENTS.includes(p)
+  );
   const maxActiveAds = subscription?.plan?.maxActiveAds || 1;
   const activeAdsCount = ads.filter((ad) => ad.status === 'ACTIVE').length;
   const canCreateMoreAds = maxActiveAds === -1 || activeAdsCount < maxActiveAds;
@@ -140,9 +152,11 @@ export default function SellerAdvertisementsPage() {
       linkText: ad.linkText || t('placeholder.learnMore'),
       placement: ad.placement,
       pricingModel: ad.pricingModel || 'FIXED',
-      price: 0,
-      startDate: ad.startDate.split('T')[0],
-      endDate: ad.endDate.split('T')[0],
+      price: Number((ad as any).pricePerUnit) || 0,
+      startDate: ad.startDate ? ad.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
+      endDate: ad.endDate
+        ? ad.endDate.split('T')[0]
+        : new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
     });
     setShowModal(true);
   };

@@ -542,7 +542,15 @@ export function HeroBannerAd({
   }
 
   if (ads.length === 0) {
-    return fallback || <HeroPlaceholder className={className} />;
+    return (
+      fallback || (
+        <AdPlaceholder
+          placement="HOMEPAGE_HERO"
+          className={className}
+          aspectRatio="aspect-[16/5]"
+        />
+      )
+    );
   }
 
   const currentAd = ads[currentIndex];
@@ -778,7 +786,14 @@ export function SidebarAd({
   }
 
   if (ads.length === 0) {
-    return <SidebarPlaceholder className={className} />;
+    return (
+      <AdPlaceholder
+        placement={placement}
+        className={className}
+        aspectRatio="aspect-auto"
+        showCTA={false}
+      />
+    );
   }
 
   return (
@@ -860,7 +875,13 @@ export function ProductDetailAd({ categoryId, className = '' }: ProductDetailAdP
   }
 
   if (!ad) {
-    return <ProductDetailPlaceholder className={className} />;
+    return (
+      <AdPlaceholder
+        placement="PRODUCT_DETAIL_SIDEBAR"
+        className={className}
+        aspectRatio="aspect-auto"
+      />
+    );
   }
 
   return (
@@ -938,7 +959,9 @@ export function CheckoutUpsellAd({ className = '', onDismiss }: CheckoutUpsellAd
   if (isLoading || dismissed) return null;
 
   if (!ad) {
-    return <CheckoutPlaceholder className={className} />;
+    return (
+      <AdPlaceholder placement="CHECKOUT_UPSELL" className={className} aspectRatio="aspect-auto" />
+    );
   }
 
   return (
@@ -1021,7 +1044,9 @@ export function SearchResultsAd({ className = '' }: SearchResultsAdProps) {
   }
 
   if (!ad) {
-    return <SearchPlaceholder className={className} />;
+    return (
+      <AdPlaceholder placement="SEARCH_RESULTS" className={className} aspectRatio="aspect-auto" />
+    );
   }
 
   return (
