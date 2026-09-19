@@ -142,7 +142,7 @@ export class AdvertisementService {
     const updateData: any = { ...dto };
     if (dto.startDate) updateData.startDate = new Date(dto.startDate);
     if (dto.endDate) updateData.endDate = new Date(dto.endDate);
-    if (dto.price) {
+    if (dto.price !== undefined) {
       updateData.pricePerUnit = dto.price;
       delete updateData.price;
     }
@@ -150,6 +150,8 @@ export class AdvertisementService {
       updateData.position = dto.priority;
       delete updateData.priority;
     }
+    // Remove fields that don't exist on the Advertisement model
+    delete updateData.budget;
 
     return this.prisma.advertisement.update({
       where: { id },

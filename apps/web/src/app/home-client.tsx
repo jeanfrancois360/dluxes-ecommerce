@@ -32,9 +32,6 @@ import { TrustedPartnersSection } from '@/components/home/trusted-partners-secti
 
 // Lazy load heavy components
 const InlineAd = lazy(() => import('@/components/ads').then((m) => ({ default: m.InlineAd })));
-const HeroBannerAd = lazy(() =>
-  import('@/components/ads').then((m) => ({ default: m.HeroBannerAd }))
-);
 const CreativeHeroCarousel = lazy(() =>
   import('@/components/home/creative-hero-carousel').then((m) => ({
     default: m.CreativeHeroCarousel,
