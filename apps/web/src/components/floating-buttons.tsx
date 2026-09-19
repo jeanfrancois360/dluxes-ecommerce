@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Flame, Plus, X } from 'lucide-react';
+import { Zap, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -17,7 +17,7 @@ export function FloatingButtons() {
 
   return (
     <>
-      {/* Hot Deals — bottom-left, visible to all */}
+      {/* Urgent Requests — bottom-left, visible to all */}
       <AnimatePresence>
         {hotDealsVisible && (
           <motion.div
@@ -31,18 +31,18 @@ export function FloatingButtons() {
               {/* Pulse ring */}
               <span className="absolute inset-0 rounded-full bg-orange-500 animate-ping opacity-20 pointer-events-none" />
               <Link
-                href="/hot-deals"
+                href="/urgent-requests"
                 className="relative flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm font-semibold px-4 py-3 rounded-full shadow-lg"
-                aria-label="View hot deals"
+                aria-label="View urgent requests"
               >
-                <Flame className="w-4 h-4 shrink-0" />
-                <span>Hot Deals</span>
+                <Zap className="w-4 h-4 shrink-0" />
+                <span>Urgent Requests</span>
               </Link>
             </motion.div>
             <button
               onClick={() => setHotDealsVisible(false)}
               className="w-5 h-5 rounded-full bg-neutral-800/70 hover:bg-neutral-900 text-white flex items-center justify-center transition-colors shrink-0"
-              aria-label="Dismiss hot deals button"
+              aria-label="Dismiss urgent requests button"
             >
               <X className="w-3 h-3" />
             </button>

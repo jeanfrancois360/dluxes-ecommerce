@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Flame,
+  Zap,
   Search,
   MapPin,
   Clock,
@@ -13,7 +13,7 @@ import {
   AlertCircle,
   ChevronRight,
   X,
-  Zap,
+  AlertTriangle,
   Users,
   ArrowRight,
   Image as ImageIcon,
@@ -130,13 +130,13 @@ function HotDealCard({ deal, index }: { deal: HotDeal; index: number }) {
             {isEmergency && (
               <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping flex-shrink-0" />
             )}
-            {isUrgent && <Zap className="w-3 h-3 flex-shrink-0" />}
+            {isUrgent && <AlertTriangle className="w-3 h-3 flex-shrink-0" />}
             {URGENCY_CONFIG[deal.urgency].label}
           </span>
           <Countdown expiresAt={deal.expiresAt} />
         </div>
 
-        <Link href={`/hot-deals/${deal.id}`} className="block mb-2">
+        <Link href={`/urgent-requests/${deal.id}`} className="block mb-2">
           <h3 className="text-[15px] font-bold text-gray-900 group-hover:text-[#CBB57B] transition-colors line-clamp-2 leading-snug">
             {deal.title}
           </h3>
@@ -186,7 +186,7 @@ function HotDealCard({ deal, index }: { deal: HotDeal; index: number }) {
             </span>
           </div>
           <Link
-            href={`/hot-deals/${deal.id}`}
+            href={`/urgent-requests/${deal.id}`}
             className="flex items-center gap-1 text-xs font-bold text-[#CBB57B] hover:text-amber-600 transition-colors group/link"
           >
             View
@@ -312,7 +312,7 @@ export default function HotDealsPage() {
                     border: '1.5px solid rgba(203,181,123,0.25)',
                   }}
                 >
-                  <Flame className="w-7 h-7" style={{ color: '#CBB57B' }} />
+                  <Zap className="w-7 h-7" style={{ color: '#CBB57B' }} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
@@ -320,7 +320,7 @@ export default function HotDealsPage() {
                       className="text-2xl sm:text-3xl font-black tracking-tight"
                       style={{ color: '#ffffff' }}
                     >
-                      Hot Deals
+                      Urgent Requests
                     </h1>
                     <span
                       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold"
@@ -393,12 +393,16 @@ export default function HotDealsPage() {
                 </button>
 
                 <Link
-                  href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
+                  href={
+                    isAuthenticated
+                      ? '/urgent-requests/new'
+                      : '/auth/login?redirect=/urgent-requests/new'
+                  }
                   className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0"
                   style={{ backgroundColor: '#CBB57B', color: '#000' }}
                 >
                   <Plus className="w-4 h-4" />
-                  Post a Deal — $1
+                  Post a Request — $1
                 </Link>
               </div>
             </div>
@@ -417,7 +421,7 @@ export default function HotDealsPage() {
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                <Flame className="w-3 h-3" />
+                <Zap className="w-3 h-3" />
                 All
               </button>
 
@@ -461,7 +465,7 @@ export default function HotDealsPage() {
               {!isLoading && !error && (
                 <p className="text-sm text-gray-500">
                   <span className="text-gray-900 font-bold">{pagination.total}</span>{' '}
-                  {pagination.total === 1 ? 'deal' : 'deals'}
+                  {pagination.total === 1 ? 'open request' : 'open requests'}
                   {activeCategoryLabel && (
                     <>
                       {' '}
@@ -503,10 +507,10 @@ export default function HotDealsPage() {
 
             {isAuthenticated && (
               <Link
-                href="/hot-deals/my-deals"
+                href="/urgent-requests/my-requests"
                 className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
               >
-                My Deals
+                My Requests
                 <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             )}
@@ -529,7 +533,7 @@ export default function HotDealsPage() {
               <div className="w-14 h-14 bg-red-50 rounded-2xl mx-auto mb-4 flex items-center justify-center">
                 <AlertCircle className="w-7 h-7 text-red-400" />
               </div>
-              <p className="text-gray-800 font-semibold mb-1">Could not load deals</p>
+              <p className="text-gray-800 font-semibold mb-1">Could not load requests</p>
               <p className="text-sm text-gray-400 mb-6">{error}</p>
               <button
                 onClick={() => setFilters({ ...filters })}
@@ -550,10 +554,10 @@ export default function HotDealsPage() {
                 className="w-20 h-20 rounded-3xl mx-auto mb-6 flex items-center justify-center"
                 style={{ background: 'linear-gradient(135deg, #CBB57B22, #FEF3C722)' }}
               >
-                <Flame className="w-10 h-10" style={{ color: '#CBB57B' }} />
+                <Zap className="w-10 h-10" style={{ color: '#CBB57B' }} />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {hasActiveFilters ? 'No matches found' : 'No active deals yet'}
+                {hasActiveFilters ? 'No matches found' : 'No open requests yet'}
               </h3>
               <p className="text-gray-400 text-sm mb-8 max-w-xs mx-auto leading-relaxed">
                 {hasActiveFilters
@@ -571,12 +575,16 @@ export default function HotDealsPage() {
                   </button>
                 )}
                 <Link
-                  href={isAuthenticated ? '/hot-deals/new' : '/auth/login?redirect=/hot-deals/new'}
+                  href={
+                    isAuthenticated
+                      ? '/urgent-requests/new'
+                      : '/auth/login?redirect=/urgent-requests/new'
+                  }
                   className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl font-bold text-sm"
                   style={{ backgroundColor: '#CBB57B', color: '#000' }}
                 >
                   <Plus className="w-4 h-4" />
-                  Post a Deal
+                  Post a Request
                 </Link>
               </div>
             </motion.div>

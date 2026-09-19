@@ -16,6 +16,8 @@ export default function robots(): MetadataRoute.Robots {
     '/search',
     '/hot-deals/my-deals',
     '/hot-deals/new',
+    '/urgent-requests/my-requests',
+    '/urgent-requests/new',
   ];
 
   return {

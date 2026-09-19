@@ -6,9 +6,10 @@ import { HotDealsCronService } from './hot-deals.cron';
 import { HotDealCategoriesService } from './hot-deal-categories.service';
 import { HotDealCategoriesController } from './hot-deal-categories.controller';
 import { DatabaseModule } from '../database/database.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
-  imports: [DatabaseModule, ConfigModule],
+  imports: [DatabaseModule, ConfigModule, EmailModule],
   providers: [HotDealsService, HotDealsCronService, HotDealCategoriesService],
   controllers: [HotDealCategoriesController, HotDealsController],
   exports: [HotDealsService, HotDealCategoriesService],

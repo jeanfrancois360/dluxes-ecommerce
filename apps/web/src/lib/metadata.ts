@@ -339,9 +339,9 @@ export const deliveryCompanyMetadata: Metadata = generateSeoMetadata({
 });
 
 export const hotDealsMetadata: Metadata = generateSeoMetadata({
-  title: 'Hot Deals',
-  description: 'Browse emergency service requests and hot deals.',
-  url: '/hot-deals',
+  title: 'Urgent Requests',
+  description: 'Post urgent service requests and connect with local providers in your area.',
+  url: '/urgent-requests',
 });
 
 export const sellerAgreementMetadata: Metadata = generateSeoMetadata({

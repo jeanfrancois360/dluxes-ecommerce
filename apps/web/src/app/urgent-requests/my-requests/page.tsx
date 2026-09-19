@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Flame,
+  Zap,
   ArrowLeft,
   Clock,
   MapPin,
@@ -17,7 +17,7 @@ import {
   Loader2,
   Eye,
   TrendingUp,
-  Zap,
+  AlertTriangle,
   Calendar,
   ChevronRight,
   Image as ImageIcon,
@@ -93,7 +93,7 @@ export default function MyDealsPage() {
 
   useEffect(() => {
     if (isInitialized && !isAuthenticated) {
-      router.push('/auth/login?redirect=/hot-deals/my-deals');
+      router.push('/auth/login?redirect=/urgent-requests/my-requests');
     }
   }, [isInitialized, isAuthenticated, router]);
 
@@ -217,12 +217,12 @@ export default function MyDealsPage() {
               {/* Left */}
               <div className="flex items-center gap-4">
                 <Link
-                  href="/hot-deals"
+                  href="/urgent-requests"
                   className="flex items-center gap-1.5 text-sm font-medium transition-colors"
                   style={{ color: 'rgba(255,255,255,0.5)' }}
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Hot Deals</span>
+                  <span className="hidden sm:inline">Urgent Requests</span>
                 </Link>
 
                 <div className="w-px h-5" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }} />
@@ -235,7 +235,7 @@ export default function MyDealsPage() {
                       border: '1.5px solid rgba(203,181,123,0.25)',
                     }}
                   >
-                    <Flame className="w-5 h-5" style={{ color: '#CBB57B' }} />
+                    <Zap className="w-5 h-5" style={{ color: '#CBB57B' }} />
                   </div>
                   <div>
                     <h1 className="text-xl font-black" style={{ color: '#ffffff' }}>
@@ -250,7 +250,7 @@ export default function MyDealsPage() {
 
               {/* CTA */}
               <Link
-                href="/hot-deals/new"
+                href="/urgent-requests/new"
                 className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0"
                 style={{ backgroundColor: '#CBB57B', color: '#000' }}
               >
@@ -320,7 +320,7 @@ export default function MyDealsPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Search deals…"
+                    placeholder="Search requests…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="w-40 pl-9 pr-8 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B]/50 focus:bg-white transition-all"
@@ -449,14 +449,14 @@ export default function MyDealsPage() {
                 className="w-20 h-20 rounded-3xl mx-auto mb-6 flex items-center justify-center"
                 style={{ background: 'linear-gradient(135deg, #CBB57B22, #FEF3C722)' }}
               >
-                <Flame className="w-10 h-10" style={{ color: '#CBB57B' }} />
+                <Zap className="w-10 h-10" style={{ color: '#CBB57B' }} />
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">{t('noDealsYet')}</h2>
               <p className="text-gray-400 text-sm mb-8 max-w-xs mx-auto leading-relaxed">
                 {t('noDealsDescription')}
               </p>
               <Link
-                href="/hot-deals/new"
+                href="/urgent-requests/new"
                 className="inline-flex items-center gap-2 px-7 py-3 rounded-xl font-bold text-sm"
                 style={{ backgroundColor: '#CBB57B', color: '#000' }}
               >
@@ -476,7 +476,7 @@ export default function MyDealsPage() {
               <div className="w-14 h-14 bg-gray-100 rounded-2xl mx-auto mb-4 flex items-center justify-center">
                 <SlidersHorizontal className="w-6 h-6 text-gray-400" />
               </div>
-              <p className="font-semibold text-gray-800 mb-1">No deals match your filters</p>
+              <p className="font-semibold text-gray-800 mb-1">No requests match your filters</p>
               <p className="text-sm text-gray-400 mb-5">
                 Try a different status or clear the search.
               </p>
@@ -516,7 +516,7 @@ export default function MyDealsPage() {
           {/* Active */}
           {filteredActive.length > 0 && (
             <Section
-              icon={<Flame className="w-4 h-4" style={{ color: '#CBB57B' }} />}
+              icon={<Zap className="w-4 h-4" style={{ color: '#CBB57B' }} />}
               label={t('activeDeals', { count: filteredActive.length })}
               accent="text-gray-700"
             >
@@ -551,7 +551,7 @@ export default function MyDealsPage() {
         {/* Mobile FAB */}
         <div className="sm:hidden fixed bottom-6 right-6 z-30">
           <Link
-            href="/hot-deals/new"
+            href="/urgent-requests/new"
             className="flex items-center justify-center w-14 h-14 rounded-full shadow-xl transition-all"
             style={{ backgroundColor: '#CBB57B', color: '#000' }}
           >
@@ -670,7 +670,7 @@ function DealCard({
                 {isEmergency && (
                   <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping flex-shrink-0" />
                 )}
-                {isUrgent && <Zap className="w-3 h-3 flex-shrink-0" />}
+                {isUrgent && <AlertTriangle className="w-3 h-3 flex-shrink-0" />}
                 {URGENCY_CONFIG[deal.urgency].label}
               </span>
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
@@ -687,7 +687,7 @@ function DealCard({
             </div>
 
             {/* Title */}
-            <Link href={`/hot-deals/${deal.id}`}>
+            <Link href={`/urgent-requests/${deal.id}`}>
               <h3 className="text-[15px] font-bold text-gray-900 group-hover:text-[#CBB57B] transition-colors mb-1.5 line-clamp-1">
                 {deal.title}
               </h3>
@@ -730,7 +730,7 @@ function DealCard({
           <div className="flex sm:flex-col gap-2 flex-shrink-0 sm:min-w-[108px]">
             {/* View */}
             <Link
-              href={`/hot-deals/${deal.id}`}
+              href={`/urgent-requests/${deal.id}`}
               className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100 hover:border-gray-300 transition-all"
             >
               <Eye className="w-3.5 h-3.5" />

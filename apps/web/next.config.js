@@ -117,8 +117,36 @@ const nextConfig = {
   },
   // Redirect HTTP → HTTPS and www → non-www in production
   async redirects() {
-    if (process.env.NODE_ENV !== 'production') return [];
+    const hotDealsRedirects = [
+      {
+        source: '/hot-deals/new',
+        destination: '/urgent-requests/new',
+        permanent: true,
+        statusCode: 308,
+      },
+      {
+        source: '/hot-deals/my-deals',
+        destination: '/urgent-requests/my-requests',
+        permanent: true,
+        statusCode: 308,
+      },
+      {
+        source: '/hot-deals/:id',
+        destination: '/urgent-requests/:id',
+        permanent: true,
+        statusCode: 308,
+      },
+      {
+        source: '/hot-deals',
+        destination: '/urgent-requests',
+        permanent: true,
+        statusCode: 308,
+      },
+    ];
+
+    if (process.env.NODE_ENV !== 'production') return hotDealsRedirects;
     return [
+      ...hotDealsRedirects,
       {
         source: '/:path*',
         has: [{ type: 'host', value: 'www.nextpik.com' }],

@@ -16,9 +16,9 @@ import {
   Send,
   AlertCircle,
   Loader2,
-  Flame,
-  Share2,
   Zap,
+  Share2,
+  AlertTriangle,
   Calendar,
   X,
   ChevronLeft,
@@ -345,7 +345,7 @@ export default function HotDealDetailPage() {
 
   const onSubmitResponse = async (data: ResponseFormData) => {
     if (!isAuthenticated) {
-      router.push(`/auth/login?redirect=/hot-deals/${dealId}`);
+      router.push(`/auth/login?redirect=/urgent-requests/${dealId}`);
       return;
     }
     setIsSubmittingResponse(true);
@@ -435,7 +435,7 @@ export default function HotDealDetailPage() {
             <h2 className="text-xl font-bold text-gray-900 mb-2">{t('notFound')}</h2>
             <p className="text-gray-500 text-sm mb-7">{error || t('mayBeRemoved')}</p>
             <Link
-              href="/hot-deals"
+              href="/urgent-requests"
               className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-800 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -473,7 +473,7 @@ export default function HotDealDetailPage() {
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
             <div className="flex items-center justify-between">
               <Link
-                href="/hot-deals"
+                href="/urgent-requests"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -513,7 +513,7 @@ export default function HotDealDetailPage() {
                       {isEmergency && (
                         <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping flex-shrink-0" />
                       )}
-                      {isUrgent && <Zap className="w-3 h-3 flex-shrink-0" />}
+                      {isUrgent && <AlertTriangle className="w-3 h-3 flex-shrink-0" />}
                       {urgencyConfig.label}
                     </span>
                     <span
@@ -698,7 +698,7 @@ export default function HotDealDetailPage() {
                       </div>
                       <p className="text-gray-600 text-sm mb-4 max-w-xs">{t('logInToSee')}</p>
                       <Link
-                        href={`/auth/login?redirect=/hot-deals/${dealId}`}
+                        href={`/auth/login?redirect=/urgent-requests/${dealId}`}
                         className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-800 transition-colors"
                       >
                         {t('logInToContinue')}
@@ -725,6 +725,7 @@ export default function HotDealDetailPage() {
               {/* Response form */}
               {canRespond && (
                 <motion.div
+                  id="respond-section"
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 }}
@@ -994,11 +995,18 @@ export default function HotDealDetailPage() {
                 {/* Non-owner respond CTA in sidebar */}
                 {canRespond && !showResponseForm && (
                   <button
-                    onClick={() => setShowResponseForm(true)}
+                    onClick={() => {
+                      setShowResponseForm(true);
+                      setTimeout(() => {
+                        document
+                          .getElementById('respond-section')
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 100);
+                    }}
                     className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all"
                     style={{ backgroundColor: '#CBB57B', color: '#000' }}
                   >
-                    <Flame className="w-4 h-4" />I can help!
+                    <Zap className="w-4 h-4" />I can help!
                   </button>
                 )}
 
