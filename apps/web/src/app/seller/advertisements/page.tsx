@@ -33,7 +33,15 @@ import {
   X,
   AlertCircle,
   CreditCard,
+  Upload,
+  Link as LinkIcon,
+  Type,
+  LayoutGrid,
+  Monitor,
+  Smartphone,
+  CheckCircle,
 } from 'lucide-react';
+import api from '@/lib/api/client';
 
 const statusColors: Record<AdStatus, string> = {
   DRAFT: 'bg-gray-100 text-gray-700',
@@ -387,154 +395,346 @@ export default function SellerAdvertisementsPage() {
           </div>
         )}
 
-        {/* Create/Edit Modal */}
+        {/* Create/Edit Modal — Enhanced */}
         {showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b sticky top-0 bg-white">
+            <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-2xl">
+              {/* Header */}
+              <div className="px-6 py-5 border-b sticky top-0 bg-white z-10 rounded-t-2xl">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold">
-                    {editingAd ? t('editAdvertisement') : t('createAdvertisement')}
-                  </h2>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      {editingAd ? t('editAdvertisement') : t('createAdvertisement')}
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {editingAd
+                        ? 'Update your advertisement details'
+                        : 'Create a new ad to promote your products'}
+                    </p>
+                  </div>
                   <button
                     onClick={() => setShowModal(false)}
-                    className="p-2 hover:bg-gray-100 rounded-lg"
+                    className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    {t('formTitle')} {t('required')}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                    maxLength={100}
-                  />
-                </div>
+              <form onSubmit={handleSubmit}>
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-0 lg:gap-6 p-6">
+                  {/* Left: Form Fields */}
+                  <div className="lg:col-span-3 space-y-5">
+                    {/* Title */}
+                    <div>
+                      <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                        <Type className="w-3.5 h-3.5 text-[#CBB57B]" />
+                        {t('formTitle')} <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.title}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, title: e.target.value }))
+                        }
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] outline-none transition-all hover:border-gray-300"
+                        required
+                        maxLength={100}
+                        placeholder="e.g. Summer Collection — 30% Off"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">
+                        {formData.title.length}/100 characters
+                      </p>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">{t('formDescription')}</label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, description: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    rows={2}
-                    maxLength={200}
-                  />
-                </div>
+                    {/* Description */}
+                    <div>
+                      <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                        {t('formDescription')}
+                      </label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, description: e.target.value }))
+                        }
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] outline-none transition-all hover:border-gray-300 resize-none"
+                        rows={3}
+                        maxLength={200}
+                        placeholder="Short description of your ad — what makes it compelling?"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    {t('formImageUrl')} {t('required')}
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.imageUrl}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                    placeholder={t('placeholder.imageUrl')}
-                  />
-                </div>
+                    {/* Image Upload */}
+                    <div>
+                      <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                        <Upload className="w-3.5 h-3.5 text-[#CBB57B]" />
+                        Ad Image <span className="text-red-500">*</span>
+                      </label>
+                      {formData.imageUrl ? (
+                        <div className="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                          <img
+                            src={formData.imageUrl}
+                            alt="Ad preview"
+                            className="w-full h-48 object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, imageUrl: '' }))}
+                            className="absolute top-2 right-2 w-8 h-8 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 hover:border-[#CBB57B] rounded-xl cursor-pointer transition-colors bg-gray-50 hover:bg-[#CBB57B]/5 group">
+                          <Upload className="w-8 h-8 text-gray-400 group-hover:text-[#CBB57B] transition-colors mb-2" />
+                          <p className="text-sm font-medium text-gray-600 group-hover:text-[#CBB57B]">
+                            Click to upload image
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">JPEG, PNG or WebP — max 5MB</p>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast.error(
+                                  'Image must be under 5MB. Please compress or resize it first.'
+                                );
+                                return;
+                              }
+                              try {
+                                const fd = new FormData();
+                                fd.append('image', file);
+                                const res = await api.post(
+                                  '/upload/image?folder=advertisements',
+                                  fd
+                                );
+                                const url = res?.data?.url ?? res?.url;
+                                if (url) setFormData((prev) => ({ ...prev, imageUrl: url }));
+                                else toast.error('Upload failed — try a smaller image (under 5MB)');
+                              } catch {
+                                toast.error('Upload failed — try a smaller image (under 5MB)');
+                              }
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    {t('formLinkUrl')} {t('required')}
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.linkUrl}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, linkUrl: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                    placeholder={t('placeholder.linkUrl')}
-                  />
-                </div>
+                    {/* Link URL + Text */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                          <LinkIcon className="w-3.5 h-3.5 text-[#CBB57B]" />
+                          Link URL <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="url"
+                          value={formData.linkUrl}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, linkUrl: e.target.value }))
+                          }
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] outline-none transition-all hover:border-gray-300"
+                          required
+                          placeholder="https://your-store.com/sale"
+                        />
+                      </div>
+                      <div>
+                        <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                          Button Text
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.linkText}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, linkText: e.target.value }))
+                          }
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] outline-none transition-all hover:border-gray-300"
+                          placeholder="Shop Now"
+                        />
+                      </div>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">{t('formLinkText')}</label>
-                  <input
-                    type="text"
-                    value={formData.linkText}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, linkText: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder={t('placeholder.learnMore')}
-                  />
-                </div>
+                    {/* Placement */}
+                    <div>
+                      <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                        <LayoutGrid className="w-3.5 h-3.5 text-[#CBB57B]" />
+                        Placement <span className="text-red-500">*</span>
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {allowedPlacements.map((placement) => {
+                          const isSelected = formData.placement === placement;
+                          return (
+                            <button
+                              key={placement}
+                              type="button"
+                              onClick={() =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  placement: placement as AdPlacement,
+                                }))
+                              }
+                              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-center ${
+                                isSelected
+                                  ? 'border-[#CBB57B] bg-[#CBB57B]/5 ring-2 ring-[#CBB57B]/20'
+                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {isSelected && <CheckCircle className="w-3.5 h-3.5 text-[#CBB57B]" />}
+                              <span
+                                className={`text-xs font-semibold leading-tight ${isSelected ? 'text-[#8B7355]' : 'text-gray-600'}`}
+                              >
+                                {placementLabels[placement as AdPlacement] || placement}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    {t('formPlacement')} {t('required')}
-                  </label>
-                  <select
-                    value={formData.placement}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, placement: e.target.value as AdPlacement }))
-                    }
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    {allowedPlacements.map((placement) => (
-                      <option key={placement} value={placement}>
-                        {placementLabels[placement as AdPlacement] || placement}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      {t('formStartDate')} {t('required')}
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, startDate: e.target.value }))
-                      }
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
+                    {/* Date Range */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-[#CBB57B]" />
+                          Start Date <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.startDate}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, startDate: e.target.value }))
+                          }
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] outline-none transition-all hover:border-gray-300"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1.5">
+                          End Date <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.endDate}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, endDate: e.target.value }))
+                          }
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] outline-none transition-all hover:border-gray-300"
+                          required
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      {t('formEndDate')} {t('required')}
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.endDate}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, endDate: e.target.value }))
-                      }
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
+
+                  {/* Right: Live Preview */}
+                  <div className="lg:col-span-2 mt-6 lg:mt-0">
+                    <div className="sticky top-24 space-y-4">
+                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                          <Eye className="w-4 h-4 text-[#CBB57B]" />
+                          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                            Live Preview
+                          </span>
+                        </div>
+                        <div className="p-4">
+                          {formData.imageUrl ? (
+                            <div className="space-y-3">
+                              <div className="rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
+                                <img
+                                  src={formData.imageUrl}
+                                  alt="Preview"
+                                  className="w-full h-40 object-cover"
+                                />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900 text-sm leading-tight">
+                                  {formData.title || 'Your ad title'}
+                                </p>
+                                {formData.description && (
+                                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                    {formData.description}
+                                  </p>
+                                )}
+                              </div>
+                              {formData.linkText && (
+                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#CBB57B]">
+                                  {formData.linkText} <ExternalLink className="w-3 h-3" />
+                                </span>
+                              )}
+                              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px] font-medium">
+                                  Sponsored
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="py-8 text-center">
+                              <ImageIcon className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                              <p className="text-sm text-gray-400">
+                                Upload an image to see the preview
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Placement info */}
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                        <p className="text-xs font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
+                          <Monitor className="w-3.5 h-3.5" />
+                          Recommended image sizes
+                        </p>
+                        <ul className="space-y-1 text-xs text-amber-700">
+                          <li>Banner: 1200 x 240px (5:1)</li>
+                          <li>Sidebar: 300 x 250px (6:5)</li>
+                          <li>Featured: 600 x 800px (3:4)</li>
+                          <li>Hero: 1920 x 600px (16:5)</li>
+                        </ul>
+                      </div>
+
+                      {/* Duration display */}
+                      {formData.startDate && formData.endDate && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                          <p className="text-xs font-semibold text-gray-700 mb-1">
+                            Campaign duration
+                          </p>
+                          <p className="text-lg font-bold text-gray-900">
+                            {Math.max(
+                              0,
+                              Math.ceil(
+                                (new Date(formData.endDate).getTime() -
+                                  new Date(formData.startDate).getTime()) /
+                                  86400000
+                              )
+                            )}{' '}
+                            days
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {new Date(formData.startDate).toLocaleDateString()} —{' '}
+                            {new Date(formData.endDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t">
+                {/* Footer */}
+                <div className="px-6 py-4 border-t bg-gray-50 rounded-b-2xl flex gap-3">
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    className="flex-none px-5 py-2.5 border border-gray-200 rounded-xl font-semibold text-gray-600 hover:bg-white hover:border-gray-300 transition-all text-sm"
                   >
                     {t('cancel')}
                   </button>
                   <button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-2"
+                    disabled={isSubmitting || !formData.imageUrl}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-black text-[#CBB57B] rounded-xl font-bold text-sm hover:bg-neutral-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-[#CBB57B]/30"
                   >
                     {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                     {editingAd ? t('update') : t('create')}

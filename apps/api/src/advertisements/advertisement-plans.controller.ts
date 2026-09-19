@@ -120,6 +120,8 @@ export class AdvertisementPlansController {
 
   /**
    * Subscribe to a plan (Sellers only)
+   * Returns { checkoutUrl } for paid plans (redirect to Stripe)
+   * Returns { subscription } for free plans (activated immediately)
    */
   @Post('subscribe')
   @UseGuards(JwtAuthGuard, RolesGuard)
