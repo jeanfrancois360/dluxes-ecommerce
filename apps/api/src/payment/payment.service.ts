@@ -809,6 +809,23 @@ export class PaymentService {
               this.logger.error(`Failed to process credit package purchase:`, error);
               throw error;
             }
+          }
+          // Check if this is an ad plan subscription purchase
+          else if (session.metadata?.type === 'ad_plan_subscription') {
+            this.logger.log('Processing ad plan subscription from checkout session');
+
+            try {
+              const { AdvertisementPlansService } =
+                await import('../advertisements/advertisement-plans.service');
+              const { ConfigService } = await import('@nestjs/config');
+              const adPlansService = new AdvertisementPlansService(this.prisma, this.configService);
+
+              await adPlansService.processSuccessfulPayment(session.id);
+              this.logger.log(`✅ Ad plan subscription processed: ${session.id}`);
+            } catch (error) {
+              this.logger.error(`Failed to process ad plan subscription:`, error);
+              throw error;
+            }
           } else {
             // Route to StripeSubscriptionService for regular subscriptions
             if (this.stripeSubscriptionService) {

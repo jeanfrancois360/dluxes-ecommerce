@@ -56,7 +56,9 @@ export const advertisementPlansApi = {
   },
 
   // Seller
-  async subscribe(data: SubscribeToPlanDto): Promise<AdPlanSubscription> {
+  async subscribe(
+    data: SubscribeToPlanDto
+  ): Promise<{ subscription: AdPlanSubscription | null; checkoutUrl: string | null }> {
     const response = await api.post('/advertisement-plans/subscribe', data);
     return response.data || response;
   },

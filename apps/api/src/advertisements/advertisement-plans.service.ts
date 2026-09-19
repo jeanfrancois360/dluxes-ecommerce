@@ -1,4 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import Stripe from 'stripe';
 import { PrismaService } from '../database/prisma.service';
 import { PlanBillingPeriod, SubscriptionStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -11,8 +13,21 @@ import { Decimal } from '@prisma/client/runtime/library';
 @Injectable()
 export class AdvertisementPlansService {
   private readonly logger = new Logger(AdvertisementPlansService.name);
+  private stripe: Stripe | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService
+  ) {}
+
+  private getStripe(): Stripe {
+    if (!this.stripe) {
+      const key = this.configService.get<string>('STRIPE_SECRET_KEY');
+      if (!key) throw new BadRequestException('Stripe is not configured');
+      this.stripe = new Stripe(key, { apiVersion: '2025-10-29.clover' as any });
+    }
+    return this.stripe;
+  }
 
   /**
    * Create advertisement plan (Admin only)
@@ -101,6 +116,8 @@ export class AdvertisementPlansService {
         billingPeriod: true,
         trialDays: true,
         isFeatured: true,
+        isActive: true,
+        displayOrder: true,
       },
       orderBy: [{ displayOrder: 'asc' }, { price: 'asc' }],
     });
@@ -194,7 +211,32 @@ export class AdvertisementPlansService {
   }
 
   /**
-   * Subscribe seller to a plan
+   * Calculate subscription period end date
+   */
+  private calculatePeriodEnd(billingPeriod: PlanBillingPeriod, from: Date = new Date()): Date {
+    const end = new Date(from);
+    switch (billingPeriod) {
+      case PlanBillingPeriod.FREE:
+        end.setFullYear(end.getFullYear() + 1);
+        break;
+      case PlanBillingPeriod.WEEKLY:
+        end.setDate(end.getDate() + 7);
+        break;
+      case PlanBillingPeriod.MONTHLY:
+        end.setMonth(end.getMonth() + 1);
+        break;
+      case PlanBillingPeriod.QUARTERLY:
+        end.setMonth(end.getMonth() + 3);
+        break;
+      case PlanBillingPeriod.YEARLY:
+        end.setFullYear(end.getFullYear() + 1);
+        break;
+    }
+    return end;
+  }
+
+  /**
+   * Subscribe seller to a plan via Stripe Checkout (paid) or direct activation (free)
    */
   async subscribeToPlan(sellerId: string, planId: string, autoRenew: boolean = true) {
     const plan = await this.prisma.advertisementPlan.findUnique({
@@ -223,28 +265,118 @@ export class AdvertisementPlansService {
       );
     }
 
-    // Calculate subscription period
-    const now = new Date();
-    const periodEnd = new Date(now);
+    const priceInDollars = plan.price.toNumber();
 
-    switch (plan.billingPeriod) {
-      case PlanBillingPeriod.FREE:
-        // Free plan - 1 year period
-        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-        break;
-      case PlanBillingPeriod.WEEKLY:
-        periodEnd.setDate(periodEnd.getDate() + 7);
-        break;
-      case PlanBillingPeriod.MONTHLY:
-        periodEnd.setMonth(periodEnd.getMonth() + 1);
-        break;
-      case PlanBillingPeriod.QUARTERLY:
-        periodEnd.setMonth(periodEnd.getMonth() + 3);
-        break;
-      case PlanBillingPeriod.YEARLY:
-        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-        break;
+    // Free plans: activate immediately without Stripe
+    if (priceInDollars === 0 || plan.billingPeriod === PlanBillingPeriod.FREE) {
+      const now = new Date();
+      const periodEnd = this.calculatePeriodEnd(plan.billingPeriod, now);
+
+      const subscription = await this.prisma.sellerPlanSubscription.create({
+        data: {
+          sellerId,
+          planId,
+          status: SubscriptionStatus.ACTIVE,
+          currentPeriodStart: now,
+          currentPeriodEnd: periodEnd,
+          autoRenew: false,
+          lastPaymentAt: now,
+        },
+        include: { plan: true },
+      });
+
+      this.logger.log(`Seller ${sellerId} subscribed to FREE plan '${plan.name}'`);
+      return { subscription, checkoutUrl: null };
     }
+
+    // Paid plans: create Stripe Checkout Session
+    const user = await this.prisma.user.findUnique({
+      where: { id: sellerId },
+      select: { email: true, firstName: true, lastName: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const stripe = this.getStripe();
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: user.email,
+      line_items: [
+        {
+          price_data: {
+            currency: (plan.currency || 'USD').toLowerCase(),
+            product_data: {
+              name: `${plan.name} Ad Plan`,
+              description:
+                plan.description ||
+                `${plan.name} advertising plan — ${plan.billingPeriod.toLowerCase()} billing`,
+            },
+            unit_amount: Math.round(priceInDollars * 100),
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        type: 'ad_plan_subscription',
+        sellerId,
+        planId,
+        planName: plan.name,
+        billingPeriod: plan.billingPeriod,
+        autoRenew: autoRenew.toString(),
+      },
+      success_url: `${frontendUrl}/seller/advertisement-plans?subscribed=true`,
+      cancel_url: `${frontendUrl}/seller/advertisement-plans?canceled=true`,
+    });
+
+    this.logger.log(
+      `Created Stripe Checkout for seller ${sellerId}, plan '${plan.name}', session ${session.id}`
+    );
+
+    return { subscription: null, checkoutUrl: session.url };
+  }
+
+  /**
+   * Process successful Stripe payment and activate subscription
+   * Called from PaymentService webhook handler
+   */
+  async processSuccessfulPayment(sessionId: string) {
+    const stripe = this.getStripe();
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (!session.metadata?.type || session.metadata.type !== 'ad_plan_subscription') {
+      return; // Not an ad plan payment
+    }
+
+    const { sellerId, planId, billingPeriod, autoRenew } = session.metadata;
+
+    // Idempotency: check if already processed
+    const existing = await this.prisma.sellerPlanSubscription.findFirst({
+      where: {
+        sellerId,
+        planId,
+        status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL] },
+      },
+    });
+
+    if (existing) {
+      this.logger.log(`Ad plan subscription already active for seller ${sellerId}, skipping`);
+      return existing;
+    }
+
+    const plan = await this.prisma.advertisementPlan.findUnique({ where: { id: planId } });
+    if (!plan) {
+      this.logger.error(
+        `Plan ${planId} not found when processing payment for session ${sessionId}`
+      );
+      return;
+    }
+
+    const now = new Date();
+    const periodEnd = this.calculatePeriodEnd(billingPeriod as PlanBillingPeriod, now);
 
     const subscription = await this.prisma.sellerPlanSubscription.create({
       data: {
@@ -253,17 +385,17 @@ export class AdvertisementPlansService {
         status: plan.trialDays > 0 ? SubscriptionStatus.TRIAL : SubscriptionStatus.ACTIVE,
         currentPeriodStart: now,
         currentPeriodEnd: periodEnd,
-        autoRenew,
-        lastPaymentAt: plan.price.toNumber() === 0 ? now : null,
-        nextPaymentAt: plan.price.toNumber() > 0 ? periodEnd : null,
+        autoRenew: autoRenew === 'true',
+        lastPaymentAt: now,
+        nextPaymentAt: periodEnd,
+        stripeSubscriptionId: sessionId,
       },
-      include: {
-        plan: true,
-      },
+      include: { plan: true },
     });
 
-    this.logger.log(`Seller ${sellerId} subscribed to plan '${plan.name}' (${plan.billingPeriod})`);
-
+    this.logger.log(
+      `Ad plan subscription activated: seller ${sellerId}, plan '${plan.name}', session ${sessionId}`
+    );
     return subscription;
   }
 

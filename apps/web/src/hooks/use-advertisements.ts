@@ -287,7 +287,14 @@ export function useAdminAdPlanMutations() {
 export function useAdPlanSubscriptionMutations() {
   return {
     async subscribe(planSlug: string, billingPeriod?: 'MONTHLY' | 'YEARLY') {
-      return await advertisementPlansApi.subscribe({ planSlug, billingPeriod });
+      const result = await advertisementPlansApi.subscribe({ planSlug, billingPeriod });
+      // Paid plans return a checkoutUrl — redirect to Stripe
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+        return result;
+      }
+      // Free plans are activated immediately
+      return result;
     },
     async cancel(subscriptionId: string) {
       return await advertisementPlansApi.cancelSubscription(subscriptionId);

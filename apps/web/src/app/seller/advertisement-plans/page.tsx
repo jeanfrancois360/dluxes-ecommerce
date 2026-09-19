@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   useAdvertisementPlans,
   useMyAdSubscription,
@@ -13,7 +14,17 @@ import PageHeader from '@/components/seller/page-header';
 
 export default function SellerAdvertisementPlansPage() {
   const t = useTranslations('sellerAdPlans');
+  const searchParams = useSearchParams();
   const { plans, isLoading: plansLoading } = useAdvertisementPlans();
+
+  // Show toast on return from Stripe Checkout
+  useEffect(() => {
+    if (searchParams.get('subscribed') === 'true') {
+      toast.success('Subscription activated! You can now create ads.');
+    } else if (searchParams.get('canceled') === 'true') {
+      toast.info('Subscription was not completed.');
+    }
+  }, [searchParams]);
   const {
     subscription,
     plan: currentPlan,
@@ -31,7 +42,10 @@ export default function SellerAdvertisementPlansPage() {
   const handleSubscribe = async (planSlug: string) => {
     try {
       setSubscribing(planSlug);
-      await subscribe(planSlug, billingPeriod);
+      const result = await subscribe(planSlug, billingPeriod);
+      // If checkoutUrl was returned, the hook already redirected to Stripe
+      if (result?.checkoutUrl) return;
+      // Free plan — activated immediately
       toast.success(t('toast.subscribeSuccess'));
       await refreshSubscription();
     } catch (error: any) {
