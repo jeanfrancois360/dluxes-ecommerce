@@ -292,13 +292,13 @@ export function MegaMenu({ isOpen, categories, onClose }: MegaMenuProps) {
 
                   {/* Small promo strip */}
                   <Link
-                    href="/hot-deals"
+                    href="/urgent-requests"
                     onClick={onClose}
                     className="group/strip flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 hover:bg-[#CBB57B]/5 border border-gray-100 hover:border-[#CBB57B]/30 transition-all duration-150"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0 animate-pulse" />
                     <span className="text-[11px] font-semibold text-gray-700 group-hover/strip:text-black transition-colors">
-                      Hot Deals
+                      Urgent Requests
                     </span>
                     <span className="ml-auto text-[10px] text-[#CBB57B] font-bold">Live →</span>
                   </Link>

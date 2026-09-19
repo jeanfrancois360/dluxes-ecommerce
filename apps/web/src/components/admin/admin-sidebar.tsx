@@ -34,7 +34,7 @@ import {
   RefreshCw,
   FileText,
   Handshake,
-  Flame,
+  Zap,
   LayoutGrid,
 } from 'lucide-react';
 

@@ -775,7 +775,8 @@ export class PaymentService {
               const sellerCreditsService = new SellerCreditsService(
                 this.prisma,
                 this.configService,
-                this // Pass PaymentService itself
+                this, // Pass PaymentService itself
+                null as any // EmailService not needed for processSuccessfulPurchase
               );
 
               await sellerCreditsService.processSuccessfulPurchase(session.id);

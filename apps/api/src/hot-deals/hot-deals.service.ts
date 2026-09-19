@@ -19,6 +19,7 @@ import { HotDealCategoriesService } from './hot-deal-categories.service';
 import { RespondToDealDto } from './dto/respond-to-deal.dto';
 import { HotDealQueryDto } from './dto/hot-deal-query.dto';
 import { PaymentStatus } from '@prisma/client';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class HotDealsService {
@@ -28,7 +29,8 @@ export class HotDealsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    private readonly categoriesService: HotDealCategoriesService
+    private readonly categoriesService: HotDealCategoriesService,
+    private readonly emailService: EmailService
   ) {}
 
   private getStripe(): Stripe {
@@ -357,6 +359,30 @@ export class HotDealsService {
     });
 
     this.logger.log(`Response created for hot deal ${hotDealId} by user ${userId}`);
+
+    // Notify the deal owner about the new response (fire-and-forget)
+    const responseCount = await this.hotDealResponse.count({ where: { hotDealId } });
+    const dealOwner = await this.prisma.user.findUnique({
+      where: { id: deal.userId },
+      select: { email: true, firstName: true },
+    });
+    if (dealOwner) {
+      const responderName =
+        [response.user.firstName, response.user.lastName].filter(Boolean).join(' ') || 'A provider';
+      this.emailService
+        .sendHotDealNewResponse(dealOwner.email, {
+          ownerName: dealOwner.firstName || 'there',
+          dealTitle: deal.title,
+          dealId: hotDealId,
+          responderName,
+          responseMessage: dto.message,
+          responseCount,
+        })
+        .catch((err) =>
+          this.logger.error(`Failed to send response notification for deal ${hotDealId}`, err)
+        );
+    }
+
     return response;
   }
 
@@ -401,6 +427,21 @@ export class HotDealsService {
     });
 
     this.logger.log(`Hot deal ${hotDealId} activated after payment confirmation`);
+
+    // Send activation email (fire-and-forget)
+    this.emailService
+      .sendHotDealActivated(deal.contactEmail, {
+        userName: updatedDeal.user.firstName || 'there',
+        dealTitle: deal.title,
+        dealId: hotDealId,
+        expiresAt: deal.expiresAt,
+        city: deal.city,
+        category: deal.categoryId,
+      })
+      .catch((err) =>
+        this.logger.error(`Failed to send activation email for deal ${hotDealId}`, err)
+      );
+
     return updatedDeal;
   }
 
@@ -432,6 +473,26 @@ export class HotDealsService {
     });
 
     this.logger.log(`Hot deal ${hotDealId} marked as fulfilled`);
+
+    // Send fulfilled confirmation email (fire-and-forget)
+    const owner = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, firstName: true },
+    });
+    if (owner) {
+      const responseCount = await this.hotDealResponse.count({ where: { hotDealId } });
+      this.emailService
+        .sendHotDealFulfilled(owner.email, {
+          userName: owner.firstName || 'there',
+          dealTitle: deal.title,
+          city: deal.city,
+          responseCount,
+        })
+        .catch((err) =>
+          this.logger.error(`Failed to send fulfilled email for deal ${hotDealId}`, err)
+        );
+    }
+
     return updatedDeal;
   }
 
@@ -470,12 +531,24 @@ export class HotDealsService {
    * Expire old deals (called by cron job)
    */
   async expireOldDeals() {
+    // Fetch deals about to expire (with user info) before bulk-updating
+    const expiringDeals = await this.hotDeal.findMany({
+      where: {
+        status: HotDealStatus.ACTIVE,
+        expiresAt: { lt: new Date() },
+      },
+      select: {
+        id: true,
+        title: true,
+        city: true,
+        user: { select: { email: true, firstName: true } },
+      },
+    });
+
     const result = await this.hotDeal.updateMany({
       where: {
         status: HotDealStatus.ACTIVE,
-        expiresAt: {
-          lt: new Date(),
-        },
+        expiresAt: { lt: new Date() },
       },
       data: {
         status: HotDealStatus.EXPIRED,
@@ -484,6 +557,19 @@ export class HotDealsService {
 
     if (result.count > 0) {
       this.logger.log(`Expired ${result.count} hot deals`);
+
+      // Send expiry emails (fire-and-forget, individual failures don't break the loop)
+      for (const deal of expiringDeals) {
+        this.emailService
+          .sendHotDealExpired(deal.user.email, {
+            userName: deal.user.firstName || 'there',
+            dealTitle: deal.title,
+            city: deal.city,
+          })
+          .catch((err) =>
+            this.logger.error(`Failed to send expiry email for deal ${deal.id}`, err)
+          );
+      }
     }
 
     return result;

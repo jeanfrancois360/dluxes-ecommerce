@@ -41,6 +41,12 @@ import { paymentCancelledTemplate } from './templates/payment-cancelled.template
 import { paymentActionRequiredTemplate } from './templates/payment-action-required.template';
 import { chargeCapturedSellerTemplate } from './templates/charge-captured-seller.template';
 import { creditsAdjustedTemplate } from './templates/credits-adjusted.template';
+import {
+  hotDealActivatedTemplate,
+  hotDealNewResponseTemplate,
+  hotDealExpiredTemplate,
+  hotDealFulfilledTemplate,
+} from './templates/hot-deal-notifications.template';
 
 @Injectable()
 export class EmailService {
@@ -2037,6 +2043,205 @@ export class EmailService {
       return true;
     } catch (error) {
       this.logger.error(`Error sending campaign email to ${email}`, error);
+      return false;
+    }
+  }
+
+  // ─── Hot Deal Notifications ───────────────────────────────────────────────
+
+  async sendHotDealActivated(
+    email: string,
+    data: {
+      userName: string;
+      dealTitle: string;
+      dealId: string;
+      expiresAt: Date;
+      city: string;
+      category: string;
+    }
+  ): Promise<boolean> {
+    try {
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.log(`Hot deal activated: ${data.dealTitle} for ${email}`);
+        return false;
+      }
+
+      const dealUrl = `${this.frontendUrl}/urgent-requests/${data.dealId}`;
+      const expiresFormatted = data.expiresAt.toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'short',
+      });
+
+      const html = hotDealActivatedTemplate({
+        userName: data.userName,
+        dealTitle: data.dealTitle,
+        dealUrl,
+        expiresAt: expiresFormatted,
+        city: data.city,
+        category: data.category,
+        frontendUrl: this.frontendUrl,
+      });
+
+      const { data: result, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `Your request is live - ${data.dealTitle}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send hot deal activated email', error);
+        return false;
+      }
+
+      this.logger.log(`Hot deal activated email sent to ${email} (ID: ${result?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending hot deal activated email', error);
+      return false;
+    }
+  }
+
+  async sendHotDealNewResponse(
+    email: string,
+    data: {
+      ownerName: string;
+      dealTitle: string;
+      dealId: string;
+      responderName: string;
+      responseMessage: string;
+      responseCount: number;
+    }
+  ): Promise<boolean> {
+    try {
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.log(`Hot deal new response: ${data.dealTitle} for ${email}`);
+        return false;
+      }
+
+      const dealUrl = `${this.frontendUrl}/urgent-requests/${data.dealId}`;
+
+      const html = hotDealNewResponseTemplate({
+        ownerName: data.ownerName,
+        dealTitle: data.dealTitle,
+        dealUrl,
+        responderName: data.responderName,
+        responseMessage: data.responseMessage,
+        responseCount: data.responseCount,
+        frontendUrl: this.frontendUrl,
+      });
+
+      const { data: result, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `New response to "${data.dealTitle}"`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send hot deal response email', error);
+        return false;
+      }
+
+      this.logger.log(`Hot deal response email sent to ${email} (ID: ${result?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending hot deal response email', error);
+      return false;
+    }
+  }
+
+  async sendHotDealExpired(
+    email: string,
+    data: {
+      userName: string;
+      dealTitle: string;
+      city: string;
+    }
+  ): Promise<boolean> {
+    try {
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.log(`Hot deal expired: ${data.dealTitle} for ${email}`);
+        return false;
+      }
+
+      const newDealUrl = `${this.frontendUrl}/urgent-requests/new`;
+
+      const html = hotDealExpiredTemplate({
+        userName: data.userName,
+        dealTitle: data.dealTitle,
+        newDealUrl,
+        city: data.city,
+        frontendUrl: this.frontendUrl,
+      });
+
+      const { data: result, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `Your request "${data.dealTitle}" has expired`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send hot deal expired email', error);
+        return false;
+      }
+
+      this.logger.log(`Hot deal expired email sent to ${email} (ID: ${result?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending hot deal expired email', error);
+      return false;
+    }
+  }
+
+  async sendHotDealFulfilled(
+    email: string,
+    data: {
+      userName: string;
+      dealTitle: string;
+      city: string;
+      responseCount: number;
+    }
+  ): Promise<boolean> {
+    try {
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.log(`Hot deal fulfilled: ${data.dealTitle} for ${email}`);
+        return false;
+      }
+
+      const html = hotDealFulfilledTemplate({
+        userName: data.userName,
+        dealTitle: data.dealTitle,
+        city: data.city,
+        responseCount: data.responseCount,
+        frontendUrl: this.frontendUrl,
+      });
+
+      const { data: result, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `Request fulfilled - ${data.dealTitle}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send hot deal fulfilled email', error);
+        return false;
+      }
+
+      this.logger.log(`Hot deal fulfilled email sent to ${email} (ID: ${result?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending hot deal fulfilled email', error);
       return false;
     }
   }

@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Flame,
+  Zap,
   ArrowLeft,
   CreditCard,
   AlertCircle,
+  AlertTriangle,
   CheckCircle,
   Loader2,
   MapPin,
-  Zap,
   Clock,
   Shield,
   ImagePlus,
@@ -196,9 +196,9 @@ function LivePreview({
         {!hasContent ? (
           <div className="py-8 text-center">
             <div className="w-12 h-12 bg-[#CBB57B]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Flame className="w-6 h-6 text-[#CBB57B]" />
+              <Zap className="w-6 h-6 text-[#CBB57B]" />
             </div>
-            <p className="text-sm text-gray-500">Your deal preview will appear here</p>
+            <p className="text-sm text-gray-500">Your request preview will appear here</p>
           </div>
         ) : (
           <motion.div
@@ -212,9 +212,9 @@ function LivePreview({
               className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${urgencyConf.bgColor} ${urgencyConf.color}`}
             >
               {urgency === 'EMERGENCY' ? (
-                <Flame className="w-3 h-3" />
+                <AlertTriangle className="w-3 h-3" />
               ) : urgency === 'URGENT' ? (
-                <Zap className="w-3 h-3" />
+                <AlertTriangle className="w-3 h-3" />
               ) : (
                 <Clock className="w-3 h-3" />
               )}
@@ -415,7 +415,7 @@ export default function NewHotDealPage() {
 
   useEffect(() => {
     if (isInitialized && !isAuthenticated) {
-      router.push('/auth/login?redirect=/hot-deals/new');
+      router.push('/auth/login?redirect=/urgent-requests/new');
     }
   }, [isInitialized, isAuthenticated, router]);
 
@@ -445,7 +445,7 @@ export default function NewHotDealPage() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-4 py-4">
               <Link
-                href="/hot-deals"
+                href="/urgent-requests"
                 className="p-2 rounded-xl hover:bg-gray-100 transition-colors flex-shrink-0"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -453,7 +453,7 @@ export default function NewHotDealPage() {
 
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="w-9 h-9 bg-gradient-to-br from-[#CBB57B] to-amber-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md shadow-[#CBB57B]/30">
-                  <Flame className="w-5 h-5 text-white" />
+                  <Zap className="w-5 h-5 text-white" />
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-base font-bold text-gray-900 truncate">{t('title')}</h1>
@@ -726,7 +726,7 @@ function HotDealFormInner({
       clearDraft();
       setStep('success');
       toast.success(t('hotDealPublished'));
-      setTimeout(() => router.push('/hot-deals'), 3000);
+      setTimeout(() => router.push('/urgent-requests'), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('paymentFailed'));
       toast.error(t('paymentFailed'));
@@ -758,7 +758,7 @@ function HotDealFormInner({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
           >
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Your deal is live!</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Your request is live!</h2>
             <p className="text-gray-500 text-sm mb-1">
               Service providers can now see and respond to your request.
             </p>
@@ -770,11 +770,11 @@ function HotDealFormInner({
             transition={{ delay: 0.5 }}
           >
             <Link
-              href="/hot-deals"
+              href="/urgent-requests"
               className="flex items-center justify-center gap-2 w-full px-6 py-3.5 bg-gradient-to-r from-[#CBB57B] to-amber-500 text-white rounded-xl font-semibold shadow-md shadow-[#CBB57B]/30 hover:shadow-lg transition-all"
             >
-              <Flame className="w-5 h-5" />
-              View Hot Deals
+              <Zap className="w-5 h-5" />
+              View Urgent Requests
             </Link>
             <p className="text-xs text-gray-400 mt-3">Redirecting automatically…</p>
           </motion.div>
@@ -800,7 +800,7 @@ function HotDealFormInner({
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Complete payment</h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Your deal is saved. Pay to publish it now.
+                  Your request is saved. Pay to publish it now.
                 </p>
               </div>
               <div className="text-right">
@@ -1004,7 +1004,7 @@ function HotDealFormInner({
 
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <p className="text-sm font-semibold text-gray-700 mb-3">Your deal summary</p>
+            <p className="text-sm font-semibold text-gray-700 mb-3">Your request summary</p>
             <div className="space-y-2">
               <p className="text-sm font-medium text-gray-900 line-clamp-2">{watchedTitle}</p>
               {watchedCity && (
@@ -1032,7 +1032,7 @@ function HotDealFormInner({
             <ol className="space-y-2">
               {[
                 'Payment processed securely',
-                'Deal goes live instantly',
+                'Request goes live instantly',
                 'Providers can respond',
                 'Pick your best match',
               ].map((s, i) => (
@@ -1098,7 +1098,7 @@ function HotDealFormInner({
     },
     {
       value: 'URGENT',
-      Icon: Zap,
+      Icon: AlertTriangle,
       label: t('urgent'),
       desc: t('urgentDesc'),
       color: 'text-[#CBB57B]',
@@ -1107,7 +1107,7 @@ function HotDealFormInner({
     },
     {
       value: 'EMERGENCY',
-      Icon: Flame,
+      Icon: AlertTriangle,
       label: t('emergency'),
       desc: t('emergencyDesc'),
       color: 'text-red-600',
@@ -1172,7 +1172,7 @@ function HotDealFormInner({
           {/* Service Details */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <SectionHeader
-              icon={Flame}
+              icon={Zap}
               title="Service request details"
               subtitle="Describe what you need help with"
             />
@@ -1576,7 +1576,7 @@ function HotDealFormInner({
 
             <div className="flex gap-3">
               <Link
-                href="/hot-deals"
+                href="/urgent-requests"
                 className="flex-none flex items-center justify-center gap-2 px-5 py-3.5 border-2 border-gray-200 rounded-xl font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all text-sm"
               >
                 {t('cancel')}
@@ -1590,7 +1590,7 @@ function HotDealFormInner({
                 {isSubmitting ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <Flame className="w-5 h-5" style={{ color: '#CBB57B' }} />
+                  <Zap className="w-5 h-5" style={{ color: '#CBB57B' }} />
                 )}
                 <span>{isSubmitting ? 'Saving details…' : t('continueToPayment')}</span>
               </button>

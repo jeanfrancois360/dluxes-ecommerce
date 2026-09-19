@@ -337,9 +337,9 @@ export default function AdminHotDealCategoriesPage() {
                 <LayoutGrid className="w-5 h-5 text-[#CBB57B]" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Hot Deal Categories</h1>
+                <h1 className="text-xl font-bold text-gray-900">Request Categories</h1>
                 <p className="text-sm text-gray-500">
-                  Manage categories shown on the Hot Deals posting form
+                  Manage categories shown on the Urgent Requests posting form
                 </p>
               </div>
             </div>
@@ -363,7 +363,7 @@ export default function AdminHotDealCategoriesPage() {
             <div className="text-center py-20 text-gray-500">
               <LayoutGrid className="w-12 h-12 mx-auto mb-3 text-gray-300" />
               <p className="font-medium">No categories yet</p>
-              <p className="text-sm">Create your first hot deal category.</p>
+              <p className="text-sm">Create your first request category.</p>
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -510,7 +510,7 @@ export default function AdminHotDealCategoriesPage() {
               <DialogDescription>
                 {editingCategory
                   ? 'Update the category details below.'
-                  : 'Create a new hot deal category.'}
+                  : 'Create a new request category.'}
               </DialogDescription>
             </DialogHeader>
             <CategoryForm
