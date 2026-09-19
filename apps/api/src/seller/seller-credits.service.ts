@@ -8,6 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { PaymentService } from '../payment/payment.service';
+import { EmailService } from '../email/email.service';
 import { StoreStatus, SellerCreditTransactionType } from '@prisma/client';
 import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 
@@ -21,7 +22,8 @@ export class SellerCreditsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    private readonly paymentService: PaymentService
+    private readonly paymentService: PaymentService,
+    private readonly emailService: EmailService
   ) {}
 
   /**
@@ -670,6 +672,34 @@ export class SellerCreditsService {
     this.logger.log(
       `✅ Credits adjusted: Store ${storeId}, ${amount > 0 ? '+' : ''}${amount}, Balance: ${balanceBefore} → ${balanceAfter}, Admin: ${adminId}`
     );
+
+    // Send email notification to the seller (non-blocking)
+    const storeWithUser = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      include: {
+        user: { select: { email: true, firstName: true, lastName: true } },
+      },
+    });
+
+    if (storeWithUser?.user?.email) {
+      const sellerName =
+        [storeWithUser.user.firstName, storeWithUser.user.lastName].filter(Boolean).join(' ') ||
+        'Seller';
+
+      this.emailService
+        .sendCreditAdjustmentNotification(storeWithUser.user.email, {
+          sellerName,
+          storeName: storeWithUser.name,
+          amount,
+          type: type.toString(),
+          reason: notes,
+          balanceBefore,
+          balanceAfter,
+        })
+        .catch((err) =>
+          this.logger.error(`Failed to send credit adjustment email for store ${storeId}`, err)
+        );
+    }
 
     return {
       success: true,
