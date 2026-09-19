@@ -80,6 +80,40 @@ export class AdvertisementService {
       );
     }
 
+    // Validate seller has an active subscription with this placement allowed
+    const subscription = await this.prisma.sellerPlanSubscription.findFirst({
+      where: {
+        sellerId: advertiserId,
+        status: { in: ['ACTIVE', 'TRIAL'] },
+      },
+      include: { plan: true },
+    });
+
+    if (!subscription) {
+      throw new BadRequestException(
+        'You need an active advertising plan to create ads. Subscribe to a plan first.'
+      );
+    }
+
+    const allowedPlacements = (subscription.plan.allowedPlacements as string[]) || [];
+    if (!allowedPlacements.includes(dto.placement)) {
+      throw new BadRequestException(
+        `Your "${subscription.plan.name}" plan does not include the "${dto.placement}" placement. Upgrade your plan to access it.`
+      );
+    }
+
+    // Check max active ads limit
+    if (subscription.plan.maxActiveAds !== -1) {
+      const activeAdsCount = await this.prisma.advertisement.count({
+        where: { advertiserId, status: { in: ['ACTIVE', 'PENDING_APPROVAL', 'APPROVED'] } },
+      });
+      if (activeAdsCount >= subscription.plan.maxActiveAds) {
+        throw new BadRequestException(
+          `You have reached the maximum of ${subscription.plan.maxActiveAds} ads for your "${subscription.plan.name}" plan. Upgrade to create more.`
+        );
+      }
+    }
+
     // Validate category if provided
     if (dto.categoryId) {
       const category = await this.prisma.category.findUnique({
@@ -139,6 +173,28 @@ export class AdvertisementService {
       throw new ForbiddenException('You do not have permission to modify this advertisement');
     }
 
+    // If placement is being changed, validate against subscription
+    if (dto.placement && dto.placement !== ad.placement && !isAdmin) {
+      const subscription = await this.prisma.sellerPlanSubscription.findFirst({
+        where: {
+          sellerId: ad.advertiserId,
+          status: { in: ['ACTIVE', 'TRIAL'] },
+        },
+        include: { plan: true },
+      });
+
+      if (!subscription) {
+        throw new BadRequestException('You need an active advertising plan to modify ads.');
+      }
+
+      const allowedPlacements = (subscription.plan.allowedPlacements as string[]) || [];
+      if (!allowedPlacements.includes(dto.placement)) {
+        throw new BadRequestException(
+          `Your "${subscription.plan.name}" plan does not include the "${dto.placement}" placement.`
+        );
+      }
+    }
+
     const updateData: any = { ...dto };
     if (dto.startDate) updateData.startDate = new Date(dto.startDate);
     if (dto.endDate) updateData.endDate = new Date(dto.endDate);
@@ -169,6 +225,30 @@ export class AdvertisementService {
 
     if (!ad) {
       throw new NotFoundException('Advertisement not found');
+    }
+
+    // If approving, verify the advertiser still has an active subscription
+    if (dto.approved) {
+      const subscription = await this.prisma.sellerPlanSubscription.findFirst({
+        where: {
+          sellerId: ad.advertiserId,
+          status: { in: ['ACTIVE', 'TRIAL'] },
+        },
+        include: { plan: true },
+      });
+
+      if (!subscription) {
+        throw new BadRequestException(
+          'Cannot approve: the advertiser no longer has an active subscription.'
+        );
+      }
+
+      const allowedPlacements = (subscription.plan.allowedPlacements as string[]) || [];
+      if (!allowedPlacements.includes(ad.placement)) {
+        throw new BadRequestException(
+          `Cannot approve: the advertiser's "${subscription.plan.name}" plan does not include the "${ad.placement}" placement.`
+        );
+      }
     }
 
     const status = dto.approved ? AdStatus.ACTIVE : AdStatus.REJECTED;
@@ -226,6 +306,19 @@ export class AdvertisementService {
       where: { id },
       data: updateData,
     });
+
+    // Also increment subscription impressionsUsed for impression events
+    if (eventType === AdEventType.IMPRESSION) {
+      await this.prisma.sellerPlanSubscription
+        .updateMany({
+          where: {
+            sellerId: ad.advertiserId,
+            status: { in: ['ACTIVE', 'TRIAL'] },
+          },
+          data: { impressionsUsed: { increment: 1 } },
+        })
+        .catch(() => {}); // Non-blocking — don't fail event recording
+    }
 
     // Record analytics event
     return this.prisma.adAnalytics.create({

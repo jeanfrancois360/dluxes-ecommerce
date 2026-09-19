@@ -10,7 +10,9 @@ import {
   Query,
   UseGuards,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AdvertisementService } from './advertisement.service';
 import {
   CreateAdvertisementDto,
@@ -96,8 +98,19 @@ export class AdvertisementController {
   async getAnalytics(
     @Param('id') id: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
+    @Request() req?: any
   ) {
+    // Verify ownership — sellers can only see their own ad analytics
+    const userId = req?.user?.userId || req?.user?.id;
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req?.user?.role);
+    if (!isAdmin) {
+      const ad = await this.adService.findOne(id);
+      if (ad.advertiserId !== userId) {
+        throw new ForbiddenException('You can only view analytics for your own ads');
+      }
+    }
+
     const data = await this.adService.getAnalytics(
       id,
       startDate ? new Date(startDate) : undefined,
@@ -158,8 +171,11 @@ export class AdvertisementController {
   /**
    * Record ad event (impression, click, conversion)
    * POST /advertisements/:id/event
+   * Rate limited: 60 events per minute per IP
    */
   @Post(':id/event')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   async recordEvent(@Param('id') id: string, @Body() dto: RecordAdEventDto, @Request() req: any) {
     const userId = req.user?.userId || req.user?.id;
     const data = await this.adService.recordEvent(
