@@ -40,6 +40,7 @@ import { paymentFailedTemplate } from './templates/payment-failed.template';
 import { paymentCancelledTemplate } from './templates/payment-cancelled.template';
 import { paymentActionRequiredTemplate } from './templates/payment-action-required.template';
 import { chargeCapturedSellerTemplate } from './templates/charge-captured-seller.template';
+import { creditsAdjustedTemplate } from './templates/credits-adjusted.template';
 
 @Injectable()
 export class EmailService {
@@ -1520,6 +1521,70 @@ export class EmailService {
       } catch (err) {
         this.logger.error(`Error sending low credit warning to ${store.ownerEmail}`, err);
       }
+    }
+  }
+
+  /**
+   * Send credit adjustment notification to a seller
+   */
+  async sendCreditAdjustmentNotification(
+    email: string,
+    data: {
+      sellerName: string;
+      storeName: string;
+      amount: number;
+      type: string;
+      reason: string;
+      balanceBefore: number;
+      balanceAfter: number;
+    }
+  ): Promise<boolean> {
+    try {
+      const creditsUrl = `${this.frontendUrl}/seller/selling-credits`;
+      const dashboardUrl = `${this.frontendUrl}/seller`;
+      const isAddition = data.amount > 0;
+      const absAmount = Math.abs(data.amount);
+
+      if (!process.env.RESEND_API_KEY) {
+        this.logger.warn('Skipping email send - RESEND_API_KEY not configured');
+        this.logger.warn('='.repeat(80));
+        this.logger.log(`📧 CREDIT ADJUSTMENT NOTIFICATION FOR DEVELOPMENT`);
+        this.logger.log(`Email: ${email}`);
+        this.logger.log(`Seller: ${data.sellerName}`);
+        this.logger.log(`Store: ${data.storeName}`);
+        this.logger.log(`Amount: ${isAddition ? '+' : '-'}${absAmount} months`);
+        this.logger.log(`Type: ${data.type}`);
+        this.logger.log(`Reason: ${data.reason}`);
+        this.logger.log(`Balance: ${data.balanceBefore} → ${data.balanceAfter}`);
+        this.logger.warn('='.repeat(80));
+        return true;
+      }
+
+      const html = creditsAdjustedTemplate({
+        ...data,
+        creditsUrl,
+        dashboardUrl,
+        frontendUrl: this.frontendUrl,
+      });
+
+      const actionLabel = isAddition ? 'added to' : 'deducted from';
+      const { data: emailData, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: email,
+        subject: `Credits ${actionLabel} your account - ${data.storeName}`,
+        html,
+      });
+
+      if (error) {
+        this.logger.error('Failed to send credit adjustment email', error);
+        return false;
+      }
+
+      this.logger.log(`Credit adjustment email sent to ${email} (ID: ${emailData?.id})`);
+      return true;
+    } catch (error) {
+      this.logger.error('Error sending credit adjustment email', error);
+      return false;
     }
   }
 
