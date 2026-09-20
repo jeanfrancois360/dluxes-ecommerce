@@ -539,6 +539,7 @@ function HotDealFormInner({
   const [cardError, setCardError] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadingCount, setUploadingCount] = useState(0);
+  const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
 
@@ -1247,10 +1248,26 @@ function HotDealFormInner({
                     </div>
                   ))}
                   {uploadedImages.length + uploadingCount < 3 && (
-                    <label className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 hover:border-[#CBB57B] hover:bg-[#CBB57B]/5 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all group">
+                    <label
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDraggingImage(true);
+                      }}
+                      onDragLeave={() => setIsDraggingImage(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDraggingImage(false);
+                        if (e.dataTransfer.files?.length) handleImageFiles(e.dataTransfer.files);
+                      }}
+                      className={`w-24 h-24 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all group ${
+                        isDraggingImage
+                          ? 'border-[#CBB57B] bg-[#CBB57B]/10'
+                          : 'border-gray-300 hover:border-[#CBB57B] hover:bg-[#CBB57B]/5'
+                      }`}
+                    >
                       <ImagePlus className="w-6 h-6 text-gray-400 group-hover:text-[#CBB57B] transition-colors" />
                       <span className="text-xs text-gray-400 group-hover:text-[#CBB57B] transition-colors font-medium">
-                        Add photo
+                        {isDraggingImage ? 'Drop here' : 'Add photo'}
                       </span>
                       <span className="text-xs text-gray-300">
                         {3 - uploadedImages.length - uploadingCount} left

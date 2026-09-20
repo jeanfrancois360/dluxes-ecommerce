@@ -30,6 +30,7 @@ export default function AdminProfilePage() {
   const [hasChanges, setHasChanges] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
   const [avatarProgress, setAvatarProgress] = useState(0);
   const [avatarDeleting, setAvatarDeleting] = useState(false);
 
@@ -185,16 +186,38 @@ export default function AdminProfilePage() {
 
               <div className="flex flex-col items-center gap-4">
                 {/* Avatar */}
-                <div className="relative">
+                <div
+                  className="relative"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDraggingAvatar(true);
+                  }}
+                  onDragLeave={() => setIsDraggingAvatar(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDraggingAvatar(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) {
+                      const dt = new DataTransfer();
+                      dt.items.add(file);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.files = dt.files;
+                        fileInputRef.current.dispatchEvent(new Event('change', { bubbles: true }));
+                      }
+                    }
+                  }}
+                >
                   {user.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={user.avatar}
                       alt="Profile"
-                      className="w-24 h-24 rounded-full object-cover ring-4 ring-gold/30"
+                      className={`w-24 h-24 rounded-full object-cover ring-4 ${isDraggingAvatar ? 'ring-[#CBB57B]' : 'ring-gold/30'}`}
                     />
                   ) : (
-                    <div className="w-24 h-24 bg-gradient-to-br from-gold to-[#a89158] rounded-full flex items-center justify-center ring-4 ring-gold/30">
+                    <div
+                      className={`w-24 h-24 bg-gradient-to-br from-gold to-[#a89158] rounded-full flex items-center justify-center ring-4 ${isDraggingAvatar ? 'ring-[#CBB57B]' : 'ring-gold/30'}`}
+                    >
                       <span className="text-white font-bold text-2xl">{getInitials()}</span>
                     </div>
                   )}

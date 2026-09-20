@@ -367,6 +367,7 @@ function BlogPostEditContent() {
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [tags, setTags] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lifecycleLoading, setLifecycleLoading] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -731,7 +732,25 @@ function BlogPostEditContent() {
               {/* Cover image — full-width preview */}
               <div>
                 <label className={labelCls}>Cover image</label>
-                <div className="space-y-2">
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleCoverFile(file);
+                  }}
+                  onClick={() => !imageUploading && imageInputRef.current?.click()}
+                  className={`space-y-2 p-3 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                    isDragging
+                      ? 'border-[#CBB57B] bg-[#CBB57B]/5'
+                      : 'border-gray-300 hover:border-[#CBB57B] hover:bg-gray-50'
+                  } ${imageUploading ? 'pointer-events-none opacity-60' : ''}`}
+                >
                   <div className="w-full aspect-video bg-neutral-100 rounded-lg overflow-hidden flex items-center justify-center ring-1 ring-neutral-200">
                     {coverImageUrl ? (
                       <img
@@ -746,15 +765,14 @@ function BlogPostEditContent() {
                       <ImageIcon className="w-8 h-8 text-neutral-300" />
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => imageInputRef.current?.click()}
-                    disabled={imageUploading}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                  >
+                  <p className="w-full flex items-center justify-center gap-2 text-sm font-medium text-gray-700">
                     <Upload className="w-4 h-4" />
-                    {imageUploading ? 'Uploading…' : coverImageUrl ? 'Replace' : 'Upload image'}
-                  </button>
+                    {imageUploading
+                      ? 'Uploading…'
+                      : coverImageUrl
+                        ? 'Drop to replace or click'
+                        : 'Drop image here or click'}
+                  </p>
                   <p className="text-xs text-gray-400 text-center">
                     JPEG, PNG, WebP or GIF · max 5MB
                   </p>

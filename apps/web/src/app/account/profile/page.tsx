@@ -58,6 +58,7 @@ export default function ProfilePage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -241,10 +242,34 @@ export default function ProfilePage() {
                 <h2 className="text-xl font-bold font-['Poppins'] mb-6">{t('profilePhoto')}</h2>
 
                 {/* Avatar Display */}
-                <div className="relative inline-block mb-6">
+                <div
+                  className="relative inline-block mb-6"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDraggingAvatar(true);
+                  }}
+                  onDragLeave={() => setIsDraggingAvatar(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDraggingAvatar(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) {
+                      const dt = new DataTransfer();
+                      dt.items.add(file);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.files = dt.files;
+                        fileInputRef.current.dispatchEvent(new Event('change', { bubbles: true }));
+                      }
+                    }
+                  }}
+                >
                   <div
                     onClick={handleAvatarClick}
-                    className="w-32 h-32 rounded-full overflow-hidden bg-neutral-100 border-4 border-white shadow-xl cursor-pointer hover:opacity-90 transition-opacity relative group"
+                    className={`w-32 h-32 rounded-full overflow-hidden bg-neutral-100 border-4 shadow-xl cursor-pointer hover:opacity-90 transition-all relative group ${
+                      isDraggingAvatar
+                        ? 'border-[#CBB57B] ring-4 ring-[#CBB57B]/20'
+                        : 'border-white'
+                    }`}
                   >
                     {user.avatar ? (
                       <img

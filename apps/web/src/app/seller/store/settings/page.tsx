@@ -45,6 +45,8 @@ export default function StoreSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [isDraggingBanner, setIsDraggingBanner] = useState(false);
+  const [isDraggingLogo, setIsDraggingLogo] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -267,8 +269,32 @@ export default function StoreSettingsPage() {
               </label>
               <div className="relative">
                 <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDraggingBanner(true);
+                  }}
+                  onDragLeave={() => setIsDraggingBanner(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDraggingBanner(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) {
+                      const dt = new DataTransfer();
+                      dt.items.add(file);
+                      if (bannerInputRef.current) {
+                        bannerInputRef.current.files = dt.files;
+                        bannerInputRef.current.dispatchEvent(
+                          new Event('change', { bubbles: true })
+                        );
+                      }
+                    }
+                  }}
                   className={`relative w-full h-48 rounded-xl overflow-hidden border-2 border-dashed transition-colors ${
-                    store?.banner ? 'border-transparent' : 'border-neutral-300 hover:border-gold'
+                    isDraggingBanner
+                      ? 'border-[#CBB57B] bg-[#CBB57B]/5'
+                      : store?.banner
+                        ? 'border-transparent'
+                        : 'border-neutral-300 hover:border-gold'
                   }`}
                 >
                   {store?.banner ? (
@@ -339,8 +365,32 @@ export default function StoreSettingsPage() {
               <div className="flex items-center gap-6">
                 <div className="relative">
                   <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingLogo(true);
+                    }}
+                    onDragLeave={() => setIsDraggingLogo(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDraggingLogo(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) {
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        if (logoInputRef.current) {
+                          logoInputRef.current.files = dt.files;
+                          logoInputRef.current.dispatchEvent(
+                            new Event('change', { bubbles: true })
+                          );
+                        }
+                      }
+                    }}
                     className={`w-32 h-32 rounded-xl overflow-hidden border-2 border-dashed transition-colors ${
-                      store?.logo ? 'border-transparent' : 'border-neutral-300 hover:border-gold'
+                      isDraggingLogo
+                        ? 'border-[#CBB57B] bg-[#CBB57B]/5'
+                        : store?.logo
+                          ? 'border-transparent'
+                          : 'border-neutral-300 hover:border-gold'
                     }`}
                   >
                     {store?.logo ? (
