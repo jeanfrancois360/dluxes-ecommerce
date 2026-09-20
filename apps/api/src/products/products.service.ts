@@ -839,6 +839,24 @@ export class ProductsService {
         if (!allowed) {
           throw new BadRequestException(reason);
         }
+
+        // Check if seller has a payment method on file (required for promotion credit users)
+        const user = await this.prisma.user.findUnique({
+          where: { id: store.userId },
+          select: { stripeCustomerId: true },
+        });
+        if (!user?.stripeCustomerId) {
+          // Check if they have store credits (from promotions) but no payment method
+          const storeData = await this.prisma.store.findUnique({
+            where: { id: storeId },
+            select: { creditsBalance: true },
+          });
+          if (storeData && storeData.creditsBalance > 0) {
+            throw new BadRequestException(
+              'A payment method is required before listing products. Please add a card in your Selling Credits page.'
+            );
+          }
+        }
       }
     }
 

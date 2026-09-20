@@ -47,13 +47,19 @@ export class SellerCreditsService {
       throw new NotFoundException('Store not found. Apply to become a seller first.');
     }
 
+    // Check if seller has a payment method on file
+    const hasPaymentMethod = await this.checkHasPaymentMethod(userId);
+
     const inGracePeriod =
       store.creditsBalance === 0 &&
       store.creditsGraceEndsAt &&
       new Date() < store.creditsGraceEndsAt;
 
+    // Sellers with promotion credits but no payment method cannot publish
     const canPublish =
-      store.status === StoreStatus.ACTIVE && (store.creditsBalance > 0 || inGracePeriod);
+      store.status === StoreStatus.ACTIVE &&
+      (store.creditsBalance > 0 || inGracePeriod) &&
+      hasPaymentMethod;
 
     // Can purchase if store is ACTIVE (approved)
     const canPurchase = store.status === StoreStatus.ACTIVE;
@@ -71,7 +77,88 @@ export class SellerCreditsService {
         inGracePeriod,
         canPublish,
         canPurchase,
+        hasPaymentMethod,
       },
+    };
+  }
+
+  /**
+   * Check if a user has at least one payment method on file in Stripe
+   */
+  private async checkHasPaymentMethod(userId: string): Promise<boolean> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { stripeCustomerId: true },
+      });
+
+      if (!user?.stripeCustomerId) return false;
+
+      const stripe = await this.paymentService.getStripe();
+      if (!stripe) return false;
+
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: user.stripeCustomerId,
+        type: 'card',
+        limit: 1,
+      });
+
+      return paymentMethods.data.length > 0;
+    } catch {
+      // If Stripe check fails, don't block the seller
+      return true;
+    }
+  }
+
+  /**
+   * Create a Stripe Checkout Session in setup mode for card capture
+   * This captures the card without charging — required for promotion credit users
+   */
+  async createCardSetupSession(userId: string) {
+    const stripe = await this.paymentService.getStripe();
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, stripeCustomerId: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Get or create Stripe customer
+    let customerId = user.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { userId },
+      });
+      customerId = customer.id;
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { stripeCustomerId: customerId },
+      });
+    }
+
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'setup',
+      payment_method_types: ['card'],
+      metadata: {
+        type: 'card_setup',
+        userId,
+      },
+      success_url: `${frontendUrl}/seller/selling-credits?card_added=true`,
+      cancel_url: `${frontendUrl}/seller/selling-credits?card_canceled=true`,
+    });
+
+    this.logger.log(`Created card setup session ${session.id} for user ${userId}`);
+
+    return {
+      success: true,
+      data: { sessionUrl: session.url },
     };
   }
 
