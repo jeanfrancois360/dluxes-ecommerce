@@ -17,6 +17,8 @@ export interface Advertisement {
   startDate: string;
   endDate: string;
   pricingModel: AdPricingModel;
+  pricePerUnit: number;
+  position: number;
   budget?: number;
   dailyBudget?: number;
   bidAmount?: number;

@@ -63,7 +63,7 @@ const PLACEMENT_CONFIG: Record<
 > = {
   HOMEPAGE_FEATURED: {
     icon: Sparkles,
-    label: 'Homepage — After Featured Products',
+    label: 'Homepage banner',
     shortLabel: 'Homepage Featured',
     description: 'Full-width banner below the featured products carousel',
     imageSize: '1200 × 240px',
@@ -73,7 +73,7 @@ const PLACEMENT_CONFIG: Record<
   },
   PRODUCTS_INLINE: {
     icon: LayoutGrid,
-    label: 'Homepage — After New Arrivals',
+    label: 'Homepage inline',
     shortLabel: 'Homepage Inline',
     description: 'Full-width banner between product sections on homepage',
     imageSize: '1200 × 240px',
@@ -83,7 +83,7 @@ const PLACEMENT_CONFIG: Record<
   },
   PRODUCTS_BANNER: {
     icon: Monitor,
-    label: 'Products Page — Top Banner',
+    label: 'Products page banner',
     shortLabel: 'Products Banner',
     description: 'Banner at the top of the products listing page',
     imageSize: '1200 × 240px',
@@ -93,7 +93,7 @@ const PLACEMENT_CONFIG: Record<
   },
   PRODUCT_DETAIL_SIDEBAR: {
     icon: Eye,
-    label: 'Product Page — Sidebar',
+    label: 'Product page sidebar',
     shortLabel: 'Product Sidebar',
     description: 'Square ad in the sidebar of individual product pages',
     imageSize: '300 × 300px',
@@ -103,7 +103,7 @@ const PLACEMENT_CONFIG: Record<
   },
   CHECKOUT_UPSELL: {
     icon: ShoppingCart,
-    label: 'Checkout Page — Upsell',
+    label: 'Checkout upsell',
     shortLabel: 'Checkout Upsell',
     description: 'Small card shown during the checkout process',
     imageSize: '200 × 200px',
@@ -113,7 +113,7 @@ const PLACEMENT_CONFIG: Record<
   },
   SEARCH_RESULTS: {
     icon: Search,
-    label: 'Search Results — Sponsored',
+    label: 'Search sponsored',
     shortLabel: 'Search Sponsored',
     description: 'Sponsored card within search results',
     imageSize: '200 × 200px',
@@ -191,6 +191,7 @@ export default function SellerAdvertisementsPage() {
     (p: string) => FUNCTIONAL_PLACEMENTS.includes(p)
   );
   const maxActiveAds = subscription?.plan?.maxActiveAds || 1;
+  const maxAdDurationDays = subscription?.plan?.maxAdDurationDays || 30;
   const activeAdsCount = ads.filter((ad) => ad.status === 'ACTIVE').length;
   const canCreateMoreAds = maxActiveAds === -1 || activeAdsCount < maxActiveAds;
 
@@ -205,7 +206,7 @@ export default function SellerAdvertisementsPage() {
       pricingModel: 'FIXED',
       price: 0,
       startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      endDate: new Date(Date.now() + maxAdDurationDays * 86400000).toISOString().split('T')[0],
     });
     setEditingAd(null);
   };
@@ -233,7 +234,7 @@ export default function SellerAdvertisementsPage() {
       linkText: ad.linkText || t('placeholder.learnMore'),
       placement: ad.placement,
       pricingModel: ad.pricingModel || 'FIXED',
-      price: Number((ad as any).pricePerUnit) || 0,
+      price: Number(ad.pricePerUnit) || 0,
       startDate: ad.startDate ? ad.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
       endDate: ad.endDate
         ? ad.endDate.split('T')[0]
@@ -782,21 +783,37 @@ export default function SellerAdvertisementsPage() {
                               />
                             </div>
                           </div>
-                          {formData.startDate && formData.endDate && (
-                            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                              {Math.max(
+                          {formData.startDate &&
+                            formData.endDate &&
+                            (() => {
+                              const days = Math.max(
                                 0,
                                 Math.ceil(
                                   (new Date(formData.endDate).getTime() -
                                     new Date(formData.startDate).getTime()) /
                                     86400000
                                 )
-                              )}{' '}
-                              days · {new Date(formData.startDate).toLocaleDateString()} —{' '}
-                              {new Date(formData.endDate).toLocaleDateString()}
-                            </p>
-                          )}
+                              );
+                              const overLimit = days > maxAdDurationDays;
+                              return (
+                                <div className="mt-2 space-y-1">
+                                  <p
+                                    className={`text-xs flex items-center gap-1.5 ${overLimit ? 'text-red-600 font-semibold' : 'text-gray-500'}`}
+                                  >
+                                    <Calendar
+                                      className={`w-3.5 h-3.5 ${overLimit ? 'text-red-500' : 'text-gray-400'}`}
+                                    />
+                                    {days} days · max {maxAdDurationDays} days on your plan
+                                  </p>
+                                  {overLimit && (
+                                    <p className="text-xs text-red-500">
+                                      Exceeds your plan limit. Shorten the end date or upgrade your
+                                      plan.
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })()}
                         </div>
                       </div>
 
@@ -908,7 +925,19 @@ export default function SellerAdvertisementsPage() {
                       <button
                         type="submit"
                         disabled={
-                          isSubmitting || !formData.imageUrl || !formData.title || !formData.linkUrl
+                          isSubmitting ||
+                          !formData.imageUrl ||
+                          !formData.title ||
+                          !formData.linkUrl ||
+                          !!(
+                            formData.startDate &&
+                            formData.endDate &&
+                            Math.ceil(
+                              (new Date(formData.endDate).getTime() -
+                                new Date(formData.startDate).getTime()) /
+                                86400000
+                            ) > maxAdDurationDays
+                          )
                         }
                         className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 bg-black text-[#CBB57B] rounded-xl font-bold text-sm hover:bg-neutral-900 transition-all disabled:opacity-40 disabled:cursor-not-allowed border border-[#CBB57B]/30"
                       >

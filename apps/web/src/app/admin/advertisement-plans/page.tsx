@@ -51,6 +51,7 @@ export default function AdminAdvertisementPlansPage() {
     isActive: true,
     isFeatured: false,
     displayOrder: 0,
+    maxAdDurationDays: 30,
   });
 
   // HOMEPAGE_HERO is reserved for NextPik internal use only
@@ -82,6 +83,7 @@ export default function AdminAdvertisementPlansPage() {
       isActive: true,
       isFeatured: false,
       displayOrder: 0,
+      maxAdDurationDays: 30,
     });
     setEditingPlan(null);
   };
@@ -108,6 +110,7 @@ export default function AdminAdvertisementPlansPage() {
       isActive: plan.isActive,
       isFeatured: plan.isFeatured,
       displayOrder: plan.displayOrder,
+      maxAdDurationDays: plan.maxAdDurationDays ?? 30,
     });
     setShowModal(true);
   };
@@ -478,8 +481,8 @@ export default function AdminAdvertisementPlansPage() {
                   </div>
                 </div>
 
-                {/* Trial & Display */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Trial, Duration & Display */}
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">{t('form.trialDays')}</label>
                     <input
@@ -491,6 +494,24 @@ export default function AdminAdvertisementPlansPage() {
                       className="w-full px-3 py-2 border rounded-lg"
                       min="0"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      {t('form.maxAdDuration')}
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.maxAdDurationDays}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          maxAdDurationDays: Number(e.target.value),
+                        }))
+                      }
+                      className="w-full px-3 py-2 border rounded-lg"
+                      min="1"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">{t('form.maxAdDurationHelp')}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">

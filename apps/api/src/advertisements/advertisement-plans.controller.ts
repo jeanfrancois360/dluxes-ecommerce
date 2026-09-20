@@ -59,6 +59,7 @@ export class AdvertisementPlansController {
       trialDays?: number;
       isFeatured?: boolean;
       displayOrder?: number;
+      maxAdDurationDays?: number;
     }
   ) {
     return this.plansService.createPlan(body);

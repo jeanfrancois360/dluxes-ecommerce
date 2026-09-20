@@ -46,6 +46,7 @@ export class AdvertisementPlansService {
     trialDays?: number;
     isFeatured?: boolean;
     displayOrder?: number;
+    maxAdDurationDays?: number;
   }) {
     // Check for duplicate slug
     const existing = await this.prisma.advertisementPlan.findUnique({
@@ -71,6 +72,7 @@ export class AdvertisementPlansService {
         trialDays: data.trialDays || 0,
         isFeatured: data.isFeatured || false,
         displayOrder: data.displayOrder || 0,
+        maxAdDurationDays: data.maxAdDurationDays ?? 30,
         isActive: true,
       },
     });
@@ -118,6 +120,7 @@ export class AdvertisementPlansService {
         isFeatured: true,
         isActive: true,
         displayOrder: true,
+        maxAdDurationDays: true,
       },
       orderBy: [{ displayOrder: 'asc' }, { price: 'asc' }],
     });
@@ -161,6 +164,7 @@ export class AdvertisementPlansService {
       isActive: boolean;
       isFeatured: boolean;
       displayOrder: number;
+      maxAdDurationDays: number;
     }>
   ) {
     const plan = await this.prisma.advertisementPlan.findUnique({
