@@ -16,7 +16,6 @@ import {
   User,
   MapPin,
   CreditCard,
-  MessageSquare,
   Bell,
   Settings,
   Download,
@@ -84,10 +83,7 @@ export default function BuyerSidebar({ onNavigate }: BuyerSidebarProps) {
     },
     {
       title: t('groups.communication'),
-      items: [
-        { name: t('items.messages'), href: '/account/messages', icon: MessageSquare },
-        { name: t('items.notifications'), href: '/account/notifications', icon: Bell },
-      ],
+      items: [{ name: t('items.notifications'), href: '/account/notifications', icon: Bell }],
     },
     {
       title: t('groups.settings'),

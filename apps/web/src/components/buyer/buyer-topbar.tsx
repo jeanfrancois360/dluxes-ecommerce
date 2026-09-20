@@ -16,7 +16,6 @@ import {
   LogOut,
   ChevronDown,
   Bell,
-  MessageSquare,
   ShoppingCart,
   Heart,
   Menu,
@@ -350,15 +349,6 @@ export default function BuyerTopbar({
               )}
             </AnimatePresence>
           </div>
-
-          {/* Messages */}
-          <Link
-            href="/account/messages"
-            className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
-            aria-label={t('ariaLabels.messages')}
-          >
-            <MessageSquare className="w-5 h-5 text-neutral-700" />
-          </Link>
 
           {/* User Account Menu */}
           <div className="relative" ref={accountRef}>
