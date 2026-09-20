@@ -162,6 +162,27 @@ export default function SellerAdvertisementsPage() {
   const [editingAd, setEditingAd] = useState<AdvertisementDetail | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isDraggingAd, setIsDraggingAd] = useState(false);
+
+  const handleAdImageFile = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB. Please compress or resize it first.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await api.post('/upload/image?folder=advertisements', fd);
+      const url = res?.data?.url ?? res?.url;
+      if (url) setFormData((prev) => ({ ...prev, imageUrl: url }));
+      else toast.error('Upload failed — try a smaller image');
+    } catch {
+      toast.error('Upload failed — try a smaller image (under 5MB)');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const [formData, setFormData] = useState<CreateAdvertisementDto>({
     title: '',
@@ -657,7 +678,22 @@ export default function SellerAdvertisementsPage() {
                                 </div>
                               ) : (
                                 <label
-                                  className={`flex flex-col items-center justify-center w-full border-2 border-dashed border-gray-300 hover:border-[#CBB57B] rounded-xl cursor-pointer transition-colors bg-gray-50 hover:bg-[#CBB57B]/5 group ${isBanner ? 'aspect-[5/1]' : 'h-48'}`}
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    setIsDraggingAd(true);
+                                  }}
+                                  onDragLeave={() => setIsDraggingAd(false)}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    setIsDraggingAd(false);
+                                    const file = e.dataTransfer.files?.[0];
+                                    if (file) handleAdImageFile(file);
+                                  }}
+                                  className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-xl cursor-pointer transition-colors group ${
+                                    isDraggingAd
+                                      ? 'border-[#CBB57B] bg-[#CBB57B]/10'
+                                      : 'border-gray-300 hover:border-[#CBB57B] bg-gray-50 hover:bg-[#CBB57B]/5'
+                                  } ${isBanner ? 'aspect-[5/1]' : 'h-48'}`}
                                 >
                                   {uploading ? (
                                     <Loader2 className="w-8 h-8 text-[#CBB57B] animate-spin" />
@@ -665,7 +701,9 @@ export default function SellerAdvertisementsPage() {
                                     <>
                                       <Upload className="w-8 h-8 text-gray-400 group-hover:text-[#CBB57B] transition-colors mb-2" />
                                       <p className="text-sm font-medium text-gray-600 group-hover:text-[#CBB57B]">
-                                        Click to upload
+                                        {isDraggingAd
+                                          ? 'Drop image here'
+                                          : 'Drop image here or click to upload'}
                                       </p>
                                       <p className="text-xs text-gray-400 mt-1">
                                         Recommended: {pc.imageSize} · Max 5MB
@@ -676,34 +714,9 @@ export default function SellerAdvertisementsPage() {
                                     type="file"
                                     accept="image/jpeg,image/png,image/webp"
                                     className="hidden"
-                                    onChange={async (e) => {
+                                    onChange={(e) => {
                                       const file = e.target.files?.[0];
-                                      if (!file) return;
-                                      if (file.size > 5 * 1024 * 1024) {
-                                        toast.error(
-                                          'Image must be under 5MB. Please compress or resize it first.'
-                                        );
-                                        return;
-                                      }
-                                      setUploading(true);
-                                      try {
-                                        const fd = new FormData();
-                                        fd.append('image', file);
-                                        const res = await api.post(
-                                          '/upload/image?folder=advertisements',
-                                          fd
-                                        );
-                                        const url = res?.data?.url ?? res?.url;
-                                        if (url)
-                                          setFormData((prev) => ({ ...prev, imageUrl: url }));
-                                        else toast.error('Upload failed — try a smaller image');
-                                      } catch {
-                                        toast.error(
-                                          'Upload failed — try a smaller image (under 5MB)'
-                                        );
-                                      } finally {
-                                        setUploading(false);
-                                      }
+                                      if (file) handleAdImageFile(file);
                                     }}
                                   />
                                 </label>
