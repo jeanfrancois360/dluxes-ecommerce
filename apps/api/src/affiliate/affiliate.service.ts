@@ -663,6 +663,10 @@ export class AffiliateService {
     return this.awinFeedService.listAvailableFeeds();
   }
 
+  async cleanupDuplicates() {
+    return this.awinFeedService.cleanupDuplicates();
+  }
+
   async listFeedSyncs(query: { advertiserId?: string; limit?: number; page?: number }) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;

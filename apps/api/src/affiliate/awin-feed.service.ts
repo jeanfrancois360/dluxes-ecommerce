@@ -449,6 +449,107 @@ export class AwinFeedService {
     return `${slug}-${rand}`;
   }
 
+  // ============================================================================
+  // PUBLIC — duplicate cleanup (for existing production data)
+  // ============================================================================
+
+  /**
+   * Find and remove duplicate affiliate products.
+   * Keeps the oldest record (first created) for each (advertiserId, merchantProductId) pair.
+   * Also deduplicates by matching title + advertiser for products with NULL merchantProductId.
+   * Returns count of duplicates removed.
+   */
+  async cleanupDuplicates(): Promise<{ duplicatesRemoved: number; details: string[] }> {
+    const details: string[] = [];
+    let totalRemoved = 0;
+
+    // 1. Find duplicates by (advertiserId, merchantProductId) where merchantProductId is NOT NULL
+    const feedDuplicates: Array<{ advertiserId: string; merchantProductId: string; cnt: string }> =
+      await this.prisma.$queryRaw`
+        SELECT "advertiserId", "merchantProductId", COUNT(*)::text as cnt
+        FROM affiliate_products
+        WHERE "merchantProductId" IS NOT NULL
+        GROUP BY "advertiserId", "merchantProductId"
+        HAVING COUNT(*) > 1
+      `;
+
+    for (const dup of feedDuplicates) {
+      const products = await this.prisma.affiliateProduct.findMany({
+        where: {
+          advertiserId: dup.advertiserId,
+          merchantProductId: dup.merchantProductId,
+        },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, slug: true, createdAt: true },
+      });
+
+      // Keep the first (oldest), delete the rest
+      const toDelete = products.slice(1);
+      for (const product of toDelete) {
+        // Delete translations first (FK constraint)
+        await this.prisma.affiliateProductTranslation.deleteMany({
+          where: { affiliateProductId: product.id },
+        });
+        await this.prisma.affiliateProduct.delete({
+          where: { id: product.id },
+        });
+        totalRemoved++;
+      }
+
+      details.push(
+        `merchantProductId="${dup.merchantProductId}": removed ${toDelete.length} duplicate(s), kept oldest`
+      );
+    }
+
+    // 2. Find duplicates by (advertiserId, title) for products with NULL merchantProductId
+    const manualDuplicates: Array<{ advertiserId: string; title: string; cnt: string }> = await this
+      .prisma.$queryRaw`
+        SELECT ap."advertiserId", t.title, COUNT(*)::text as cnt
+        FROM affiliate_products ap
+        JOIN affiliate_product_translations t ON t."affiliateProductId" = ap.id AND t.locale = 'en'
+        WHERE ap."merchantProductId" IS NULL
+        GROUP BY ap."advertiserId", t.title
+        HAVING COUNT(*) > 1
+      `;
+
+    for (const dup of manualDuplicates) {
+      const products = await this.prisma.affiliateProduct.findMany({
+        where: {
+          advertiserId: dup.advertiserId,
+          merchantProductId: null,
+          translations: { some: { locale: 'en', title: dup.title } },
+        },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, slug: true, createdAt: true },
+      });
+
+      const toDelete = products.slice(1);
+      for (const product of toDelete) {
+        await this.prisma.affiliateProductTranslation.deleteMany({
+          where: { affiliateProductId: product.id },
+        });
+        await this.prisma.affiliateProduct.delete({
+          where: { id: product.id },
+        });
+        totalRemoved++;
+      }
+
+      if (toDelete.length > 0) {
+        details.push(
+          `manual product "${dup.title}": removed ${toDelete.length} duplicate(s), kept oldest`
+        );
+      }
+    }
+
+    this.logger.log(`Duplicate cleanup complete: removed ${totalRemoved} duplicates`);
+
+    return { duplicatesRemoved: totalRemoved, details };
+  }
+
+  // ============================================================================
+  // PRIVATE — helpers
+  // ============================================================================
+
   private async writeSyncAudit(data: {
     advertiserId: string;
     awinMerchantId: string;

@@ -411,6 +411,20 @@ export class AffiliateController {
   }
 
   /**
+   * POST /affiliate/admin/feeds/cleanup-duplicates
+   * Find and remove duplicate affiliate products from the database (ADMIN).
+   * Keeps the oldest record for each duplicate group.
+   */
+  @Post('admin/feeds/cleanup-duplicates')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @HttpCode(HttpStatus.OK)
+  async cleanupDuplicates() {
+    const result = await this.affiliateService.cleanupDuplicates();
+    return { success: true, data: result };
+  }
+
+  /**
    * GET /affiliate/admin/feeds
    * List all available Awin product feeds (live from Awin API) (ADMIN).
    */

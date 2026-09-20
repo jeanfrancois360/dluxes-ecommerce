@@ -486,6 +486,11 @@ const triggerFeedSync = async (awinMerchantId?: string) =>
     awinMerchantId ? { awinMerchantId } : {}
   );
 
+const cleanupDuplicates = async () =>
+  api.post<{ duplicatesRemoved: number; details: string[] }>(
+    '/affiliate/admin/feeds/cleanup-duplicates'
+  );
+
 const listFeedSyncs = async (params?: { advertiserId?: string; page?: number; limit?: number }) =>
   api.get<PaginatedResponse<AwinFeedSync>>(
     `/affiliate/admin/feeds/history${buildQueryString(params)}`
@@ -544,5 +549,6 @@ export const affiliateApi = {
   // Admin feed sync
   listFeeds,
   triggerFeedSync,
+  cleanupDuplicates,
   listFeedSyncs,
 };
