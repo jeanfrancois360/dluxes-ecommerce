@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: User@123!
       POSTGRES_DB: nextpik_ecommerce
     ports:
-      - '5433:5432'
+      - '127.0.0.1:5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,12 +25,13 @@ services:
     image: redis:7-alpine
     container_name: nextpik-redis
     restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-nextpik_redis_secret}
     ports:
-      - '6379:6379'
+      - '127.0.0.1:6379:6379'
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-nextpik_redis_secret}', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,7 +42,7 @@ services:
     container_name: nextpik-meilisearch
     restart: unless-stopped
     ports:
-      - '7700:7700'
+      - '127.0.0.1:7700:7700'
     environment:
       MEILI_MASTER_KEY: masterKey
       MEILI_ENV: development
