@@ -522,6 +522,24 @@ function FeedSyncsContent() {
   const [advertiserSyncResults, setAdvertiserSyncResults] = useState<
     Record<string, FeedSyncResult>
   >({});
+  const [cleaningUp, setCleaningUp] = useState(false);
+
+  const handleCleanupDuplicates = useCallback(async () => {
+    setCleaningUp(true);
+    try {
+      const result = await affiliateApi.cleanupDuplicates();
+      if (result.duplicatesRemoved > 0) {
+        toast.success(`Removed ${result.duplicatesRemoved} duplicate product(s)`);
+      } else {
+        toast.info('No duplicates found');
+      }
+      refetchAll();
+    } catch (err) {
+      toast.error('Failed to cleanup duplicates');
+    } finally {
+      setCleaningUp(false);
+    }
+  }, [refetchAll]);
 
   const handleSyncAll = useCallback(async () => {
     setSyncingAll(true);
@@ -574,14 +592,23 @@ function FeedSyncsContent() {
             Automated Awin product feed ingestion · nightly at 02:00 Paris time
           </p>
         </div>
-        <button
-          onClick={handleSyncAll}
-          disabled={syncingAll || !!syncingMerchant}
-          className="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors flex-shrink-0"
-        >
-          <RefreshCw className={`w-4 h-4 ${syncingAll ? 'animate-spin' : ''}`} />
-          {syncingAll ? 'Syncing…' : 'Sync All Feeds'}
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={handleCleanupDuplicates}
+            disabled={cleaningUp || syncingAll}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-xl text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            {cleaningUp ? 'Cleaning…' : 'Remove Duplicates'}
+          </button>
+          <button
+            onClick={handleSyncAll}
+            disabled={syncingAll || !!syncingMerchant}
+            className="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncingAll ? 'animate-spin' : ''}`} />
+            {syncingAll ? 'Syncing…' : 'Sync All Feeds'}
+          </button>
+        </div>
       </div>
 
       {/* ------------------------------------------------------------------ */}
