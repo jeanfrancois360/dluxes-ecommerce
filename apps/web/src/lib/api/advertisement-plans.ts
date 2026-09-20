@@ -41,6 +41,7 @@ export interface AdPlanSubscription {
 export interface SubscribeToPlanDto {
   planSlug: string;
   billingPeriod?: 'MONTHLY' | 'YEARLY';
+  trialDays?: number;
 }
 
 // API Methods
