@@ -271,8 +271,36 @@ export class AdvertisementPlansService {
 
     const priceInDollars = plan.price.toNumber();
 
-    // Free plans: activate immediately without Stripe
-    if (priceInDollars === 0 || plan.billingPeriod === PlanBillingPeriod.FREE) {
+    // All plans require Stripe Checkout (card capture mandatory)
+    const user = await this.prisma.user.findUnique({
+      where: { id: sellerId },
+      select: { email: true, firstName: true, lastName: true, stripeCustomerId: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const stripe = this.getStripe();
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+
+    // Map billing period to Stripe recurring interval
+    const intervalMap: Record<string, Stripe.Price.Recurring.Interval> = {
+      WEEKLY: 'week',
+      MONTHLY: 'month',
+      QUARTERLY: 'month',
+      YEARLY: 'year',
+    };
+    const stripeInterval = intervalMap[plan.billingPeriod] || 'month';
+    const intervalCount = plan.billingPeriod === 'QUARTERLY' ? 3 : 1;
+
+    // Determine trial days
+    const trialDays = plan.trialDays > 0 ? plan.trialDays : 0;
+    const isFreeWithTrial =
+      (priceInDollars === 0 || plan.billingPeriod === PlanBillingPeriod.FREE) && trialDays === 0;
+
+    // Permanently free plans (no price, no trial): activate immediately without Stripe
+    if (isFreeWithTrial) {
       const now = new Date();
       const periodEnd = this.calculatePeriodEnd(plan.billingPeriod, now);
 
@@ -293,21 +321,25 @@ export class AdvertisementPlansService {
       return { subscription, checkoutUrl: null };
     }
 
-    // Paid plans: create Stripe Checkout Session
-    const user = await this.prisma.user.findUnique({
-      where: { id: sellerId },
-      select: { email: true, firstName: true, lastName: true },
-    });
+    // For plans with a price OR with trial days: create Stripe Checkout Session
+    // Use the higher of plan price or a minimum ($1) for Stripe recurring price
+    const stripeUnitAmount = priceInDollars > 0 ? Math.round(priceInDollars * 100) : 100;
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+    // Build subscription_data with optional trial
+    const subscriptionData: Stripe.Checkout.SessionCreateParams['subscription_data'] = {
+      metadata: {
+        type: 'ad_plan_subscription',
+        sellerId,
+        planId,
+      },
+    };
+
+    if (trialDays > 0) {
+      subscriptionData.trial_period_days = trialDays;
     }
 
-    const stripe = this.getStripe();
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
-
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
+      mode: 'subscription',
       customer_email: user.email,
       line_items: [
         {
@@ -319,7 +351,11 @@ export class AdvertisementPlansService {
                 plan.description ||
                 `${plan.name} advertising plan — ${plan.billingPeriod.toLowerCase()} billing`,
             },
-            unit_amount: Math.round(priceInDollars * 100),
+            unit_amount: stripeUnitAmount,
+            recurring: {
+              interval: stripeInterval,
+              interval_count: intervalCount,
+            },
           },
           quantity: 1,
         },
@@ -331,13 +367,15 @@ export class AdvertisementPlansService {
         planName: plan.name,
         billingPeriod: plan.billingPeriod,
         autoRenew: autoRenew.toString(),
+        ...(trialDays > 0 ? { trialDays: trialDays.toString() } : {}),
       },
+      subscription_data: subscriptionData,
       success_url: `${frontendUrl}/seller/advertisement-plans?subscribed=true`,
       cancel_url: `${frontendUrl}/seller/advertisement-plans?canceled=true`,
     });
 
     this.logger.log(
-      `Created Stripe Checkout for seller ${sellerId}, plan '${plan.name}', session ${session.id}`
+      `Created Stripe subscription checkout for seller ${sellerId}, plan '${plan.name}', session ${session.id}${trialDays > 0 ? ` (${trialDays}-day trial)` : ''}`
     );
 
     return { subscription: null, checkoutUrl: session.url };

@@ -152,7 +152,8 @@ export class StripeSubscriptionService {
   async createCheckoutSession(
     userId: string,
     planId: string,
-    billingCycle: BillingCycle
+    billingCycle: BillingCycle,
+    trialDays?: number
   ): Promise<{ sessionId: string; url: string }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -174,11 +175,6 @@ export class StripeSubscriptionService {
       throw new BadRequestException('Plan is not available');
     }
 
-    // Free plan doesn't need Stripe checkout
-    if (Number(plan.monthlyPrice) === 0) {
-      throw new BadRequestException('Free plan does not require payment');
-    }
-
     // Get Stripe price ID
     const priceId =
       billingCycle === BillingCycle.YEARLY ? plan.stripePriceIdYearly : plan.stripePriceIdMonthly;
@@ -194,7 +190,19 @@ export class StripeSubscriptionService {
     const stripe = await this.getStripeClient();
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3001';
 
-    // Create checkout session
+    // Build subscription_data with optional trial period
+    const subscriptionData: Stripe.Checkout.SessionCreateParams['subscription_data'] = {
+      metadata: {
+        userId,
+        planId,
+      },
+    };
+
+    if (trialDays && trialDays > 0) {
+      subscriptionData.trial_period_days = trialDays;
+    }
+
+    // Create checkout session — card is always captured (even for trials)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
@@ -209,19 +217,17 @@ export class StripeSubscriptionService {
         userId,
         planId,
         billingCycle,
+        ...(trialDays ? { trialDays: trialDays.toString() } : {}),
       },
-      subscription_data: {
-        metadata: {
-          userId,
-          planId,
-        },
-      },
+      subscription_data: subscriptionData,
       success_url: `${frontendUrl}/seller/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${frontendUrl}/seller/subscription/cancel`,
       allow_promotion_codes: true,
     });
 
-    this.logger.log(`Created checkout session ${session.id} for user ${userId}, plan ${plan.name}`);
+    this.logger.log(
+      `Created checkout session ${session.id} for user ${userId}, plan ${plan.name}${trialDays ? ` (${trialDays}-day trial)` : ''}`
+    );
 
     return {
       sessionId: session.id,
