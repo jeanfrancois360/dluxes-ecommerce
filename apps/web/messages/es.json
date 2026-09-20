@@ -3579,6 +3579,8 @@
       "maxImpressionsHelp": "0 para ilimitado",
       "priorityBoost": "Impulso de Prioridad",
       "trialDays": "Días de Prueba",
+      "maxAdDuration": "Duración Máx (días)",
+      "maxAdDurationHelp": "Días máx por anuncio",
       "displayOrder": "Orden de Visualización",
       "allowedPlacements": "Ubicaciones Permitidas",
       "isActive": "Activo",
@@ -3589,16 +3591,16 @@
       "submitting": "Guardando..."
     },
     "placements": {
-      "HOMEPAGE_HERO": "HÉROE PÁGINA PRINCIPAL",
-      "HOMEPAGE_FEATURED": "DESTACADO PÁGINA PRINCIPAL",
-      "HOMEPAGE_SIDEBAR": "BARRA LATERAL PÁGINA PRINCIPAL",
-      "PRODUCTS_BANNER": "BANNER PRODUCTOS",
-      "PRODUCTS_INLINE": "PRODUCTOS EN LÍNEA",
-      "PRODUCTS_SIDEBAR": "BARRA LATERAL PRODUCTOS",
-      "CATEGORY_BANNER": "BANNER CATEGORÍA",
-      "PRODUCT_DETAIL_SIDEBAR": "BARRA LATERAL DETALLE PRODUCTO",
-      "CHECKOUT_UPSELL": "VENTA ADICIONAL CHECKOUT",
-      "SEARCH_RESULTS": "RESULTADOS DE BÚSQUEDA"
+      "HOMEPAGE_HERO": "Banner principal (reservado)",
+      "HOMEPAGE_FEATURED": "Banner de inicio",
+      "HOMEPAGE_SIDEBAR": "Barra lateral de inicio",
+      "PRODUCTS_BANNER": "Banner de productos",
+      "PRODUCTS_INLINE": "Inicio en línea",
+      "PRODUCTS_SIDEBAR": "Barra lateral de productos",
+      "CATEGORY_BANNER": "Banner de categoría",
+      "PRODUCT_DETAIL_SIDEBAR": "Barra lateral de producto",
+      "CHECKOUT_UPSELL": "Venta adicional en pago",
+      "SEARCH_RESULTS": "Búsqueda patrocinada"
     },
     "messages": {
       "deleteConfirm": "¿Está seguro de que desea eliminar este plan?",

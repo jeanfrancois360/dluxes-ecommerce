@@ -3149,6 +3149,8 @@
       "maxImpressionsHelp": "0 pour illimité",
       "priorityBoost": "Boost de Priorité",
       "trialDays": "Jours d'Essai",
+      "maxAdDuration": "Durée Max (jours)",
+      "maxAdDurationHelp": "Jours max par annonce",
       "displayOrder": "Ordre d'Affichage",
       "allowedPlacements": "Emplacements Autorisés",
       "isActive": "Actif",
@@ -3159,16 +3161,16 @@
       "submitting": "Enregistrement..."
     },
     "placements": {
-      "HOMEPAGE_HERO": "HÉROS PAGE D'ACCUEIL",
-      "HOMEPAGE_FEATURED": "EN VEDETTE PAGE D'ACCUEIL",
-      "HOMEPAGE_SIDEBAR": "BARRE LATÉRALE PAGE D'ACCUEIL",
-      "PRODUCTS_BANNER": "BANNIÈRE PRODUITS",
-      "PRODUCTS_INLINE": "PRODUITS EN LIGNE",
-      "PRODUCTS_SIDEBAR": "BARRE LATÉRALE PRODUITS",
-      "CATEGORY_BANNER": "BANNIÈRE CATÉGORIE",
-      "PRODUCT_DETAIL_SIDEBAR": "BARRE LATÉRALE DÉTAILS PRODUIT",
-      "CHECKOUT_UPSELL": "VENTE INCITATIVE PAIEMENT",
-      "SEARCH_RESULTS": "RÉSULTATS DE RECHERCHE"
+      "HOMEPAGE_HERO": "Bannière principale (réservé)",
+      "HOMEPAGE_FEATURED": "Bannière d'accueil",
+      "HOMEPAGE_SIDEBAR": "Barre latérale d'accueil",
+      "PRODUCTS_BANNER": "Bannière produits",
+      "PRODUCTS_INLINE": "Accueil en ligne",
+      "PRODUCTS_SIDEBAR": "Barre latérale produits",
+      "CATEGORY_BANNER": "Bannière catégorie",
+      "PRODUCT_DETAIL_SIDEBAR": "Barre latérale produit",
+      "CHECKOUT_UPSELL": "Vente incitative caisse",
+      "SEARCH_RESULTS": "Recherche sponsorisée"
     },
     "messages": {
       "deleteConfirm": "Êtes-vous sûr de vouloir supprimer ce plan ?",

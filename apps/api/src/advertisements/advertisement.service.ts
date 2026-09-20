@@ -102,6 +102,19 @@ export class AdvertisementService {
       );
     }
 
+    // Enforce max ad duration from plan
+    const maxDays = subscription.plan.maxAdDurationDays || 30;
+    if (dto.startDate && dto.endDate) {
+      const start = new Date(dto.startDate);
+      const end = new Date(dto.endDate);
+      const durationDays = Math.ceil((end.getTime() - start.getTime()) / 86400000);
+      if (durationDays > maxDays) {
+        throw new BadRequestException(
+          `Your "${subscription.plan.name}" plan allows ads up to ${maxDays} days. You requested ${durationDays} days.`
+        );
+      }
+    }
+
     // Check max active ads limit
     if (subscription.plan.maxActiveAds !== -1) {
       const activeAdsCount = await this.prisma.advertisement.count({
@@ -195,6 +208,25 @@ export class AdvertisementService {
       }
     }
 
+    // Enforce max ad duration on date changes
+    if ((dto.startDate || dto.endDate) && !isAdmin) {
+      const subscription = await this.prisma.sellerPlanSubscription.findFirst({
+        where: { sellerId: ad.advertiserId, status: { in: ['ACTIVE', 'TRIAL'] } },
+        include: { plan: true },
+      });
+      if (subscription) {
+        const maxDays = subscription.plan.maxAdDurationDays || 30;
+        const start = new Date(dto.startDate || ad.startDate);
+        const end = new Date(dto.endDate || ad.endDate);
+        const durationDays = Math.ceil((end.getTime() - start.getTime()) / 86400000);
+        if (durationDays > maxDays) {
+          throw new BadRequestException(
+            `Your "${subscription.plan.name}" plan allows ads up to ${maxDays} days. You requested ${durationDays} days.`
+          );
+        }
+      }
+    }
+
     const updateData: any = { ...dto };
     if (dto.startDate) updateData.startDate = new Date(dto.startDate);
     if (dto.endDate) updateData.endDate = new Date(dto.endDate);
@@ -206,9 +238,6 @@ export class AdvertisementService {
       updateData.position = dto.priority;
       delete updateData.priority;
     }
-    // Remove fields that don't exist on the Advertisement model
-    delete updateData.budget;
-
     return this.prisma.advertisement.update({
       where: { id },
       data: updateData,

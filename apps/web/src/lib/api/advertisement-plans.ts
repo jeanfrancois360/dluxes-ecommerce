@@ -17,6 +17,7 @@ export interface AdvertisementPlan {
   isActive: boolean;
   isFeatured: boolean;
   displayOrder: number;
+  maxAdDurationDays: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -27,16 +27,16 @@ import {
 } from 'lucide-react';
 
 const PLACEMENT_LABELS: Record<string, string> = {
-  HOMEPAGE_HERO: 'Homepage Hero (Reserved)',
-  HOMEPAGE_FEATURED: 'Homepage — After Featured',
-  HOMEPAGE_SIDEBAR: 'Homepage — Sidebar',
-  PRODUCTS_BANNER: 'Products Page — Banner',
-  PRODUCTS_INLINE: 'Homepage — After New Arrivals',
-  PRODUCTS_SIDEBAR: 'Products Page — Sidebar',
-  CATEGORY_BANNER: 'Category Page — Banner',
-  PRODUCT_DETAIL_SIDEBAR: 'Product Page — Sidebar',
-  CHECKOUT_UPSELL: 'Checkout — Upsell',
-  SEARCH_RESULTS: 'Search — Sponsored',
+  HOMEPAGE_HERO: 'Homepage hero (reserved)',
+  HOMEPAGE_FEATURED: 'Homepage banner',
+  HOMEPAGE_SIDEBAR: 'Homepage sidebar',
+  PRODUCTS_BANNER: 'Products page banner',
+  PRODUCTS_INLINE: 'Homepage inline',
+  PRODUCTS_SIDEBAR: 'Products page sidebar',
+  CATEGORY_BANNER: 'Category page banner',
+  PRODUCT_DETAIL_SIDEBAR: 'Product page sidebar',
+  CHECKOUT_UPSELL: 'Checkout upsell',
+  SEARCH_RESULTS: 'Search sponsored',
 };
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
