@@ -116,6 +116,7 @@ function CreatePostForm({
   onCancel: () => void;
 }) {
   const [imageUploading, setImageUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const handleCoverFile = async (file: File) => {
@@ -164,7 +165,25 @@ function CreatePostForm({
       {/* Cover image */}
       <div>
         <label className={labelCls}>Cover image</label>
-        <div className="flex items-start gap-3">
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file) handleCoverFile(file);
+          }}
+          onClick={() => !imageUploading && imageInputRef.current?.click()}
+          className={`flex items-center gap-4 p-4 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+            isDragging
+              ? 'border-[#CBB57B] bg-[#CBB57B]/5'
+              : 'border-gray-300 hover:border-[#CBB57B] hover:bg-gray-50'
+          } ${imageUploading ? 'pointer-events-none opacity-60' : ''}`}
+        >
           <div className="w-16 h-16 min-w-[64px] bg-neutral-100 rounded-lg overflow-hidden flex items-center justify-center ring-1 ring-neutral-200 flex-shrink-0">
             {data.coverImageUrl ? (
               <img
@@ -180,32 +199,27 @@ function CreatePostForm({
             )}
           </div>
           <div className="flex-1">
-            <button
-              type="button"
-              onClick={() => imageInputRef.current?.click()}
-              disabled={imageUploading}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-            >
+            <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <Upload className="w-4 h-4" />
               {imageUploading
                 ? 'Uploading…'
                 : data.coverImageUrl
-                  ? 'Replace image'
-                  : 'Upload image'}
-            </button>
+                  ? 'Drop to replace or click'
+                  : 'Drop image here or click to upload'}
+            </p>
             <p className="mt-1 text-xs text-gray-400">JPEG, PNG, WebP or GIF · max 5MB</p>
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleCoverFile(file);
-                e.target.value = '';
-              }}
-            />
           </div>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleCoverFile(file);
+              e.target.value = '';
+            }}
+          />
         </div>
       </div>
 

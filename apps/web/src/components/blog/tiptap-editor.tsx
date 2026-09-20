@@ -86,6 +86,25 @@ function Separator() {
 export function TiptapEditor({ value, onChange, placeholder, uploadImage }: TiptapEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
+  const [isDragging, setIsDragging] = React.useState(false);
+
+  const handleDropImage = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file || !uploadImage || !editor) return;
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) return;
+    if (file.size > 5 * 1024 * 1024) return;
+    setUploading(true);
+    try {
+      const src = await uploadImage(file);
+      editor.chain().focus().setImage({ src, alt: file.name }).run();
+    } catch {
+      alert('Image upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const editor = useEditor({
     extensions: [
@@ -181,7 +200,21 @@ export function TiptapEditor({ value, onChange, placeholder, uploadImage }: Tipt
   if (!editor) return null;
 
   return (
-    <div className="border border-neutral-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+    <div
+      onDragOver={
+        uploadImage
+          ? (e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }
+          : undefined
+      }
+      onDragLeave={uploadImage ? () => setIsDragging(false) : undefined}
+      onDrop={uploadImage ? handleDropImage : undefined}
+      className={`border rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-colors ${
+        isDragging ? 'border-[#CBB57B] bg-[#CBB57B]/5' : 'border-neutral-300'
+      }`}
+    >
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-neutral-200 bg-neutral-50">
         {/* History */}

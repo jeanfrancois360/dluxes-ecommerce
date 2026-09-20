@@ -172,6 +172,7 @@ export default function BecomeSellerPage() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [isDraggingDoc, setIsDraggingDoc] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<FormData>({
@@ -837,11 +838,33 @@ export default function BecomeSellerPage() {
                         </button>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploadingDoc}
-                        className="w-full flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-neutral-300 rounded-xl hover:border-[#CBB57B] transition-colors cursor-pointer disabled:opacity-50"
+                      <div
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsDraggingDoc(true);
+                        }}
+                        onDragLeave={() => setIsDraggingDoc(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsDraggingDoc(false);
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) {
+                            const dt = new DataTransfer();
+                            dt.items.add(file);
+                            if (fileInputRef.current) {
+                              fileInputRef.current.files = dt.files;
+                              fileInputRef.current.dispatchEvent(
+                                new Event('change', { bubbles: true })
+                              );
+                            }
+                          }
+                        }}
+                        onClick={() => !isUploadingDoc && fileInputRef.current?.click()}
+                        className={`w-full flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed rounded-xl transition-colors cursor-pointer ${
+                          isDraggingDoc
+                            ? 'border-[#CBB57B] bg-[#CBB57B]/5'
+                            : 'border-neutral-300 hover:border-[#CBB57B]'
+                        } ${isUploadingDoc ? 'opacity-50 pointer-events-none' : ''}`}
                       >
                         {isUploadingDoc ? (
                           <Loader2 className="w-8 h-8 animate-spin text-[#CBB57B]" />
@@ -850,13 +873,13 @@ export default function BecomeSellerPage() {
                         )}
                         <div className="text-center">
                           <p className="text-sm font-medium text-neutral-700">
-                            {isUploadingDoc ? 'Uploading...' : 'Click to upload document'}
+                            {isUploadingDoc ? 'Uploading...' : 'Drop file here or click to upload'}
                           </p>
                           <p className="text-xs text-neutral-400 mt-1">
                             JPG, PNG, WebP, or PDF — max 10MB
                           </p>
                         </div>
-                      </button>
+                      </div>
                     )}
                     <input
                       ref={fileInputRef}
