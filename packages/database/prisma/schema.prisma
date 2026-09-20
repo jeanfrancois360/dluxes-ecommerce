@@ -2962,9 +2962,10 @@ model AdvertisementPlan {
   description String? @db.Text
 
   // Features
-  maxActiveAds   Int  @default(1)
-  maxImpressions Int? // null = unlimited
-  priorityBoost  Int  @default(0) // 0-10 priority boost
+  maxActiveAds      Int  @default(1)
+  maxImpressions    Int? // null = unlimited
+  maxAdDurationDays Int  @default(30) // Max days a single ad can run
+  priorityBoost     Int  @default(0) // 0-10 priority boost
 
   // Placement Access
   allowedPlacements Json // Array of allowed AdPlacement enum values
