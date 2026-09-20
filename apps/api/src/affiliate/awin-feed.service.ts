@@ -29,6 +29,7 @@ export interface AllFeedsSyncSummary {
 @Injectable()
 export class AwinFeedService {
   private readonly logger = new Logger(AwinFeedService.name);
+  private readonly syncingAdvertisers = new Set<string>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -162,9 +163,38 @@ export class AwinFeedService {
     awinMerchantId: string,
     advertiserName: string
   ): Promise<FeedSyncResult> {
+    // Prevent concurrent syncs for the same advertiser
+    if (this.syncingAdvertisers.has(advertiserId)) {
+      this.logger.warn(`Sync already in progress for ${advertiserName} — skipping`);
+      return {
+        advertiserId,
+        awinMerchantId,
+        feedId: null,
+        productsUpserted: 0,
+        productsSkipped: 0,
+        errors: 0,
+        status: 'skipped',
+        errorDetail: 'Sync already in progress for this advertiser',
+      };
+    }
+
+    this.syncingAdvertisers.add(advertiserId);
     const startedAt = new Date();
     this.logger.log(`Syncing enhanced feed for advertiser ${advertiserName} (${awinMerchantId})`);
 
+    try {
+      return await this.doSyncOneFeed(advertiserId, awinMerchantId, advertiserName, startedAt);
+    } finally {
+      this.syncingAdvertisers.delete(advertiserId);
+    }
+  }
+
+  private async doSyncOneFeed(
+    advertiserId: string,
+    awinMerchantId: string,
+    advertiserName: string,
+    startedAt: Date
+  ): Promise<FeedSyncResult> {
     let products: AwinFeedProduct[];
     try {
       products = await this.awinClient.fetchEnhancedFeed(awinMerchantId, DEFAULT_FEED_LOCALES);
@@ -172,7 +202,6 @@ export class AwinFeedService {
       const detail = err instanceof Error ? err.message : String(err);
       this.logger.error(`Feed download failed for ${advertiserName}: ${detail}`);
 
-      // "No working feed found" means the advertiser has no feed in any locale — treat as skipped.
       const isNoFeed = detail.includes('No working feed found');
       await this.writeSyncAudit({
         advertiserId,
@@ -201,12 +230,20 @@ export class AwinFeedService {
     let upserted = 0;
     let skipped = 0;
     let errors = 0;
+    const seenMerchantProductIds = new Set<string>();
 
     for (const row of products) {
       if (!row.merchantProductId || !row.awDeepLink) {
         skipped++;
         continue;
       }
+
+      // Skip in-feed duplicates (same merchantProductId appearing multiple times in one feed)
+      if (seenMerchantProductIds.has(row.merchantProductId)) {
+        skipped++;
+        continue;
+      }
+      seenMerchantProductIds.add(row.merchantProductId);
 
       try {
         await this.upsertFeedProduct(advertiserId, advertiserName, row);
@@ -217,6 +254,34 @@ export class AwinFeedService {
           `Failed to upsert product ${row.merchantProductId} for ${advertiserName}: ${msg}`
         );
         errors++;
+      }
+    }
+
+    // Deactivate orphaned products: products from this advertiser's feed
+    // that were NOT in the current feed (removed from catalog)
+    let orphansDeactivated = 0;
+    if (seenMerchantProductIds.size > 0) {
+      try {
+        const result = await this.prisma.affiliateProduct.updateMany({
+          where: {
+            advertiserId,
+            fulfillmentSource: AffiliateFulfillmentSource.FEED,
+            merchantProductId: { notIn: Array.from(seenMerchantProductIds) },
+            isActive: true,
+            deletedAt: null,
+          },
+          data: { isActive: false },
+        });
+        orphansDeactivated = result.count;
+        if (orphansDeactivated > 0) {
+          this.logger.log(
+            `Deactivated ${orphansDeactivated} orphaned feed products for ${advertiserName}`
+          );
+        }
+      } catch (err: unknown) {
+        this.logger.warn(
+          `Failed to deactivate orphans for ${advertiserName}: ${err instanceof Error ? err.message : String(err)}`
+        );
       }
     }
 
@@ -236,7 +301,7 @@ export class AwinFeedService {
     });
 
     this.logger.log(
-      `Feed sync for ${advertiserName}: upserted=${upserted} skipped=${skipped} errors=${errors}`
+      `Feed sync for ${advertiserName}: upserted=${upserted} skipped=${skipped} errors=${errors} orphans=${orphansDeactivated}`
     );
 
     return {
@@ -257,13 +322,10 @@ export class AwinFeedService {
   ): Promise<void> {
     const imageUrl = row.awImageUrl || row.merchantImageUrl;
     if (!imageUrl) {
-      // Products without any image are not surfaceable — skip.
       return;
     }
 
-    // Quality gate: skip products where title === description.
-    // This is a reliable signal of bad feed data (e.g. Voghion test catalog
-    // sends the raw SKU code as both fields). Real products never do this.
+    // Quality gate: skip products where title === description (bad feed data).
     const titleTrimmed = row.productName.trim();
     const descTrimmed = row.description.trim();
     if (titleTrimmed && descTrimmed && titleTrimmed === descTrimmed) {
@@ -281,16 +343,7 @@ export class AwinFeedService {
     const inStock = /^(yes|1|true|in_stock)$/i.test(row.inStock);
     const currency = (row.currency || 'EUR').toUpperCase();
 
-    // Slug: slugified product name + merchantProductId suffix + advertiserId suffix.
-    // Including advertiserId prevents collisions when two advertisers have identically-named products.
-    const slug = this.buildSlug(row.productName, row.merchantProductId, advertiserId);
-
-    // Upsert by compound unique (advertiserId, merchantProductId).
-    // Prisma compound unique name = advertiserId_merchantProductId.
-    const existing = await this.prisma.affiliateProduct.findFirst({
-      where: { advertiserId, merchantProductId: row.merchantProductId },
-      select: { id: true, slug: true },
-    });
+    const slug = await this.buildUniqueSlug(row.productName, row.merchantProductId, advertiserId);
 
     const productData = {
       awinDeepLink: row.awDeepLink,
@@ -306,54 +359,64 @@ export class AwinFeedService {
       lastFeedSync: new Date(),
     };
 
-    if (existing) {
-      // Update pricing, stock, deep link — preserve admin overrides on isFeatured/displayOrder/tags.
-      // Also restore if soft-deleted: feed is the source of truth for FEED products.
-      await this.prisma.affiliateProduct.update({
-        where: { id: existing.id },
-        data: { ...productData, deletedAt: null, isActive: true },
-      });
-
-      // Refresh the EN translation title + description (content update from feed).
-      await this.prisma.affiliateProductTranslation.updateMany({
-        where: { affiliateProductId: existing.id, locale: 'en' },
-        data: {
-          title: row.productName.slice(0, 500),
-          description: row.description.slice(0, 5000),
-          translationStatus: TranslationStatus.ORIGINAL,
-        },
-      });
-    } else {
-      // New product from feed.
-      const product = await this.prisma.affiliateProduct.create({
-        data: {
-          slug,
+    // Atomic upsert using compound unique (advertiserId, merchantProductId).
+    // Eliminates race conditions from the old findFirst → create/update pattern.
+    const product = await this.prisma.affiliateProduct.upsert({
+      where: {
+        advertiserId_merchantProductId: {
           advertiserId,
           merchantProductId: row.merchantProductId,
-          ...productData,
-          // createdById is null for feed-imported products (schema: createdById String?)
         },
-      });
+      },
+      update: {
+        ...productData,
+        deletedAt: null,
+        isActive: true,
+      },
+      create: {
+        slug,
+        advertiserId,
+        merchantProductId: row.merchantProductId,
+        ...productData,
+      },
+    });
 
-      // Create English translation as the original.
-      await this.prisma.affiliateProductTranslation.create({
-        data: {
+    // Upsert the EN translation (atomic — avoids duplicate translation rows too).
+    await this.prisma.affiliateProductTranslation.upsert({
+      where: {
+        affiliateProductId_locale: {
           affiliateProductId: product.id,
           locale: 'en',
-          title: row.productName.slice(0, 500),
-          description: row.description.slice(0, 5000),
-          translationStatus: TranslationStatus.ORIGINAL,
-          isOriginal: true,
         },
-      });
-    }
+      },
+      update: {
+        title: row.productName.slice(0, 500),
+        description: row.description.slice(0, 5000),
+        translationStatus: TranslationStatus.ORIGINAL,
+      },
+      create: {
+        affiliateProductId: product.id,
+        locale: 'en',
+        title: row.productName.slice(0, 500),
+        description: row.description.slice(0, 5000),
+        translationStatus: TranslationStatus.ORIGINAL,
+        isOriginal: true,
+      },
+    });
   }
 
   // ============================================================================
   // PRIVATE — helpers
   // ============================================================================
 
-  private buildSlug(productName: string, merchantProductId: string, advertiserId: string): string {
+  /**
+   * Build a unique slug, retrying with a random suffix on collision.
+   */
+  private async buildUniqueSlug(
+    productName: string,
+    merchantProductId: string,
+    advertiserId: string
+  ): Promise<string> {
     const base = productName
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
@@ -361,13 +424,29 @@ export class AwinFeedService {
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
       .slice(0, 60);
-    // Combine last-6 of merchantProductId + last-4 of advertiserId for cross-advertiser uniqueness.
     const productSuffix = merchantProductId
       .slice(-6)
       .replace(/[^a-z0-9]/gi, '')
       .toLowerCase();
     const advertiserSuffix = advertiserId.replace(/-/g, '').slice(-4).toLowerCase();
-    return `${base || 'product'}-${productSuffix}${advertiserSuffix}`;
+    const slug = `${base || 'product'}-${productSuffix}${advertiserSuffix}`;
+
+    // Check if this slug already belongs to a DIFFERENT product
+    const existing = await this.prisma.affiliateProduct.findUnique({
+      where: { slug },
+      select: { advertiserId: true, merchantProductId: true },
+    });
+
+    if (
+      !existing ||
+      (existing.advertiserId === advertiserId && existing.merchantProductId === merchantProductId)
+    ) {
+      return slug; // No collision or same product
+    }
+
+    // Collision with a different product — append random suffix
+    const rand = Math.random().toString(36).slice(2, 6);
+    return `${slug}-${rand}`;
   }
 
   private async writeSyncAudit(data: {
