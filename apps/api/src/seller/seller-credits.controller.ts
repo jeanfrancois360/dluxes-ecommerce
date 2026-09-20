@@ -41,16 +41,12 @@ export class SellerCreditsController {
   async getCreditHistory(
     @Req() req: any,
     @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('limit') limit?: string
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 20;
 
-    return this.sellerCreditsService.getCreditHistory(
-      req.user.id,
-      pageNum,
-      limitNum,
-    );
+    return this.sellerCreditsService.getCreditHistory(req.user.id, pageNum, limitNum);
   }
 
   /**
@@ -76,9 +72,7 @@ export class SellerCreditsController {
    */
   @Get('status')
   async getSellingStatus(@Req() req: any) {
-    const balance = await this.sellerCreditsService.getCreditBalance(
-      req.user.id,
-    );
+    const balance = await this.sellerCreditsService.getCreditBalance(req.user.id);
 
     return {
       success: true,
@@ -95,16 +89,24 @@ export class SellerCreditsController {
   }
 
   /**
+   * Create Stripe Checkout Session in setup mode for card capture
+   * POST /seller/credits/setup-card
+   * Captures card without charging — required before listing with promotion credits
+   */
+  @Post('setup-card')
+  @HttpCode(HttpStatus.OK)
+  async createCardSetupSession(@Req() req: any) {
+    return this.sellerCreditsService.createCardSetupSession(req.user.id);
+  }
+
+  /**
    * Create Stripe Checkout Session for credit purchase
    * POST /seller/credits/checkout
    * Body: { months: number }
    */
   @Post('checkout')
   @HttpCode(HttpStatus.OK)
-  async createCheckoutSession(
-    @Req() req: any,
-    @Body() body: { months: number },
-  ) {
+  async createCheckoutSession(@Req() req: any, @Body() body: { months: number }) {
     const { months } = body;
 
     // Validate months
@@ -115,10 +117,7 @@ export class SellerCreditsController {
       };
     }
 
-    return this.sellerCreditsService.createCheckoutSession(
-      req.user.id,
-      months,
-    );
+    return this.sellerCreditsService.createCheckoutSession(req.user.id, months);
   }
 
   /**
@@ -126,10 +125,7 @@ export class SellerCreditsController {
    * GET /seller/credits/verify-session?session_id=xxx
    */
   @Get('verify-session')
-  async verifySession(
-    @Req() req: any,
-    @Query('session_id') sessionId: string,
-  ) {
+  async verifySession(@Req() req: any, @Query('session_id') sessionId: string) {
     if (!sessionId) {
       return {
         success: false,
@@ -137,9 +133,6 @@ export class SellerCreditsController {
       };
     }
 
-    return this.sellerCreditsService.verifyAndProcessSession(
-      req.user.id,
-      sessionId,
-    );
+    return this.sellerCreditsService.verifyAndProcessSession(req.user.id, sessionId);
   }
 }

@@ -46,6 +46,7 @@ interface CreditBalance {
   creditsGraceEndsAt: string | null;
   canPurchase: boolean;
   isInGracePeriod: boolean;
+  hasPaymentMethod?: boolean;
 }
 
 interface Transaction {
@@ -124,13 +125,20 @@ export default function SellingCreditsPage() {
   const price = priceData?.data?.pricePerMonth || 29.99;
   const history = historyData?.data;
 
-  // Handle canceled purchase
+  // Handle return from Stripe
   useEffect(() => {
     if (searchParams.get('canceled') === 'true') {
       toast.error(t('errors.purchaseCanceled'));
       router.replace('/seller/selling-credits');
+    } else if (searchParams.get('card_added') === 'true') {
+      toast.success('Payment method added successfully! You can now list products.');
+      mutateBalance();
+      router.replace('/seller/selling-credits');
+    } else if (searchParams.get('card_canceled') === 'true') {
+      toast.info('Card setup was not completed.');
+      router.replace('/seller/selling-credits');
     }
-  }, [searchParams, router, t]);
+  }, [searchParams, router, t, mutateBalance]);
 
   // Calculate days remaining
   const getDaysRemaining = (date: string | null) => {
@@ -289,6 +297,58 @@ export default function SellingCreditsPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Payment Method Required Alert */}
+        {balance.hasPaymentMethod === false && balance.creditsBalance > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-amber-50 border-2 border-amber-200 rounded-xl p-6"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <CreditCard className="w-8 h-8 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-amber-900 mb-1">Payment method required</h3>
+                <p className="text-amber-700 mb-3">
+                  You have <span className="font-bold">{balance.creditsBalance} month(s)</span> of
+                  promotional credits, but you need to add a payment method before you can list
+                  products. Your card will not be charged until your credits run out.
+                </p>
+                <button
+                  onClick={async () => {
+                    try {
+                      const token = localStorage.getItem('auth_token');
+                      const res = await fetch(`${API_URL}/seller/credits/setup-card`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          ...(token && { Authorization: `Bearer ${token}` }),
+                        },
+                      });
+                      const data = await safeJson(res);
+                      const sessionUrl = data?.data?.sessionUrl || data?.sessionUrl;
+                      if (sessionUrl) {
+                        window.location.href = sessionUrl;
+                      } else {
+                        toast.error('Failed to start card setup. Please try again.');
+                      }
+                    } catch {
+                      toast.error('Failed to start card setup. Please try again.');
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-semibold"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Add Payment Method
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Credit Balance Hero Card */}
         <motion.div
