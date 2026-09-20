@@ -239,12 +239,13 @@ export class SubscriptionController {
   @Roles('SELLER')
   async createCheckout(
     @Req() req: any,
-    @Body() body: { planId: string; billingCycle: 'MONTHLY' | 'YEARLY' }
+    @Body() body: { planId: string; billingCycle: 'MONTHLY' | 'YEARLY'; trialDays?: number }
   ) {
     const data = await this.stripeSubscriptionService.createCheckoutSession(
       req.user.id,
       body.planId,
-      body.billingCycle
+      body.billingCycle,
+      body.trialDays
     );
     return { success: true, data };
   }

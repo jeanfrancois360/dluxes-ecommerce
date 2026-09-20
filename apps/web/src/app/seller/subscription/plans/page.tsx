@@ -37,7 +37,10 @@ interface PlanDisplay {
   monthlyCredits: number;
   isPopular?: boolean;
   badge?: string;
+  trialDays?: number;
 }
+
+const TRIAL_DAYS = 30; // Free trial period for all paid plans
 
 const TIER_ICONS: Record<string, React.ReactNode> = {
   FREE: <Sparkles className="w-5 h-5" />,
@@ -105,9 +108,7 @@ function PlanCard({
       'bg-[#CBB57B] text-black hover:bg-[#b9a369] shadow-md hover:shadow-lg active:scale-[0.98]',
     current: 'bg-green-50 text-green-700 border border-green-200 cursor-default',
     default:
-      currentPrice === 0
-        ? 'bg-neutral-100 text-neutral-400 cursor-default'
-        : 'bg-neutral-900 text-white hover:bg-neutral-800 shadow-md hover:shadow-lg active:scale-[0.98]',
+      'bg-neutral-900 text-white hover:bg-neutral-800 shadow-md hover:shadow-lg active:scale-[0.98]',
   }[cardVariant];
 
   return (
@@ -224,8 +225,6 @@ function PlanCard({
               <Check className="w-4 h-4" />
               {t('planCard.currentPlan')}
             </>
-          ) : currentPrice === 0 ? (
-            t('planCard.freeForever')
           ) : (
             <>
               {isUpgrade ? t('planCard.upgrade') : t('planCard.getStarted')}
@@ -455,20 +454,45 @@ export default function SellerPlansPage() {
     return map[tier] || t('taglines.default');
   };
 
+  const [showTrialModal, setShowTrialModal] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<{
+    id: string;
+    name: string;
+    price: number;
+    tier: string;
+  } | null>(null);
+  const [trialAcknowledged, setTrialAcknowledged] = useState(false);
+
   const handleUpgrade = async (planId: string, planName: string, price: number, tier: string) => {
+    if (tier === currentTier) {
+      toast.info(t('toasts.alreadySubscribed'));
+      return;
+    }
+
+    // For all plans (including free tier), show trial modal if user has no subscription yet
+    const isNewSubscriber = !currentTier || currentTier === 'FREE';
+    const needsTrial = isNewSubscriber && price > 0;
+
+    if (needsTrial) {
+      setPendingPlan({ id: planId, name: planName, price, tier });
+      setTrialAcknowledged(false);
+      setShowTrialModal(true);
+      return;
+    }
+
+    await processCheckout(planId, planName, price);
+  };
+
+  const processCheckout = async (
+    planId: string,
+    planName: string,
+    price: number,
+    trialDays?: number
+  ) => {
     try {
       setCheckoutLoading(planId);
 
-      if (price === 0) {
-        toast.info(t('toasts.freePlanActive'));
-        return;
-      }
-      if (tier === currentTier) {
-        toast.info(t('toasts.alreadySubscribed'));
-        return;
-      }
-
-      const { url } = await subscriptionApi.createCheckout(planId, selectedInterval);
+      const { url } = await subscriptionApi.createCheckout(planId, selectedInterval, trialDays);
       if (url) {
         toast.success(t('toasts.redirecting'));
         window.location.href = url;
@@ -479,9 +503,14 @@ export default function SellerPlansPage() {
       const message = error?.response?.data?.message || error?.message || t('errors.upgrade');
       toast.error(t('errors.title'), message);
     } finally {
-      // Only clear if we didn't redirect
       setCheckoutLoading((prev) => (prev === planId ? null : prev));
     }
+  };
+
+  const handleTrialConfirm = () => {
+    if (!pendingPlan || !trialAcknowledged) return;
+    setShowTrialModal(false);
+    processCheckout(pendingPlan.id, pendingPlan.name, pendingPlan.price, TRIAL_DAYS);
   };
 
   const isCurrentPlan = (tier: string) => {
@@ -674,6 +703,108 @@ export default function SellerPlansPage() {
           </Link>
         </motion.div>
       </div>
+
+      {/* ── Trial Acknowledgment Modal ── */}
+      {showTrialModal && pendingPlan && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+          >
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-10 h-10 rounded-xl bg-[#CBB57B]/15 flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-[#CBB57B]" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">Start Your Free Trial</h2>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                You&apos;ll get {TRIAL_DAYS} days of free access to the{' '}
+                <span className="font-semibold text-gray-700">{pendingPlan.name}</span> plan. A
+                payment method is required to start your trial.
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Plan summary */}
+              <div className="bg-neutral-50 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-700">{pendingPlan.name}</span>
+                  <span className="text-sm font-bold text-gray-900">
+                    {formatCurrencyAmount(pendingPlan.price)}/
+                    {selectedInterval === 'YEARLY' ? t('billing.year') : t('billing.month')}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>Due today</span>
+                  <span className="font-semibold text-green-600">$0.00</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                  <span>First charge</span>
+                  <span>
+                    {new Date(Date.now() + TRIAL_DAYS * 86400000).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Acknowledgment checkbox */}
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={trialAcknowledged}
+                  onChange={(e) => setTrialAcknowledged(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]/30 cursor-pointer"
+                />
+                <span className="text-sm text-gray-600 leading-relaxed">
+                  I understand that my subscription will automatically renew at{' '}
+                  <span className="font-semibold text-gray-900">
+                    {formatCurrencyAmount(pendingPlan.price)}/
+                    {selectedInterval === 'YEARLY' ? 'year' : 'month'}
+                  </span>{' '}
+                  after my free trial ends on{' '}
+                  <span className="font-semibold text-gray-900">
+                    {new Date(Date.now() + TRIAL_DAYS * 86400000).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>{' '}
+                  unless I cancel before that date.
+                </span>
+              </label>
+            </div>
+
+            <div className="px-6 pb-6 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowTrialModal(false);
+                  setPendingPlan(null);
+                }}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl font-semibold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTrialConfirm}
+                disabled={!trialAcknowledged || !!checkoutLoading}
+                className="flex-1 py-2.5 bg-[#CBB57B] text-black rounded-xl font-bold text-sm hover:bg-[#b9a369] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {checkoutLoading ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <ArrowRight className="w-4 h-4" />
+                )}
+                Start Free Trial
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

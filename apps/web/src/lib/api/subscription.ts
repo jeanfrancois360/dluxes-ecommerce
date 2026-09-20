@@ -163,9 +163,14 @@ export const subscriptionApi = {
    */
   async createCheckout(
     planId: string,
-    billingCycle: 'MONTHLY' | 'YEARLY'
+    billingCycle: 'MONTHLY' | 'YEARLY',
+    trialDays?: number
   ): Promise<{ sessionId: string; url: string }> {
-    const response = await api.post('/subscription/create-checkout', { planId, billingCycle });
+    const response = await api.post('/subscription/create-checkout', {
+      planId,
+      billingCycle,
+      ...(trialDays ? { trialDays } : {}),
+    });
     return response.data || response;
   },
 

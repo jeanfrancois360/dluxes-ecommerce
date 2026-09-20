@@ -38,14 +38,46 @@ export default function SellerAdvertisementPlansPage() {
   const [cancelling, setCancelling] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showTrialModal, setShowTrialModal] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<{
+    slug: string;
+    name: string;
+    price: number;
+    trialDays: number;
+    billingPeriod: string;
+  } | null>(null);
+  const [trialAcknowledged, setTrialAcknowledged] = useState(false);
 
   const handleSubscribe = async (planSlug: string) => {
+    // Find the plan to check if it has trial days
+    const plan = plans.find((p) => p.slug === planSlug);
+    if (!plan) return;
+
+    const price = Number(plan.price);
+    const trialDays = plan.trialDays || 0;
+
+    // If plan has trial days and price > 0, show acknowledgment modal
+    if (trialDays > 0 && price > 0) {
+      setPendingPlan({
+        slug: planSlug,
+        name: plan.name,
+        price,
+        trialDays,
+        billingPeriod: plan.billingPeriod,
+      });
+      setTrialAcknowledged(false);
+      setShowTrialModal(true);
+      return;
+    }
+
+    await processSubscribe(planSlug);
+  };
+
+  const processSubscribe = async (planSlug: string) => {
     try {
       setSubscribing(planSlug);
       const result = await subscribe(planSlug, billingPeriod);
-      // If checkoutUrl was returned, the hook already redirected to Stripe
       if (result?.checkoutUrl) return;
-      // Free plan — activated immediately
       toast.success(t('toast.subscribeSuccess'));
       await refreshSubscription();
     } catch (error: any) {
@@ -54,6 +86,12 @@ export default function SellerAdvertisementPlansPage() {
     } finally {
       setSubscribing(null);
     }
+  };
+
+  const handleTrialConfirm = () => {
+    if (!pendingPlan || !trialAcknowledged) return;
+    setShowTrialModal(false);
+    processSubscribe(pendingPlan.slug);
   };
 
   const handleCancelSubscription = async () => {
@@ -542,6 +580,87 @@ export default function SellerAdvertisementPlansPage() {
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50"
               >
                 {cancelling ? t('cancelModal.cancelling') : t('cancelModal.cancelButton')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Trial Acknowledgment Modal */}
+      {showTrialModal && pendingPlan && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-900">Start Your Free Trial</h2>
+              <p className="text-sm text-gray-500 mt-2">
+                You&apos;ll get {pendingPlan.trialDays} days of free access to the{' '}
+                <span className="font-semibold text-gray-700">{pendingPlan.name}</span> plan. A
+                payment method is required to start your trial.
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-neutral-50 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-700">{pendingPlan.name}</span>
+                  <span className="text-sm font-bold text-gray-900">
+                    ${pendingPlan.price}/{pendingPlan.billingPeriod === 'YEARLY' ? 'year' : 'month'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>Due today</span>
+                  <span className="font-semibold text-green-600">$0.00</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                  <span>First charge</span>
+                  <span>
+                    {new Date(Date.now() + pendingPlan.trialDays * 86400000).toLocaleDateString(
+                      'en-US',
+                      { month: 'long', day: 'numeric', year: 'numeric' }
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={trialAcknowledged}
+                  onChange={(e) => setTrialAcknowledged(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]/30 cursor-pointer"
+                />
+                <span className="text-sm text-gray-600 leading-relaxed">
+                  I understand that my subscription will automatically renew at{' '}
+                  <span className="font-semibold text-gray-900">
+                    ${pendingPlan.price}/{pendingPlan.billingPeriod === 'YEARLY' ? 'year' : 'month'}
+                  </span>{' '}
+                  after my free trial ends on{' '}
+                  <span className="font-semibold text-gray-900">
+                    {new Date(Date.now() + pendingPlan.trialDays * 86400000).toLocaleDateString(
+                      'en-US',
+                      { month: 'long', day: 'numeric', year: 'numeric' }
+                    )}
+                  </span>{' '}
+                  unless I cancel before that date.
+                </span>
+              </label>
+            </div>
+
+            <div className="px-6 pb-6 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowTrialModal(false);
+                  setPendingPlan(null);
+                }}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl font-semibold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTrialConfirm}
+                disabled={!trialAcknowledged || !!subscribing}
+                className="flex-1 py-2.5 bg-[#CBB57B] text-black rounded-xl font-bold text-sm hover:bg-[#b9a369] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {subscribing ? 'Processing...' : 'Start Free Trial'}
               </button>
             </div>
           </div>
