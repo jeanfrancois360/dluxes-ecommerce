@@ -1575,6 +1575,9 @@ export class OrdersService {
    * Update order status (Admin only)
    */
   async updateStatus(id: string, status: OrderStatus) {
+    // Normalize to uppercase to prevent case-mismatch bypass from admin UI
+    const normalizedStatus = status.toUpperCase() as OrderStatus;
+
     const order = await this.prisma.order.findUnique({
       where: { id },
     });
@@ -1584,11 +1587,32 @@ export class OrdersService {
     }
 
     // Validate status transition
-    this.validateStatusTransition(order.status, status);
+    this.validateStatusTransition(order.status, normalizedStatus);
+
+    // Guard: reject advancing past CONFIRMED if payment has not been received.
+    // CANCELLED is always allowed (e.g. admin cancelling an unpaid order).
+    const requiresPayment: OrderStatus[] = [
+      OrderStatus.PROCESSING,
+      OrderStatus.SHIPPED,
+      OrderStatus.PARTIALLY_SHIPPED,
+      OrderStatus.DELIVERED,
+      OrderStatus.READY_FOR_PICKUP,
+      OrderStatus.PICKED_UP,
+    ];
+    if (
+      requiresPayment.includes(normalizedStatus) &&
+      order.paymentStatus !== PaymentStatus.PAID &&
+      order.paymentStatus !== PaymentStatus.PARTIALLY_REFUNDED
+    ) {
+      throw new BadRequestException(
+        `Cannot move order to ${normalizedStatus}: payment status is ${order.paymentStatus}. ` +
+          `Order must be paid before it can be processed.`
+      );
+    }
 
     // For PROCESSING status: validate Gelato POD readiness BEFORE committing the DB change.
     // This ensures the order never gets stuck in PROCESSING with no fulfillment.
-    if (status === OrderStatus.PROCESSING) {
+    if (normalizedStatus === OrderStatus.PROCESSING) {
       const validation = await this.gelatoOrdersService.validatePodReadiness(id);
 
       if (!validation.ready) {
@@ -1611,7 +1635,7 @@ export class OrdersService {
     // Update order status
     const updatedOrder = await this.prisma.order.update({
       where: { id },
-      data: { status },
+      data: { status: normalizedStatus },
       include: {
         items: true,
         shippingAddress: true,
@@ -1624,10 +1648,10 @@ export class OrdersService {
     // Create timeline entry
     const timelineData: any = {
       orderId: id,
-      status,
-      title: this.getStatusTitle(status),
-      description: this.getStatusDescription(status),
-      icon: this.getStatusIcon(status),
+      status: normalizedStatus,
+      title: this.getStatusTitle(normalizedStatus),
+      description: this.getStatusDescription(normalizedStatus),
+      icon: this.getStatusIcon(normalizedStatus),
     };
 
     await this.prisma.orderTimeline.create({
@@ -1635,7 +1659,7 @@ export class OrdersService {
     });
 
     // Auto-submit Gelato POD items after the status is committed to DB
-    if (status === OrderStatus.PROCESSING) {
+    if (normalizedStatus === OrderStatus.PROCESSING) {
       try {
         const result = await this.gelatoOrdersService.submitAllPodItems(id);
 
@@ -1652,7 +1676,7 @@ export class OrdersService {
           // Roll back the status change and remove the stale timeline entry
           await this.prisma.order.update({ where: { id }, data: { status: order.status } });
           await this.prisma.orderTimeline.deleteMany({
-            where: { orderId: id, status },
+            where: { orderId: id, status: normalizedStatus },
           });
 
           throw new BadRequestException(
@@ -1675,7 +1699,7 @@ export class OrdersService {
           );
           await this.prisma.order.update({ where: { id }, data: { status: order.status } });
           await this.prisma.orderTimeline.deleteMany({
-            where: { orderId: id, status },
+            where: { orderId: id, status: normalizedStatus },
           });
           throw new BadRequestException(
             `Cannot process order: POD fulfillment submission failed. ${gelatoError.message}`

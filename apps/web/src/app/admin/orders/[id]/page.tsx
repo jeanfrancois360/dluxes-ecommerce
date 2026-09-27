@@ -271,6 +271,48 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
     }
   };
 
+  // Compute valid next statuses based on current order status and payment status
+  const getValidNextStatuses = (): { value: string; label: string }[] => {
+    if (!order) return [];
+
+    const current = order.status?.toUpperCase();
+    const isPaid = order.paymentStatus === 'PAID' || order.paymentStatus === 'PARTIALLY_REFUNDED';
+
+    const transitionMap: Record<string, { value: string; label: string }[]> = {
+      PENDING: [
+        { value: 'CONFIRMED', label: 'Confirmed' },
+        { value: 'CANCELLED', label: 'Cancelled' },
+      ],
+      CONFIRMED: [
+        ...(isPaid ? [{ value: 'PROCESSING', label: 'Processing' }] : []),
+        { value: 'CANCELLED', label: 'Cancelled' },
+      ],
+      PROCESSING: [
+        { value: 'SHIPPED', label: 'Shipped' },
+        { value: 'PARTIALLY_SHIPPED', label: 'Partially Shipped' },
+        { value: 'READY_FOR_PICKUP', label: 'Ready for Pickup' },
+        { value: 'CANCELLED', label: 'Cancelled' },
+      ],
+      PARTIALLY_SHIPPED: [
+        { value: 'SHIPPED', label: 'Shipped' },
+        { value: 'DELIVERED', label: 'Delivered' },
+        { value: 'CANCELLED', label: 'Cancelled' },
+      ],
+      SHIPPED: [
+        { value: 'DELIVERED', label: 'Delivered' },
+        { value: 'CANCELLED', label: 'Cancelled' },
+      ],
+      DELIVERED: [{ value: 'REFUNDED', label: 'Refunded' }],
+      READY_FOR_PICKUP: [
+        { value: 'PICKED_UP', label: 'Picked Up' },
+        { value: 'PICKUP_EXPIRED', label: 'Pickup Expired' },
+        { value: 'CANCELLED', label: 'Cancelled' },
+      ],
+    };
+
+    return transitionMap[current] || [];
+  };
+
   const handleStatusUpdate = async (newStatus: string) => {
     if (!order) return;
 
@@ -279,8 +321,10 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
       await adminOrdersApi.updateStatus(order.id, newStatus);
       toast.success('Order status updated successfully');
       window.location.reload();
-    } catch (error) {
-      toast.error('Failed to update order status');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || error?.data?.message || 'Failed to update order status';
+      toast.error(message);
     } finally {
       setUpdating(false);
     }
@@ -476,16 +520,19 @@ function OrderDetailsContent({ params }: { params: Promise<{ id: string }> }) {
         actions={
           <div className="flex items-center gap-3">
             <select
-              value={order.status || 'pending'}
+              value=""
               onChange={(e) => handleStatusUpdate(e.target.value)}
-              disabled={updating}
+              disabled={updating || getValidNextStatuses().length === 0}
               className="px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-[#CBB57B] focus:border-transparent"
             >
-              <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="" disabled>
+                {order.status?.toUpperCase()} — Change to...
+              </option>
+              {getValidNextStatuses().map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
             <button
               onClick={handleRefund}
