@@ -453,7 +453,12 @@ export class AdvertisementPlansService {
   /**
    * Cancel subscription
    */
-  async cancelSubscription(subscriptionId: string, cancelledBy: string, reason?: string) {
+  async cancelSubscription(
+    subscriptionId: string,
+    cancelledBy: string,
+    reason?: string,
+    paypalBillingService?: PayPalBillingService
+  ) {
     const subscription = await this.prisma.sellerPlanSubscription.findUnique({
       where: { id: subscriptionId },
     });
@@ -464,6 +469,39 @@ export class AdvertisementPlansService {
 
     if (subscription.status === SubscriptionStatus.CANCELLED) {
       throw new BadRequestException('Subscription already cancelled');
+    }
+
+    // Cancel in PayPal if it's a PayPal subscription
+    if (subscription.stripeSubscriptionId?.startsWith('paypal-sub-') && paypalBillingService) {
+      const paypalSubId = subscription.stripeSubscriptionId.replace('paypal-sub-', '');
+      try {
+        await paypalBillingService.cancelSubscription(
+          paypalSubId,
+          reason || 'User requested cancellation'
+        );
+        this.logger.log(`PayPal subscription ${paypalSubId} cancelled`);
+      } catch (error) {
+        this.logger.error(`Failed to cancel PayPal subscription ${paypalSubId}:`, error);
+        // Continue with local cancellation even if PayPal fails
+      }
+    }
+
+    // Cancel in Stripe if it's a Stripe subscription
+    if (
+      subscription.stripeSubscriptionId &&
+      !subscription.stripeSubscriptionId.startsWith('paypal-')
+    ) {
+      try {
+        const stripe = this.getStripe();
+        await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+          cancel_at_period_end: true,
+        });
+        this.logger.log(
+          `Stripe subscription ${subscription.stripeSubscriptionId} set to cancel at period end`
+        );
+      } catch (error) {
+        this.logger.error(`Failed to cancel Stripe subscription:`, error);
+      }
     }
 
     // Pause all active ads for this seller
