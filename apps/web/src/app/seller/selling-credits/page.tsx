@@ -89,6 +89,7 @@ export default function SellingCreditsPage() {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Fetch credit balance
   const {
@@ -545,16 +546,12 @@ export default function SellingCreditsPage() {
             </div>
           </div>
 
-          {/* Payment Method */}
-          <PaymentMethodSelector
-            selected={paymentMethod}
-            onChange={setPaymentMethod}
-            disabled={isPurchasing}
-          />
-
           {/* Purchase Button */}
           <button
-            onClick={handlePurchase}
+            onClick={() => {
+              setPaymentMethod('stripe');
+              setShowConfirmModal(true);
+            }}
             disabled={isPurchasing || !balance.canPurchase}
             className={`
               w-full py-4 px-6 rounded-xl font-semibold text-lg
@@ -689,6 +686,62 @@ export default function SellingCreditsPage() {
               </div>
             )}
           </motion.div>
+        )}
+        {/* Payment Confirmation Modal */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+              <div className="p-6 border-b border-gray-100">
+                <h2 className="text-lg font-bold text-gray-900">Confirm Purchase</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {selectedMonths} month{selectedMonths > 1 ? 's' : ''} of selling credits
+                </p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="bg-neutral-50 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-gray-700">
+                      {selectedMonths} month{selectedMonths > 1 ? 's' : ''} × ${price.toFixed(2)}
+                    </span>
+                    <span className="text-lg font-bold text-gray-900">
+                      ${totalPrice.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Charged</span>
+                    <span className="font-semibold">One-time payment</span>
+                  </div>
+                </div>
+
+                <PaymentMethodSelector
+                  selected={paymentMethod}
+                  onChange={setPaymentMethod}
+                  disabled={isPurchasing}
+                />
+              </div>
+
+              <div className="px-6 pb-6 flex gap-3">
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={isPurchasing}
+                  className="flex-1 py-2.5 border border-gray-200 rounded-xl font-semibold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConfirmModal(false);
+                    handlePurchase();
+                  }}
+                  disabled={isPurchasing}
+                  className="flex-1 py-2.5 bg-[#CBB57B] text-white rounded-xl font-bold text-sm hover:bg-[#A89968] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isPurchasing ? 'Processing...' : `Pay $${totalPrice.toFixed(2)}`}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

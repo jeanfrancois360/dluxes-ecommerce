@@ -69,28 +69,23 @@ export default function SellerAdvertisementPlansPage() {
   const [trialAcknowledged, setTrialAcknowledged] = useState(false);
 
   const handleSubscribe = async (planSlug: string) => {
-    // Find the plan to check if it has trial days
     const plan = plans.find((p) => p.slug === planSlug);
     if (!plan) return;
 
     const price = Number(plan.price);
     const trialDays = plan.trialDays || 0;
 
-    // If plan has trial days and price > 0, show acknowledgment modal
-    if (trialDays > 0 && price > 0) {
-      setPendingPlan({
-        slug: planSlug,
-        name: plan.name,
-        price,
-        trialDays,
-        billingPeriod: plan.billingPeriod,
-      });
-      setTrialAcknowledged(false);
-      setShowTrialModal(true);
-      return;
-    }
-
-    await processSubscribe(planSlug);
+    // Always show confirmation modal with payment method selector
+    setPendingPlan({
+      slug: planSlug,
+      name: plan.name,
+      price,
+      trialDays,
+      billingPeriod: plan.billingPeriod,
+    });
+    setTrialAcknowledged(trialDays === 0); // Auto-acknowledge if no trial
+    setPaymentMethod('stripe');
+    setShowTrialModal(true);
   };
 
   const processSubscribe = async (planSlug: string) => {
@@ -298,17 +293,6 @@ export default function SellerAdvertisementPlansPage() {
                   </button>
                 )}
             </div>
-          </div>
-        )}
-
-        {/* Payment Method Selector (only if no active subscription) */}
-        {!isActive && (
-          <div className="max-w-sm mx-auto mb-8">
-            <PaymentMethodSelector
-              selected={paymentMethod}
-              onChange={setPaymentMethod}
-              disabled={!!subscribing}
-            />
           </div>
         )}
 
@@ -638,11 +622,23 @@ export default function SellerAdvertisementPlansPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="p-6 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900">Start Your Free Trial</h2>
+              <h2 className="text-lg font-bold text-gray-900">
+                {pendingPlan.trialDays > 0
+                  ? 'Start Your Free Trial'
+                  : `Subscribe to ${pendingPlan.name}`}
+              </h2>
               <p className="text-sm text-gray-500 mt-2">
-                You&apos;ll get {pendingPlan.trialDays} days of free access to the{' '}
-                <span className="font-semibold text-gray-700">{pendingPlan.name}</span> plan. A
-                payment method is required to start your trial.
+                {pendingPlan.trialDays > 0 ? (
+                  <>
+                    You&apos;ll get {pendingPlan.trialDays} days of free access to the{' '}
+                    <span className="font-semibold text-gray-700">{pendingPlan.name}</span> plan.
+                  </>
+                ) : (
+                  <>
+                    You&apos;re subscribing to the{' '}
+                    <span className="font-semibold text-gray-700">{pendingPlan.name}</span> plan.
+                  </>
+                )}
               </p>
             </div>
 
@@ -654,43 +650,57 @@ export default function SellerAdvertisementPlansPage() {
                     ${pendingPlan.price}/{pendingPlan.billingPeriod === 'YEARLY' ? 'year' : 'month'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>Due today</span>
-                  <span className="font-semibold text-green-600">$0.00</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
-                  <span>First charge</span>
-                  <span>
-                    {new Date(Date.now() + pendingPlan.trialDays * 86400000).toLocaleDateString(
-                      'en-US',
-                      { month: 'long', day: 'numeric', year: 'numeric' }
-                    )}
-                  </span>
-                </div>
+                {pendingPlan.trialDays > 0 ? (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>Due today</span>
+                      <span className="font-semibold text-green-600">$0.00</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                      <span>First charge</span>
+                      <span>
+                        {new Date(Date.now() + pendingPlan.trialDays * 86400000).toLocaleDateString(
+                          'en-US',
+                          { month: 'long', day: 'numeric', year: 'numeric' }
+                        )}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Billed</span>
+                    <span className="font-semibold">
+                      {pendingPlan.billingPeriod === 'YEARLY' ? 'Annually' : 'Monthly'}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={trialAcknowledged}
-                  onChange={(e) => setTrialAcknowledged(e.target.checked)}
-                  className="mt-1 w-4 h-4 rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]/30 cursor-pointer"
-                />
-                <span className="text-sm text-gray-600 leading-relaxed">
-                  I understand that my subscription will automatically renew at{' '}
-                  <span className="font-semibold text-gray-900">
-                    ${pendingPlan.price}/{pendingPlan.billingPeriod === 'YEARLY' ? 'year' : 'month'}
-                  </span>{' '}
-                  after my free trial ends on{' '}
-                  <span className="font-semibold text-gray-900">
-                    {new Date(Date.now() + pendingPlan.trialDays * 86400000).toLocaleDateString(
-                      'en-US',
-                      { month: 'long', day: 'numeric', year: 'numeric' }
-                    )}
-                  </span>{' '}
-                  unless I cancel before that date.
-                </span>
-              </label>
+              {/* Payment Method */}
+              <PaymentMethodSelector
+                selected={paymentMethod}
+                onChange={setPaymentMethod}
+                disabled={!!subscribing}
+              />
+
+              {pendingPlan.trialDays > 0 && (
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={trialAcknowledged}
+                    onChange={(e) => setTrialAcknowledged(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]/30 cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-600 leading-relaxed">
+                    I understand my subscription will auto-renew at{' '}
+                    <span className="font-semibold text-gray-900">
+                      ${pendingPlan.price}/
+                      {pendingPlan.billingPeriod === 'YEARLY' ? 'year' : 'month'}
+                    </span>{' '}
+                    after the trial ends unless I cancel.
+                  </span>
+                </label>
+              )}
             </div>
 
             <div className="px-6 pb-6 flex gap-3">
@@ -708,7 +718,11 @@ export default function SellerAdvertisementPlansPage() {
                 disabled={!trialAcknowledged || !!subscribing}
                 className="flex-1 py-2.5 bg-[#CBB57B] text-black rounded-xl font-bold text-sm hover:bg-[#b9a369] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {subscribing ? 'Processing...' : 'Start Free Trial'}
+                {subscribing
+                  ? 'Processing...'
+                  : pendingPlan.trialDays > 0
+                    ? 'Start Free Trial'
+                    : 'Subscribe Now'}
               </button>
             </div>
           </div>
