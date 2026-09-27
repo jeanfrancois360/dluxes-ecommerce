@@ -24,6 +24,7 @@ import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/seller/page-header';
 import {
   PaymentMethodSelector,
+  usePaymentMethods,
   type PaymentMethod,
 } from '@/components/shared/payment-method-selector';
 
@@ -88,7 +89,8 @@ export default function SellingCreditsPage() {
   const [selectedMonths, setSelectedMonths] = useState(1);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
+  const { stripeEnabled, paypalEnabled, defaultMethod } = usePaymentMethods();
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(defaultMethod);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Fetch credit balance
@@ -549,7 +551,7 @@ export default function SellingCreditsPage() {
           {/* Purchase Button */}
           <button
             onClick={() => {
-              setPaymentMethod('stripe');
+              setPaymentMethod(defaultMethod);
               setShowConfirmModal(true);
             }}
             disabled={isPurchasing || !balance.canPurchase}
@@ -718,6 +720,8 @@ export default function SellingCreditsPage() {
                   selected={paymentMethod}
                   onChange={setPaymentMethod}
                   disabled={isPurchasing}
+                  stripeEnabled={stripeEnabled}
+                  paypalEnabled={paypalEnabled}
                 />
               </div>
 

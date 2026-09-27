@@ -10,6 +10,7 @@ import { subscriptionApi } from '@/lib/api/subscription';
 import { useMySubscription } from '@/hooks/use-subscription';
 import {
   PaymentMethodSelector,
+  usePaymentMethods,
   type PaymentMethod,
 } from '@/components/shared/payment-method-selector';
 import {
@@ -404,7 +405,8 @@ export default function SellerPlansPage() {
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
+  const { stripeEnabled, paypalEnabled, defaultMethod } = usePaymentMethods();
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(defaultMethod);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const {
@@ -486,7 +488,7 @@ export default function SellerPlansPage() {
 
     setPendingPlan({ id: planId, name: planName, price, tier });
     setTrialAcknowledged(!needsTrial); // Auto-acknowledge if not a new subscriber (upgrade)
-    setPaymentMethod('stripe');
+    setPaymentMethod(defaultMethod);
     setShowTrialModal(true);
   };
 
@@ -799,6 +801,8 @@ export default function SellerPlansPage() {
                 selected={paymentMethod}
                 onChange={setPaymentMethod}
                 disabled={!!checkoutLoading}
+                stripeEnabled={stripeEnabled}
+                paypalEnabled={paypalEnabled}
               />
 
               {/* Trial acknowledgment (only for new subscribers) */}
