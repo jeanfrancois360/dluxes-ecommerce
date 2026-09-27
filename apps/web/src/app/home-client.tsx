@@ -584,7 +584,8 @@ export default function HomeClient() {
                   value={newsletterEmail}
                   onChange={(e) => setNewsletterEmail(e.target.value)}
                   placeholder={t('home.enterEmail')}
-                  className="flex-1 px-6 py-4 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white shadow-sm"
+                  className="flex-1 px-6 py-4 rounded-xl !bg-white !text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white shadow-sm"
+                  style={{ color: '#111827', backgroundColor: '#ffffff' }}
                   required
                   disabled={newsletterSubmitting}
                 />
