@@ -99,8 +99,49 @@ export class CampaignService {
   // ─── Sending ──────────────────────────────────────────────────────────────────
 
   async getRecipientCount(audience: CampaignAudience): Promise<number> {
-    const where = this.buildAudienceWhere(audience);
-    return this.prisma.user.count({ where });
+    const recipients = await this.resolveRecipients(audience);
+    return recipients.length;
+  }
+
+  /**
+   * Resolve all recipients for a campaign audience, deduplicating by email.
+   * Merges registered users and newsletter subscribers when applicable.
+   */
+  private async resolveRecipients(
+    audience: CampaignAudience
+  ): Promise<Array<{ email: string; firstName: string | null }>> {
+    const emailMap = new Map<string, { email: string; firstName: string | null }>();
+
+    // Get registered users (for all audiences except NEWSLETTER_SUBSCRIBERS only)
+    if (audience !== CampaignAudience.NEWSLETTER_SUBSCRIBERS) {
+      const where = this.buildAudienceWhere(audience);
+      const users = await this.prisma.user.findMany({
+        where,
+        select: { email: true, firstName: true },
+      });
+      for (const u of users) {
+        emailMap.set(u.email.toLowerCase(), { email: u.email, firstName: u.firstName });
+      }
+    }
+
+    // Get newsletter subscribers (for NEWSLETTER_SUBSCRIBERS and ALL_INCLUDING_NEWSLETTER)
+    if (
+      audience === CampaignAudience.NEWSLETTER_SUBSCRIBERS ||
+      audience === CampaignAudience.ALL_INCLUDING_NEWSLETTER
+    ) {
+      const subscribers = await this.prisma.newsletterSubscriber.findMany({
+        where: { isActive: true },
+        select: { email: true },
+      });
+      for (const s of subscribers) {
+        const key = s.email.toLowerCase();
+        if (!emailMap.has(key)) {
+          emailMap.set(key, { email: s.email, firstName: null });
+        }
+      }
+    }
+
+    return Array.from(emailMap.values());
   }
 
   async sendNow(id: string) {
@@ -115,12 +156,8 @@ export class CampaignService {
       );
     }
 
-    // Resolve recipients
-    const where = this.buildAudienceWhere(campaign.audience);
-    const recipients = await this.prisma.user.findMany({
-      where,
-      select: { id: true, email: true, firstName: true },
-    });
+    // Resolve recipients (merged + deduplicated)
+    const recipients = await this.resolveRecipients(campaign.audience);
 
     if (recipients.length === 0) {
       throw new BadRequestException('No recipients found for the selected audience');
@@ -226,8 +263,7 @@ export class CampaignService {
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
   private buildAudienceWhere(audience: CampaignAudience) {
-    const roleMap: Record<CampaignAudience, UserRole[] | undefined> = {
-      ALL: undefined,
+    const roleMap: Partial<Record<CampaignAudience, UserRole[]>> = {
       SELLERS: [UserRole.SELLER],
       BUYERS: [UserRole.BUYER, UserRole.CUSTOMER],
       ADMINS: [UserRole.ADMIN, UserRole.SUPER_ADMIN],

@@ -50,6 +50,7 @@ import { EasyshipModule } from './integrations/easyship/easyship.module';
 import { LoggerModule } from './logger/logger.module';
 import { HealthModule } from './health/health.module';
 import { HotDealsModule } from './hot-deals/hot-deals.module';
+import { NewsletterModule } from './newsletter/newsletter.module';
 import { GelatoModule } from './gelato/gelato.module';
 import { ReferralModule } from './referral/referral.module';
 import { AffiliateModule } from './affiliate/affiliate.module';
@@ -124,6 +125,7 @@ import { EmailModule } from './email/email.module';
     SubscriptionModule,
     CreditsModule,
     HotDealsModule,
+    NewsletterModule,
     GelatoModule,
     ReferralModule,
     AffiliateModule,

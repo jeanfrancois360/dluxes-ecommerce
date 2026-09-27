@@ -4494,6 +4494,8 @@ enum CampaignAudience {
   BUYERS
   ADMINS
   DELIVERY_PARTNERS
+  NEWSLETTER_SUBSCRIBERS
+  ALL_INCLUDING_NEWSLETTER
 }
 
 enum CampaignStatus {
@@ -4602,4 +4604,20 @@ model SellerPromotionApplication {
   @@index([storeId])
   @@index([promotionId])
   @@map("seller_promotion_applications")
+}
+
+// =============================================================================
+// Newsletter Subscribers — public email signup for marketing campaigns
+// =============================================================================
+model NewsletterSubscriber {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  isActive       Boolean  @default(true)
+  subscribedAt   DateTime @default(now())
+  unsubscribedAt DateTime?
+  source         String   @default("homepage") // homepage, footer, checkout, etc.
+  ipAddress      String?
+
+  @@index([isActive])
+  @@map("newsletter_subscribers")
 }
