@@ -2,8 +2,8 @@
 
 # NextPik E-commerce Platform
 
-**Version:** 2.12.0
-**Last Updated:** March 29, 2026 (Shipping System, Referral Module, Subscription Fixes & Store Credits UX)
+**Version:** 2.13.0
+**Last Updated:** September 27, 2026 (PayPal Escrow Integration & Webhook System)
 **Status:** Production-Ready
 
 ---
@@ -10081,8 +10081,184 @@ This comprehensive technical documentation provides a complete overview of the N
 
 ---
 
-**Document Version:** 2.0.0
-**Last Updated:** February 4, 2026
+---
+
+## Version 2.13.0 — PayPal Escrow Integration & Webhook System (September 27, 2026)
+
+### Overview
+
+Fixed critical PayPal escrow bypass, added webhook support, and integrated PayPal refunds with the escrow system. PayPal payments now follow the identical lifecycle as Stripe payments.
+
+### Problem Statement
+
+PayPal payments bypassed the entire escrow system. When a buyer paid via PayPal, the `captureOrder()` method only updated the order status to `PROCESSING` — it skipped:
+
+- Commission calculation
+- Escrow transaction creation
+- Gelato POD submission
+- Invoice and seller notification emails
+- Referral qualification checks
+- Timeline entry creation
+
+This meant sellers could receive payouts for PayPal orders without any hold period, and the platform had zero visibility into PayPal disputes or chargebacks.
+
+### Changes Made
+
+#### Phase 1: Escrow Bypass Fix + paypalOrderId Optimization
+
+**Shared Post-Payment Processing:**
+
+- Extracted `processSuccessfulPayment()` from `handlePaymentSuccess()` in `payment.service.ts`
+- This method handles: order confirmation (→ CONFIRMED), commissions, escrow creation (single + multi-vendor splits), Gelato POD submission, invoice emails, seller notifications, referral checks
+- Both Stripe (webhook) and PayPal (capture) now call the same method
+- Method is idempotent — safe to call multiple times
+
+**PayPal Order Status Fix:**
+
+- PayPal orders now go to `CONFIRMED` (matching Stripe), not `PROCESSING`
+- Prevents orders from entering fulfillment pipeline without admin/seller review
+
+**paypalOrderId Indexed Column:**
+
+- Added `paypalOrderId String? @unique` to `PaymentTransaction` model
+- Replaces O(n) full-table scan with O(1) indexed lookup
+- Migration backfills existing transactions from metadata JSON
+- Fallback to metadata scan for legacy transactions
+
+**Security Fix:**
+
+- Removed hardcoded PayPal sandbox client ID from `paypal-payment.tsx`
+
+**Unpaid Order Guard (Bonus Fix):**
+
+- `updateStatus()` in `orders.service.ts` now rejects advancing to PROCESSING/SHIPPED/DELIVERED unless payment is PAID
+- Admin dropdown in `admin/orders/[id]/page.tsx` now shows only valid next statuses based on current state AND payment status
+- Seller service `updateOrderStatus()` has matching guard
+- Root cause: Order ORD-1790354988118 reached PROCESSING with PENDING payment via admin dropdown
+
+#### Phase 2: PayPal Webhooks
+
+**New Service:** `paypal-webhook.service.ts`
+
+- Signature verification via PayPal REST API (`POST /v1/notifications/verify-webhook-signature`)
+- OAuth2 token management for API calls
+- Idempotent processing via `WebhookEvent` table (provider: "paypal")
+
+**New Controller:** `paypal-webhook.controller.ts`
+
+- `POST /webhooks/paypal` — no JWT auth, signature-verified
+- Uses raw body for signature verification (`rawBody: true` already enabled in `main.ts`)
+
+**Events Handled:**
+
+| Event                       | Action                                                           |
+| --------------------------- | ---------------------------------------------------------------- |
+| `PAYMENT.CAPTURE.COMPLETED` | Confirms capture, runs `processSuccessfulPayment()` (idempotent) |
+| `PAYMENT.CAPTURE.DENIED`    | Sets transaction FAILED, order FAILED, creates timeline          |
+| `PAYMENT.CAPTURE.REFUNDED`  | Updates transaction/order to REFUNDED or PARTIALLY_REFUNDED      |
+| `PAYMENT.CAPTURE.REVERSED`  | Marks transaction DISPUTED, freezes escrow to DISPUTED           |
+| `CUSTOMER.DISPUTE.CREATED`  | Marks transaction DISPUTED, freezes escrow                       |
+| `CUSTOMER.DISPUTE.RESOLVED` | Resolves to SUCCEEDED or LOST_DISPUTE                            |
+| `CUSTOMER.DISPUTE.UPDATED`  | Logged for awareness                                             |
+
+**Environment Variable Added:**
+
+```bash
+PAYPAL_WEBHOOK_ID=<from PayPal Developer Dashboard>
+```
+
+#### Phase 3: Refund-Escrow Integration
+
+- `refundCapture()` in `paypal.service.ts` now reverses escrow on full refund (status → `REFUNDED`)
+- Updates split allocations to `REFUNDED` for multi-vendor orders
+- Cancels unpaid commissions on full refund
+- Partial refunds log but keep escrow intact (matches Stripe behavior)
+
+#### PayPal Success/Cancel Pages
+
+- `apps/web/src/app/checkout/paypal/success/page.tsx` — Captures payment on redirect, forwards to order success
+- `apps/web/src/app/checkout/paypal/cancel/page.tsx` — Shows cancellation message with retry option
+
+### Files Modified
+
+| File                                                                                          | Change                                                               |
+| --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `apps/api/src/payment/payment.service.ts`                                                     | Extracted `processSuccessfulPayment()`                               |
+| `apps/api/src/payment/paypal.service.ts`                                                      | CONFIRMED status, paypalOrderId column, escrow reversal on refund    |
+| `apps/api/src/payment/payment.controller.ts`                                                  | Controller orchestrates post-payment processing after PayPal capture |
+| `apps/api/src/payment/paypal-webhook.service.ts`                                              | **New** — Webhook verification + 7 event handlers                    |
+| `apps/api/src/payment/paypal-webhook.controller.ts`                                           | **New** — `POST /webhooks/paypal`                                    |
+| `apps/api/src/payment/payment.module.ts`                                                      | Registered webhook service + controller                              |
+| `apps/api/src/config/env.validation.ts`                                                       | Added `PAYPAL_WEBHOOK_ID`                                            |
+| `apps/api/src/orders/orders.service.ts`                                                       | Payment status guard + case normalization in `updateStatus()`        |
+| `apps/api/src/seller/seller.service.ts`                                                       | Payment status guard in seller `updateOrderStatus()`                 |
+| `apps/web/src/app/admin/orders/[id]/page.tsx`                                                 | Dynamic status dropdown with valid transitions                       |
+| `apps/web/src/components/checkout/paypal-payment.tsx`                                         | Removed hardcoded client ID                                          |
+| `apps/web/src/app/checkout/paypal/success/page.tsx`                                           | **New** — PayPal return handler                                      |
+| `apps/web/src/app/checkout/paypal/cancel/page.tsx`                                            | **New** — PayPal cancel handler                                      |
+| `packages/database/prisma/schema.prisma`                                                      | Added `paypalOrderId` unique + indexed column                        |
+| `packages/database/prisma/migrations/20260927000000_add_paypal_order_id_column/migration.sql` | Column + indexes + backfill                                          |
+
+### Payment Lifecycle Comparison (After Fix)
+
+| Step               | Stripe                                 | PayPal                                     |
+| ------------------ | -------------------------------------- | ------------------------------------------ |
+| Payment created    | PaymentIntent (manual capture)         | PayPal Order (CAPTURE intent)              |
+| Payment authorized | Webhook: `payment_intent.succeeded`    | Buyer approves on PayPal                   |
+| Payment captured   | Auto Day 6 or delivery confirm         | Immediate on buyer approval                |
+| Order status       | → `CONFIRMED`                          | → `CONFIRMED`                              |
+| Payment status     | → `PAID`                               | → `PAID`                                   |
+| Commissions        | Calculated (idempotent)                | Calculated (idempotent)                    |
+| Escrow             | `HELD` with configurable hold period   | `HELD` with configurable hold period       |
+| Gelato POD         | Auto-submitted                         | Auto-submitted                             |
+| Emails             | Invoice + seller notifications         | Invoice + seller notifications             |
+| Webhooks           | 15+ event types, signature verified    | 7 event types, signature verified          |
+| Refund → escrow    | Escrow reversed, commissions cancelled | Escrow reversed, commissions cancelled     |
+| Disputes           | Full automated flow                    | Escrow frozen, transaction marked DISPUTED |
+
+### Database Migration
+
+```sql
+-- Migration: 20260927000000_add_paypal_order_id_column
+ALTER TABLE "payment_transactions" ADD COLUMN "paypalOrderId" TEXT;
+CREATE UNIQUE INDEX "payment_transactions_paypalOrderId_key" ON "payment_transactions"("paypalOrderId");
+CREATE INDEX "payment_transactions_paypalOrderId_idx" ON "payment_transactions"("paypalOrderId");
+-- Backfill existing PayPal transactions from metadata JSON
+UPDATE "payment_transactions" SET "paypalOrderId" = metadata->>'paypalOrderId'
+WHERE "paymentMethod" = 'PAYPAL' AND metadata->>'paypalOrderId' IS NOT NULL AND "paypalOrderId" IS NULL;
+```
+
+### Production Setup Required
+
+1. Apply migration on production database
+2. Add `PAYPAL_WEBHOOK_ID` to production `.env`
+3. Register webhook URL in PayPal Developer Dashboard:
+   - URL: `https://api.nextpik.com/api/v1/webhooks/paypal`
+   - Events: `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED`, `PAYMENT.CAPTURE.REVERSED`, `CUSTOMER.DISPUTE.CREATED`, `CUSTOMER.DISPUTE.RESOLVED`, `CUSTOMER.DISPUTE.UPDATED`
+
+### Test Results
+
+| Test                                                             | Result                 |
+| ---------------------------------------------------------------- | ---------------------- |
+| Stripe unit tests (30/30)                                        | PASS — zero regression |
+| Subscription credit audit (6/6)                                  | PASS                   |
+| PayPal order creation + paypalOrderId column                     | PASS                   |
+| PayPal buyer approval (sandbox)                                  | PASS                   |
+| PayPal real capture (transaction 83P80615GS519050D)              | PASS                   |
+| Escrow creation ($20,350, HELD, 7-day hold)                      | PASS                   |
+| Commission calculation (10% = $1,850.30)                         | PASS                   |
+| Webhook idempotency (replay produces no duplicates)              | PASS                   |
+| PayPal sandbox dashboard (Completed, $20,350 gross, $692.20 fee) | PASS                   |
+| Type-check (6/6 packages)                                        | PASS                   |
+
+### Deferred to Phase 4
+
+- PayPal for seller subscriptions, selling credits, ad plans, hot deals
+- PayPal saved payment methods (not applicable — PayPal doesn't support this)
+- Admin webhook monitoring UI for PayPal events
+
+**Document Version:** 2.1.0
+**Last Updated:** September 27, 2026
 **Maintained By:** Development Team
 **Contact:** [Your contact information]
 
