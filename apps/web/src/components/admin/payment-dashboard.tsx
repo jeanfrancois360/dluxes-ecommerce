@@ -281,7 +281,9 @@ export function PaymentDashboard() {
                 >
                   <div className="flex-1">
                     <div className="font-medium text-gray-900">
-                      Order #{txn.order.orderNumber}
+                      {txn.order
+                        ? `Order #${txn.order.orderNumber}`
+                        : `Transaction ${txn.id.slice(0, 8)}...`}
                     </div>
                     <div className="text-sm text-gray-500">
                       {new Date(txn.createdAt).toLocaleDateString()}
@@ -297,8 +299,8 @@ export function PaymentDashboard() {
                           txn.status === 'SUCCEEDED'
                             ? 'text-green-600'
                             : txn.status === 'FAILED'
-                            ? 'text-red-600'
-                            : 'text-yellow-600'
+                              ? 'text-red-600'
+                              : 'text-yellow-600'
                         }`}
                       >
                         {txn.status}
@@ -354,9 +356,7 @@ export function PaymentDashboard() {
                 <div className="space-y-2">
                   {webhookStats?.topEventTypes.slice(0, 3).map((event, index) => (
                     <div key={index} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 truncate flex-1 pr-2">
-                        {event.eventType}
-                      </span>
+                      <span className="text-gray-600 truncate flex-1 pr-2">{event.eventType}</span>
                       <span className="font-medium text-gray-900">{event.count}</span>
                     </div>
                   ))}

@@ -81,6 +81,17 @@ function UsersContent() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showActions, setShowActions] = useState<string | null>(null);
 
+  // Add User Modal
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [addUserForm, setAddUserForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    role: 'BUYER',
+  });
+  const [addUserLoading, setAddUserLoading] = useState(false);
+
   const search = useDebounce(searchInput, 500);
 
   useEffect(() => {
@@ -193,13 +204,13 @@ function UsersContent() {
             <Download className="w-4 h-4" />
             Export
           </button>
-          <Link
-            href="/admin/users/create"
+          <button
+            onClick={() => setShowAddUser(true)}
             className="px-4 py-2.5 bg-[#CBB57B] text-white rounded-lg hover:bg-[#a89158] transition-all flex items-center gap-2 shadow-sm font-medium"
           >
             <UserPlus className="w-4 h-4" />
             Add User
-          </Link>
+          </button>
         </div>
       </PageHeader>
 
@@ -494,6 +505,131 @@ function UsersContent() {
               >
                 Clear
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Add User Modal */}
+        {showAddUser && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+              <div className="p-6 border-b border-gray-100">
+                <h2 className="text-lg font-bold text-gray-900">Add New User</h2>
+                <p className="text-sm text-gray-500 mt-1">Create a new platform user account</p>
+              </div>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setAddUserLoading(true);
+                  try {
+                    await api.post('/auth/register', {
+                      firstName: addUserForm.firstName,
+                      lastName: addUserForm.lastName,
+                      email: addUserForm.email,
+                      password: addUserForm.password,
+                      role: addUserForm.role,
+                    });
+                    toast.success(`User ${addUserForm.email} created successfully`);
+                    setShowAddUser(false);
+                    setAddUserForm({
+                      firstName: '',
+                      lastName: '',
+                      email: '',
+                      password: '',
+                      role: 'BUYER',
+                    });
+                    fetchUsers();
+                  } catch (error: any) {
+                    const msg =
+                      error?.response?.data?.message || error?.message || 'Failed to create user';
+                    toast.error(Array.isArray(msg) ? msg[0] : msg);
+                  } finally {
+                    setAddUserLoading(false);
+                  }
+                }}
+                className="p-6 space-y-4"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name
+                    </label>
+                    <input
+                      type="text"
+                      value={addUserForm.firstName}
+                      onChange={(e) =>
+                        setAddUserForm({ ...addUserForm, firstName: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/40 focus:border-[#CBB57B]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      type="text"
+                      value={addUserForm.lastName}
+                      onChange={(e) => setAddUserForm({ ...addUserForm, lastName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/40 focus:border-[#CBB57B]"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={addUserForm.email}
+                    onChange={(e) => setAddUserForm({ ...addUserForm, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/40 focus:border-[#CBB57B]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    value={addUserForm.password}
+                    onChange={(e) => setAddUserForm({ ...addUserForm, password: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/40 focus:border-[#CBB57B]"
+                    required
+                    minLength={12}
+                    placeholder="Min 12 characters"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <select
+                    value={addUserForm.role}
+                    onChange={(e) => setAddUserForm({ ...addUserForm, role: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/40 focus:border-[#CBB57B]"
+                  >
+                    <option value="BUYER">Buyer</option>
+                    <option value="SELLER">Seller</option>
+                    <option value="DELIVERY_PARTNER">Delivery Partner</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddUser(false)}
+                    disabled={addUserLoading}
+                    className="flex-1 py-2.5 border border-gray-200 rounded-xl font-semibold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={addUserLoading}
+                    className="flex-1 py-2.5 bg-[#CBB57B] text-white rounded-xl font-bold text-sm hover:bg-[#a89158] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {addUserLoading ? 'Creating...' : 'Create User'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
