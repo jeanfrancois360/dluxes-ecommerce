@@ -169,12 +169,13 @@ export class PayPalService {
         `PayPal order created: ${paypalOrder.id} for internal order: ${data.orderId}`
       );
 
-      // Save PayPal transaction
+      // Save PayPal transaction with indexed paypalOrderId column
       await this.prisma.paymentTransaction.create({
         data: {
           orderId: data.orderId,
           userId: userId,
           paymentMethod: PaymentMethod.PAYPAL,
+          paypalOrderId: paypalOrder.id,
           amount: new Decimal(data.amount),
           currency: data.currency.toUpperCase(),
           status: PaymentTransactionStatus.PENDING,
@@ -205,25 +206,34 @@ export class PayPalService {
   async captureOrder(
     paypalOrderId: string,
     user: AuthenticatedUser
-  ): Promise<{ success: boolean; orderId: string; transactionId: string }> {
+  ): Promise<{
+    success: boolean;
+    orderId: string;
+    transactionId: string;
+    transaction?: { id: string; amount: any; currency: string };
+  }> {
     const client = this.getClient();
 
     try {
-      // Find our order by PayPal order ID (stored in metadata).
-      // NOTE: This is an O(n) full-table scan filtered in application memory because
-      // paypalOrderId is stored in the metadata JSON field, not a dedicated indexed column.
-      // Logged for follow-up: normalize PaymentTransaction to add a first-class paypalOrderId column.
-      const transactions = await this.prisma.paymentTransaction.findMany({
-        where: {
-          paymentMethod: PaymentMethod.PAYPAL,
-        },
+      // Find our order by PayPal order ID using the indexed column.
+      // Falls back to metadata JSON scan for transactions created before the migration.
+      let transaction = await this.prisma.paymentTransaction.findUnique({
+        where: { paypalOrderId },
         include: { order: true },
       });
 
-      const transaction = transactions.find((t) => {
-        const metadata = t.metadata as any;
-        return metadata?.paypalOrderId === paypalOrderId;
-      });
+      // Fallback: legacy transactions may only have paypalOrderId in metadata JSON
+      if (!transaction) {
+        const legacyTransactions = await this.prisma.paymentTransaction.findMany({
+          where: { paymentMethod: PaymentMethod.PAYPAL, paypalOrderId: null },
+          include: { order: true },
+        });
+        transaction =
+          legacyTransactions.find((t) => {
+            const metadata = t.metadata as any;
+            return metadata?.paypalOrderId === paypalOrderId;
+          }) || null;
+      }
 
       if (!transaction) {
         throw new NotFoundException('Payment order not found');
@@ -249,7 +259,7 @@ export class PayPalService {
 
       if (isSuccess) {
         // Update transaction
-        await this.prisma.paymentTransaction.update({
+        const updatedTransaction = await this.prisma.paymentTransaction.update({
           where: { id: transaction.id },
           data: {
             status: PaymentTransactionStatus.SUCCEEDED,
@@ -262,21 +272,22 @@ export class PayPalService {
           },
         });
 
-        // Update order payment status
-        await this.prisma.order.update({
-          where: { id: transaction.orderId },
-          data: {
-            paymentStatus: PaymentStatus.PAID,
-            status: 'PROCESSING', // Move to PROCESSING after payment
-          },
-        });
-
         this.logger.log(`PayPal order captured: ${paypalOrderId} -> ${capture.id}`);
+
+        // NOTE: Post-payment processing (escrow, commissions, emails, etc.) is handled
+        // by the controller calling PaymentService.processSuccessfulPayment() after this
+        // method returns. This avoids circular dependency between PayPalService and PaymentService.
 
         return {
           success: true,
           orderId: transaction.orderId,
           transactionId: capture.id,
+          // Return transaction data so the controller can pass it to processSuccessfulPayment
+          transaction: {
+            id: updatedTransaction.id,
+            amount: updatedTransaction.amount,
+            currency: updatedTransaction.currency,
+          },
         };
       } else {
         throw new BadRequestException(`Payment capture failed with status: ${capture.status}`);
@@ -373,6 +384,48 @@ export class PayPalService {
           this.logger.log(
             `PayPal refund audit trail written for transaction ${txn.id}, order ${txn.orderId}`
           );
+
+          // Reverse escrow if it exists (full refund → REFUNDED, partial → keep HELD)
+          try {
+            const escrow = await this.prisma.escrowTransaction.findFirst({
+              where: { orderId: txn.orderId },
+            });
+            if (escrow && isFullRefund) {
+              await this.prisma.escrowTransaction.update({
+                where: { id: escrow.id },
+                data: { status: 'REFUNDED' },
+              });
+              // Also update split allocations if they exist
+              await this.prisma.escrowSplitAllocation.updateMany({
+                where: { escrowTransactionId: escrow.id },
+                data: { status: 'REFUNDED' },
+              });
+              this.logger.log(`Escrow reversed for order ${txn.orderId} (full refund)`);
+            } else if (escrow) {
+              this.logger.log(
+                `Partial PayPal refund for order ${txn.orderId} — escrow remains ${escrow.status}`
+              );
+            }
+          } catch (escrowError) {
+            this.logger.error(`Escrow reversal failed for order ${txn.orderId}:`, escrowError);
+            // Don't fail the refund if escrow update fails
+          }
+
+          // Cancel commissions on full refund
+          if (isFullRefund) {
+            try {
+              await this.prisma.commission.updateMany({
+                where: { transactionId: txn.id, paidOut: false },
+                data: { status: 'CANCELLED' as any },
+              });
+              this.logger.log(`Commissions cancelled for transaction ${txn.id} (full refund)`);
+            } catch (commissionError) {
+              this.logger.error(
+                `Commission cancellation failed for transaction ${txn.id}:`,
+                commissionError
+              );
+            }
+          }
         } else {
           this.logger.warn(
             `PayPal refund ${response.result.id}: no PaymentTransaction found for captureId ${captureId}`

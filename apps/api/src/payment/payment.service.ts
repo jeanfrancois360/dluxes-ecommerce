@@ -1326,425 +1326,440 @@ export class PaymentService {
         });
       }
 
-      // Update order payment status
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: {
-          paymentStatus: PaymentStatus.PAID,
-          paidAt: new Date(),
-          status: 'CONFIRMED' as any,
-        },
-      });
-
-      // Create timeline entry
-      await this.prisma.orderTimeline.create({
-        data: {
-          orderId,
-          status: 'CONFIRMED' as any,
-          title: 'Payment Confirmed',
-          description: 'Your payment has been successfully processed.',
-          icon: 'credit-card',
-        },
-      });
-
-      this.logger.log(`Order ${orderId} payment confirmed (transaction: ${transaction.id})`);
-
-      // Send digital download ready email — NON-BLOCKING, fire-and-forget
-      this.sendDigitalDownloadEmail(orderId).catch((err) => {
-        this.logger.warn(`Digital download email failed for order ${orderId}: ${err.message}`);
-      });
-
-      // Referral System (v2.11.0) - Check buyer qualification (NON-BLOCKING)
-      if (this.referralService) {
-        this.referralService.checkBuyerQualification(orderId).catch((err) => {
-          this.logger.warn(
-            `Referral buyer qualification check failed for order ${orderId}: ${err.message}`
-          );
-        });
-      }
-
-      // Calculate and create commissions
-      // Idempotency guard: skip if commissions already exist for this transaction
-      // (prevents duplicates when both amount_capturable_updated and succeeded fire)
-      const existingCommissionCount = await this.prisma.commission.count({
-        where: { transactionId: transaction.id },
-      });
-
-      if (existingCommissionCount > 0) {
-        this.logger.log(
-          `Commissions already exist for transaction ${transaction.id} (count: ${existingCommissionCount}). Skipping.`
-        );
-      } else {
-        try {
-          const { CommissionService } = await import('../commission/commission.service');
-          const commissionService = new CommissionService(this.prisma, this.settingsService);
-          await commissionService.calculateCommissionForTransaction(transaction.id);
-          this.logger.log(`Commissions calculated for transaction ${transaction.id}`);
-        } catch (commissionError) {
-          this.logger.error(
-            `Error calculating commissions for transaction ${transaction.id}:`,
-            commissionError
-          );
-          // Don't fail the payment if commission calculation fails
-        }
-      }
-
-      // Auto-submit Gelato POD items (per-seller basis)
-      // Each seller controls their own Gelato integration via SellerGelatoSettings
-      // NOTE: This only triggers for CAPTURED payments (payment_intent.succeeded)
-      // For UNCAPTURED payments (escrow), Gelato submission happens when order status → PROCESSING
-      try {
-        const { GelatoService } = await import('../gelato/gelato.service');
-        const { GelatoOrdersService } = await import('../gelato/gelato-orders.service');
-        const gelatoService = new GelatoService(
-          this.prisma,
-          this.configService,
-          this.settingsService
-        );
-        await gelatoService.onModuleInit();
-        const gelatoOrdersService = new GelatoOrdersService(
-          this.prisma,
-          gelatoService,
-          this.settingsService
-        );
-
-        // Submit POD items - only for sellers with Gelato enabled
-        const result = await gelatoOrdersService.submitAllPodItems(orderId);
-        if (result.submitted > 0) {
-          this.logger.log(
-            `Gelato POD items submitted for order ${orderId}: ${result.submitted}/${result.results.length} items`
-          );
-        } else if (result.results.length > 0) {
-          this.logger.warn(
-            `No Gelato POD items submitted for order ${orderId} - sellers may not have Gelato enabled`
-          );
-        }
-      } catch (gelatoError) {
-        this.logger.error(`Gelato POD submission failed for order ${orderId}:`, gelatoError);
-        // Don't fail the payment if Gelato submission fails
-      }
-
-      // Create Escrow Transaction (DEFAULT PAYMENT MODEL)
-      // Funds are held until delivery confirmation
-      // Check system settings for escrow configuration
-      const escrowEnabled = await this.isEscrowEnabled();
-      const immediatePayoutEnabled = await this.isImmediatePayoutEnabled();
-      const holdPeriodDays = await this.getEscrowHoldPeriodDays();
-
-      if (!escrowEnabled) {
-        this.logger.warn(
-          `Escrow is disabled in system settings. Payment processed without escrow for order ${orderId}`
-        );
-      }
-
-      if (escrowEnabled && !immediatePayoutEnabled) {
-        // Idempotency guard: skip if escrow already exists for this order
-        const existingEscrowCount = await this.prisma.escrowTransaction.count({
-          where: { orderId },
-        });
-
-        if (existingEscrowCount > 0) {
-          this.logger.log(
-            `Escrow already exists for order ${orderId} (count: ${existingEscrowCount}). Skipping.`
-          );
-        } else
-          try {
-            const order = await this.prisma.order.findUnique({
-              where: { id: orderId },
-              include: {
-                items: {
-                  include: {
-                    product: {
-                      include: {
-                        store: true,
-                      },
-                    },
-                  },
-                },
-              },
-            });
-
-            if (order && order.items.length > 0) {
-              // For multi-vendor orders, create escrow per seller
-              const sellerOrders = new Map<string, any>();
-
-              for (const item of order.items) {
-                if (item.product.store) {
-                  const sellerId = item.product.store.userId;
-                  if (!sellerOrders.has(sellerId)) {
-                    sellerOrders.set(sellerId, {
-                      sellerId,
-                      storeId: item.product.storeId!,
-                      totalAmount: 0,
-                      platformFee: 0,
-                    });
-                  }
-                  const sellerOrder = sellerOrders.get(sellerId)!;
-                  sellerOrder.totalAmount += Number(item.total);
-                }
-              }
-
-              // Calculate platform fee from commissions
-              const commissions = await this.prisma.commission.findMany({
-                where: { transactionId: transaction.id },
-              });
-
-              const totalPlatformFee = commissions.reduce(
-                (sum, c) => sum + Number(c.commissionAmount),
-                0
-              );
-
-              // Create escrow transaction with hold period from settings
-              if (sellerOrders.size === 1) {
-                // Single seller order
-                const sellerOrder = Array.from(sellerOrders.values())[0];
-                const { EscrowService } = await import('../escrow/escrow.service');
-                const escrowService = new EscrowService(this.prisma, this.settingsService);
-
-                await escrowService.createEscrowTransaction({
-                  orderId,
-                  paymentTransactionId: transaction.id,
-                  sellerId: sellerOrder.sellerId,
-                  storeId: sellerOrder.storeId,
-                  totalAmount: Number(transaction.amount),
-                  platformFee: totalPlatformFee,
-                  currency: transaction.currency,
-                  holdPeriodDays, // Use hold period from system settings
-                });
-
-                this.logger.log(
-                  `Escrow created for order ${orderId}: ${transaction.amount} ${transaction.currency} (platform fee: ${totalPlatformFee}, hold period: ${holdPeriodDays} days)`
-                );
-              } else {
-                // Multi-vendor order - create escrow with split allocations
-                const { EscrowService } = await import('../escrow/escrow.service');
-                const escrowService = new EscrowService(this.prisma, this.settingsService);
-
-                // Build split items with commission data
-                const splitItems = [];
-
-                for (const item of order.items) {
-                  if (item.product.store) {
-                    // Find commission for this specific item
-                    const itemCommission = commissions.find((c) => c.orderItemId === item.id);
-
-                    splitItems.push({
-                      orderItemId: item.id,
-                      sellerId: item.product.store.userId,
-                      storeId: item.product.storeId!,
-                      amount: Number(item.total),
-                      platformFee: itemCommission ? Number(itemCommission.commissionAmount) : 0,
-                    });
-                  }
-                }
-
-                if (splitItems.length > 0) {
-                  await escrowService.createEscrowWithSplits({
-                    orderId,
-                    paymentTransactionId: transaction.id,
-                    currency: transaction.currency,
-                    holdPeriodDays,
-                    items: splitItems,
-                  });
-
-                  this.logger.log(
-                    `Multi-vendor escrow created for order ${orderId}: ${splitItems.length} sellers, ${sellerOrders.size} stores (hold period: ${holdPeriodDays} days)`
-                  );
-                } else {
-                  this.logger.warn(`No split items found for multi-vendor order ${orderId}`);
-                }
-              }
-            }
-          } catch (escrowError) {
-            this.logger.error(
-              `Error creating escrow for transaction ${transaction.id}:`,
-              escrowError
-            );
-            // Don't fail the payment if escrow creation fails
-          }
-      } else if (immediatePayoutEnabled) {
-        this.logger.warn(
-          `IMMEDIATE PAYOUT MODE ENABLED: Funds will be paid to seller immediately for order ${orderId}. This should only be used for testing or trusted sellers!`
-        );
-        // In immediate payout mode, funds would be transferred immediately
-        // This requires additional payout service integration
-      }
-
-      // Generate and send invoice email with PDF attachment
-      try {
-        const order = await this.prisma.order.findUnique({
-          where: { id: orderId },
-          include: {
-            user: true,
-            items: {
-              include: {
-                product: { include: { store: true } },
-                variant: true,
-              },
-            },
-            shippingAddress: true,
-            billingAddress: true,
-          },
-        });
-
-        if (order && order.user) {
-          // Import services needed for email
-          const { EmailService } = await import('../email/email.service');
-          const emailService = new EmailService();
-
-          // Import OrdersService to generate invoice PDF
-          const { OrdersService } = await import('../orders/orders.service');
-          // Create a minimal instance just for PDF generation
-          // We'll pass null for services not needed for PDF generation
-          const ordersServiceModule = await import('../orders/orders.service');
-          const ordersService = new ordersServiceModule.OrdersService(
-            this.prisma,
-            this.currencyService,
-            null as any, // emailService not needed for PDF generation
-            null as any, // shippingTaxService not needed for PDF generation
-            null as any, // cartService not needed for PDF generation
-            this,
-            null as any // gelatoOrdersService not needed for PDF generation
-          );
-
-          const invoicePdf = await ordersService.generateInvoicePdf(orderId, order.userId);
-
-          await emailService.sendPaymentConfirmationWithInvoice(order.user.email, {
-            orderNumber: order.orderNumber,
-            customerName:
-              `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer',
-            total: Number(order.total),
-            currency: order.currency,
-            paidAt: new Date(),
-            invoicePdf,
-          });
-
-          this.logger.log(
-            `Invoice email sent for order ${order.orderNumber} to ${order.user.email}`
-          );
-
-          // Send seller notifications
-          try {
-            // Group items by seller
-            const sellerItems = new Map<string, any[]>();
-            for (const item of order.items) {
-              if (item.product?.store) {
-                const sellerId = item.product.store.userId;
-                if (!sellerItems.has(sellerId)) {
-                  sellerItems.set(sellerId, []);
-                }
-                sellerItems.get(sellerId)!.push({
-                  ...item,
-                  store: item.product.store,
-                });
-              }
-            }
-
-            // Send notification to each seller
-            for (const [sellerId, items] of sellerItems) {
-              try {
-                const seller = await this.prisma.user.findUnique({
-                  where: { id: sellerId },
-                  select: { email: true, firstName: true, lastName: true },
-                });
-
-                if (!seller) continue;
-
-                const store = items[0].store;
-                const sellerSubtotal = items.reduce((sum, item) => sum + Number(item.total), 0);
-
-                // Calculate seller's commission (approximation - actual commission is per-item)
-                const commissions = await this.prisma.commission.findMany({
-                  where: {
-                    transactionId: transaction.id,
-                    sellerId,
-                  },
-                });
-
-                const totalCommission = commissions.reduce(
-                  (sum, c) => sum + Number(c.commissionAmount),
-                  0
-                );
-                const avgCommissionRate =
-                  commissions.length > 0
-                    ? commissions.reduce((sum, c) => sum + Number(c.ruleValue), 0) /
-                      commissions.length
-                    : 10;
-
-                // Split the total Stripe/PayPal processing fee proportionally by seller's share
-                const grossOrderAmount = grossAmount.toNumber();
-                const sellerShare = grossOrderAmount > 0 ? sellerSubtotal / grossOrderAmount : 1;
-                const sellerTransactionFee = processingFees
-                  ? processingFees.feeAmount.toNumber() * sellerShare
-                  : 0;
-                const sellerTransactionFeeRatePct = processingFees
-                  ? processingFees.feePercent.mul(100).toNumber()
-                  : 0;
-
-                await emailService.sendSellerOrderNotification(seller.email, {
-                  sellerName:
-                    `${seller.firstName || ''} ${seller.lastName || ''}`.trim() || 'Seller',
-                  storeName: store.name,
-                  orderNumber: order.orderNumber,
-                  customerName:
-                    `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() ||
-                    'Customer',
-                  items: items.map((item) => ({
-                    name: item.product.name,
-                    quantity: item.quantity,
-                    price: Number(item.price),
-                    image: item.product.heroImage,
-                    sku: item.product.sku,
-                  })),
-                  subtotal: sellerSubtotal,
-                  commission: totalCommission,
-                  commissionRate: avgCommissionRate,
-                  transactionFee: sellerTransactionFee > 0 ? sellerTransactionFee : undefined,
-                  transactionFeeRate:
-                    sellerTransactionFeeRatePct > 0 ? sellerTransactionFeeRatePct : undefined,
-                  netPayout: sellerSubtotal - totalCommission - sellerTransactionFee,
-                  currency: order.currency,
-                  shippingAddress: {
-                    street: order.shippingAddress?.address1 || '',
-                    city: order.shippingAddress?.city || '',
-                    state: order.shippingAddress?.province || '',
-                    zipCode: order.shippingAddress?.postalCode || '',
-                    country: order.shippingAddress?.country || '',
-                  },
-                  orderId: order.id,
-                  sellerId,
-                });
-
-                this.logger.log(
-                  `Seller notification sent for order ${order.orderNumber} to ${seller.email}`
-                );
-              } catch (sellerEmailError) {
-                this.logger.error(
-                  `Failed to send seller notification to seller ${sellerId}:`,
-                  sellerEmailError
-                );
-                // Continue to next seller if one fails
-              }
-            }
-          } catch (sellerNotificationError) {
-            this.logger.error(
-              `Failed to process seller notifications for order ${orderId}:`,
-              sellerNotificationError
-            );
-            // Don't fail the payment if seller notification fails
-          }
-        }
-      } catch (emailError) {
-        this.logger.error(`Failed to send invoice email for order ${orderId}:`, emailError);
-        // Don't fail the payment if invoice email fails
-      }
-
-      // Inventory was already decremented via InventoryService.recordTransaction(SALE)
-      // in orders.service.ts at order creation time. No action required here.
+      // Run shared post-payment processing (order confirmation, commissions, escrow, emails)
+      await this.processSuccessfulPayment(orderId, transaction, grossAmount, processingFees);
     } catch (error) {
       this.logger.error(`Error processing payment success for order ${orderId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Shared post-payment processing for both Stripe and PayPal.
+   *
+   * Called after a payment is confirmed (Stripe webhook or PayPal capture).
+   * Performs: order confirmation, timeline, commissions, Gelato POD,
+   * escrow creation, invoice email, seller notifications, and referral checks.
+   *
+   * This method is idempotent — safe to call multiple times for the same order.
+   */
+  async processSuccessfulPayment(
+    orderId: string,
+    transaction: { id: string; amount: any; currency: string },
+    grossAmount: Decimal,
+    processingFees: { feeAmount: Decimal; feePercent: Decimal; feeFixed: Decimal } | null
+  ): Promise<void> {
+    // Update order payment status
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        paymentStatus: PaymentStatus.PAID,
+        paidAt: new Date(),
+        status: 'CONFIRMED' as any,
+      },
+    });
+
+    // Create timeline entry
+    await this.prisma.orderTimeline.create({
+      data: {
+        orderId,
+        status: 'CONFIRMED' as any,
+        title: 'Payment Confirmed',
+        description: 'Your payment has been successfully processed.',
+        icon: 'credit-card',
+      },
+    });
+
+    this.logger.log(`Order ${orderId} payment confirmed (transaction: ${transaction.id})`);
+
+    // Send digital download ready email — NON-BLOCKING, fire-and-forget
+    this.sendDigitalDownloadEmail(orderId).catch((err) => {
+      this.logger.warn(`Digital download email failed for order ${orderId}: ${err.message}`);
+    });
+
+    // Referral System (v2.11.0) - Check buyer qualification (NON-BLOCKING)
+    if (this.referralService) {
+      this.referralService.checkBuyerQualification(orderId).catch((err) => {
+        this.logger.warn(
+          `Referral buyer qualification check failed for order ${orderId}: ${err.message}`
+        );
+      });
+    }
+
+    // Calculate and create commissions
+    // Idempotency guard: skip if commissions already exist for this transaction
+    // (prevents duplicates when both amount_capturable_updated and succeeded fire)
+    const existingCommissionCount = await this.prisma.commission.count({
+      where: { transactionId: transaction.id },
+    });
+
+    if (existingCommissionCount > 0) {
+      this.logger.log(
+        `Commissions already exist for transaction ${transaction.id} (count: ${existingCommissionCount}). Skipping.`
+      );
+    } else {
+      try {
+        const { CommissionService } = await import('../commission/commission.service');
+        const commissionService = new CommissionService(this.prisma, this.settingsService);
+        await commissionService.calculateCommissionForTransaction(transaction.id);
+        this.logger.log(`Commissions calculated for transaction ${transaction.id}`);
+      } catch (commissionError) {
+        this.logger.error(
+          `Error calculating commissions for transaction ${transaction.id}:`,
+          commissionError
+        );
+        // Don't fail the payment if commission calculation fails
+      }
+    }
+
+    // Auto-submit Gelato POD items (per-seller basis)
+    // Each seller controls their own Gelato integration via SellerGelatoSettings
+    // NOTE: This only triggers for CAPTURED payments (payment_intent.succeeded)
+    // For UNCAPTURED payments (escrow), Gelato submission happens when order status → PROCESSING
+    try {
+      const { GelatoService } = await import('../gelato/gelato.service');
+      const { GelatoOrdersService } = await import('../gelato/gelato-orders.service');
+      const gelatoService = new GelatoService(
+        this.prisma,
+        this.configService,
+        this.settingsService
+      );
+      await gelatoService.onModuleInit();
+      const gelatoOrdersService = new GelatoOrdersService(
+        this.prisma,
+        gelatoService,
+        this.settingsService
+      );
+
+      // Submit POD items - only for sellers with Gelato enabled
+      const result = await gelatoOrdersService.submitAllPodItems(orderId);
+      if (result.submitted > 0) {
+        this.logger.log(
+          `Gelato POD items submitted for order ${orderId}: ${result.submitted}/${result.results.length} items`
+        );
+      } else if (result.results.length > 0) {
+        this.logger.warn(
+          `No Gelato POD items submitted for order ${orderId} - sellers may not have Gelato enabled`
+        );
+      }
+    } catch (gelatoError) {
+      this.logger.error(`Gelato POD submission failed for order ${orderId}:`, gelatoError);
+      // Don't fail the payment if Gelato submission fails
+    }
+
+    // Create Escrow Transaction (DEFAULT PAYMENT MODEL)
+    // Funds are held until delivery confirmation
+    // Check system settings for escrow configuration
+    const escrowEnabled = await this.isEscrowEnabled();
+    const immediatePayoutEnabled = await this.isImmediatePayoutEnabled();
+    const holdPeriodDays = await this.getEscrowHoldPeriodDays();
+
+    if (!escrowEnabled) {
+      this.logger.warn(
+        `Escrow is disabled in system settings. Payment processed without escrow for order ${orderId}`
+      );
+    }
+
+    if (escrowEnabled && !immediatePayoutEnabled) {
+      // Idempotency guard: skip if escrow already exists for this order
+      const existingEscrowCount = await this.prisma.escrowTransaction.count({
+        where: { orderId },
+      });
+
+      if (existingEscrowCount > 0) {
+        this.logger.log(
+          `Escrow already exists for order ${orderId} (count: ${existingEscrowCount}). Skipping.`
+        );
+      } else
+        try {
+          const order = await this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: {
+              items: {
+                include: {
+                  product: {
+                    include: {
+                      store: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          if (order && order.items.length > 0) {
+            // For multi-vendor orders, create escrow per seller
+            const sellerOrders = new Map<string, any>();
+
+            for (const item of order.items) {
+              if (item.product.store) {
+                const sellerId = item.product.store.userId;
+                if (!sellerOrders.has(sellerId)) {
+                  sellerOrders.set(sellerId, {
+                    sellerId,
+                    storeId: item.product.storeId!,
+                    totalAmount: 0,
+                    platformFee: 0,
+                  });
+                }
+                const sellerOrder = sellerOrders.get(sellerId)!;
+                sellerOrder.totalAmount += Number(item.total);
+              }
+            }
+
+            // Calculate platform fee from commissions
+            const commissions = await this.prisma.commission.findMany({
+              where: { transactionId: transaction.id },
+            });
+
+            const totalPlatformFee = commissions.reduce(
+              (sum, c) => sum + Number(c.commissionAmount),
+              0
+            );
+
+            // Create escrow transaction with hold period from settings
+            if (sellerOrders.size === 1) {
+              // Single seller order
+              const sellerOrder = Array.from(sellerOrders.values())[0];
+              const { EscrowService } = await import('../escrow/escrow.service');
+              const escrowService = new EscrowService(this.prisma, this.settingsService);
+
+              await escrowService.createEscrowTransaction({
+                orderId,
+                paymentTransactionId: transaction.id,
+                sellerId: sellerOrder.sellerId,
+                storeId: sellerOrder.storeId,
+                totalAmount: Number(transaction.amount),
+                platformFee: totalPlatformFee,
+                currency: transaction.currency,
+                holdPeriodDays, // Use hold period from system settings
+              });
+
+              this.logger.log(
+                `Escrow created for order ${orderId}: ${transaction.amount} ${transaction.currency} (platform fee: ${totalPlatformFee}, hold period: ${holdPeriodDays} days)`
+              );
+            } else {
+              // Multi-vendor order - create escrow with split allocations
+              const { EscrowService } = await import('../escrow/escrow.service');
+              const escrowService = new EscrowService(this.prisma, this.settingsService);
+
+              // Build split items with commission data
+              const splitItems = [];
+
+              for (const item of order.items) {
+                if (item.product.store) {
+                  // Find commission for this specific item
+                  const itemCommission = commissions.find((c) => c.orderItemId === item.id);
+
+                  splitItems.push({
+                    orderItemId: item.id,
+                    sellerId: item.product.store.userId,
+                    storeId: item.product.storeId!,
+                    amount: Number(item.total),
+                    platformFee: itemCommission ? Number(itemCommission.commissionAmount) : 0,
+                  });
+                }
+              }
+
+              if (splitItems.length > 0) {
+                await escrowService.createEscrowWithSplits({
+                  orderId,
+                  paymentTransactionId: transaction.id,
+                  currency: transaction.currency,
+                  holdPeriodDays,
+                  items: splitItems,
+                });
+
+                this.logger.log(
+                  `Multi-vendor escrow created for order ${orderId}: ${splitItems.length} sellers, ${sellerOrders.size} stores (hold period: ${holdPeriodDays} days)`
+                );
+              } else {
+                this.logger.warn(`No split items found for multi-vendor order ${orderId}`);
+              }
+            }
+          }
+        } catch (escrowError) {
+          this.logger.error(
+            `Error creating escrow for transaction ${transaction.id}:`,
+            escrowError
+          );
+          // Don't fail the payment if escrow creation fails
+        }
+    } else if (immediatePayoutEnabled) {
+      this.logger.warn(
+        `IMMEDIATE PAYOUT MODE ENABLED: Funds will be paid to seller immediately for order ${orderId}. This should only be used for testing or trusted sellers!`
+      );
+      // In immediate payout mode, funds would be transferred immediately
+      // This requires additional payout service integration
+    }
+
+    // Generate and send invoice email with PDF attachment
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          user: true,
+          items: {
+            include: {
+              product: { include: { store: true } },
+              variant: true,
+            },
+          },
+          shippingAddress: true,
+          billingAddress: true,
+        },
+      });
+
+      if (order && order.user) {
+        // Import services needed for email
+        const { EmailService } = await import('../email/email.service');
+        const emailService = new EmailService();
+
+        // Import OrdersService to generate invoice PDF
+        const { OrdersService } = await import('../orders/orders.service');
+        // Create a minimal instance just for PDF generation
+        // We'll pass null for services not needed for PDF generation
+        const ordersServiceModule = await import('../orders/orders.service');
+        const ordersService = new ordersServiceModule.OrdersService(
+          this.prisma,
+          this.currencyService,
+          null as any, // emailService not needed for PDF generation
+          null as any, // shippingTaxService not needed for PDF generation
+          null as any, // cartService not needed for PDF generation
+          this,
+          null as any // gelatoOrdersService not needed for PDF generation
+        );
+
+        const invoicePdf = await ordersService.generateInvoicePdf(orderId, order.userId);
+
+        await emailService.sendPaymentConfirmationWithInvoice(order.user.email, {
+          orderNumber: order.orderNumber,
+          customerName:
+            `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer',
+          total: Number(order.total),
+          currency: order.currency,
+          paidAt: new Date(),
+          invoicePdf,
+        });
+
+        this.logger.log(`Invoice email sent for order ${order.orderNumber} to ${order.user.email}`);
+
+        // Send seller notifications
+        try {
+          // Group items by seller
+          const sellerItems = new Map<string, any[]>();
+          for (const item of order.items) {
+            if (item.product?.store) {
+              const sellerId = item.product.store.userId;
+              if (!sellerItems.has(sellerId)) {
+                sellerItems.set(sellerId, []);
+              }
+              sellerItems.get(sellerId)!.push({
+                ...item,
+                store: item.product.store,
+              });
+            }
+          }
+
+          // Send notification to each seller
+          for (const [sellerId, items] of sellerItems) {
+            try {
+              const seller = await this.prisma.user.findUnique({
+                where: { id: sellerId },
+                select: { email: true, firstName: true, lastName: true },
+              });
+
+              if (!seller) continue;
+
+              const store = items[0].store;
+              const sellerSubtotal = items.reduce((sum, item) => sum + Number(item.total), 0);
+
+              // Calculate seller's commission (approximation - actual commission is per-item)
+              const commissions = await this.prisma.commission.findMany({
+                where: {
+                  transactionId: transaction.id,
+                  sellerId,
+                },
+              });
+
+              const totalCommission = commissions.reduce(
+                (sum, c) => sum + Number(c.commissionAmount),
+                0
+              );
+              const avgCommissionRate =
+                commissions.length > 0
+                  ? commissions.reduce((sum, c) => sum + Number(c.ruleValue), 0) /
+                    commissions.length
+                  : 10;
+
+              // Split the total Stripe/PayPal processing fee proportionally by seller's share
+              const grossOrderAmount = grossAmount.toNumber();
+              const sellerShare = grossOrderAmount > 0 ? sellerSubtotal / grossOrderAmount : 1;
+              const sellerTransactionFee = processingFees
+                ? processingFees.feeAmount.toNumber() * sellerShare
+                : 0;
+              const sellerTransactionFeeRatePct = processingFees
+                ? processingFees.feePercent.mul(100).toNumber()
+                : 0;
+
+              await emailService.sendSellerOrderNotification(seller.email, {
+                sellerName: `${seller.firstName || ''} ${seller.lastName || ''}`.trim() || 'Seller',
+                storeName: store.name,
+                orderNumber: order.orderNumber,
+                customerName:
+                  `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Customer',
+                items: items.map((item) => ({
+                  name: item.product.name,
+                  quantity: item.quantity,
+                  price: Number(item.price),
+                  image: item.product.heroImage,
+                  sku: item.product.sku,
+                })),
+                subtotal: sellerSubtotal,
+                commission: totalCommission,
+                commissionRate: avgCommissionRate,
+                transactionFee: sellerTransactionFee > 0 ? sellerTransactionFee : undefined,
+                transactionFeeRate:
+                  sellerTransactionFeeRatePct > 0 ? sellerTransactionFeeRatePct : undefined,
+                netPayout: sellerSubtotal - totalCommission - sellerTransactionFee,
+                currency: order.currency,
+                shippingAddress: {
+                  street: order.shippingAddress?.address1 || '',
+                  city: order.shippingAddress?.city || '',
+                  state: order.shippingAddress?.province || '',
+                  zipCode: order.shippingAddress?.postalCode || '',
+                  country: order.shippingAddress?.country || '',
+                },
+                orderId: order.id,
+                sellerId,
+              });
+
+              this.logger.log(
+                `Seller notification sent for order ${order.orderNumber} to ${seller.email}`
+              );
+            } catch (sellerEmailError) {
+              this.logger.error(
+                `Failed to send seller notification to seller ${sellerId}:`,
+                sellerEmailError
+              );
+              // Continue to next seller if one fails
+            }
+          }
+        } catch (sellerNotificationError) {
+          this.logger.error(
+            `Failed to process seller notifications for order ${orderId}:`,
+            sellerNotificationError
+          );
+          // Don't fail the payment if seller notification fails
+        }
+      }
+    } catch (emailError) {
+      this.logger.error(`Failed to send invoice email for order ${orderId}:`, emailError);
+      // Don't fail the payment if invoice email fails
+    }
+
+    // Inventory was already decremented via InventoryService.recordTransaction(SALE)
+    // in orders.service.ts at order creation time. No action required here.
   }
 
   /**

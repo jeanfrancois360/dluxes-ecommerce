@@ -165,6 +165,11 @@ export const envValidationSchema = Joi.object({
     .default('sandbox')
     .description('PayPal environment mode'),
 
+  PAYPAL_WEBHOOK_ID: Joi.string()
+    .allow('')
+    .optional()
+    .description('PayPal webhook subscription ID (from PayPal Developer Dashboard)'),
+
   // ============================================================================
   // Shipping Webhook Secrets
   // Optional — but a startup warning is emitted if any are missing so that

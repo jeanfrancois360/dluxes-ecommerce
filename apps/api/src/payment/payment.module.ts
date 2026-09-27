@@ -4,6 +4,8 @@ import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 import { PayPalService } from './paypal.service';
 import { PaymentMonitorService } from './payment-monitor.service';
+import { PayPalWebhookService } from './paypal-webhook.service';
+import { PayPalWebhookController } from './paypal-webhook.controller';
 import { DatabaseModule } from '../database/database.module';
 import { SettingsModule } from '../settings/settings.module';
 import { CurrencyModule } from '../currency/currency.module';
@@ -21,8 +23,8 @@ import { AuthorizationModule } from '../common/authorization/authorization.modul
     ReferralModule,
     AuthorizationModule,
   ],
-  controllers: [PaymentController],
-  providers: [PaymentService, PayPalService, PaymentMonitorService],
-  exports: [PaymentService, PayPalService, PaymentMonitorService],
+  controllers: [PaymentController, PayPalWebhookController],
+  providers: [PaymentService, PayPalService, PaymentMonitorService, PayPalWebhookService],
+  exports: [PaymentService, PayPalService, PaymentMonitorService, PayPalWebhookService],
 })
 export class PaymentModule {}

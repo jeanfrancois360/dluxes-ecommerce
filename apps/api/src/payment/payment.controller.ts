@@ -411,7 +411,33 @@ export class PaymentController {
   async capturePayPalOrder(@Param('paypalOrderId') paypalOrderId: string, @Request() req: any) {
     try {
       const data = await this.paypalService.captureOrder(paypalOrderId, req.user);
-      return { success: true, data };
+
+      // Run shared post-payment processing (escrow, commissions, emails, Gelato, etc.)
+      // This ensures PayPal payments follow the same lifecycle as Stripe.
+      if (data.success && data.transaction) {
+        try {
+          const { Decimal } = await import('@prisma/client/runtime/library');
+          const grossAmount = new Decimal(Number(data.transaction.amount));
+          await this.paymentService.processSuccessfulPayment(
+            data.orderId,
+            data.transaction,
+            grossAmount,
+            null // PayPal deducts fees internally; no Stripe-like fee breakdown
+          );
+        } catch (postPaymentError) {
+          // Log but don't fail the capture response — payment was already captured successfully.
+          // Post-payment processing can be retried via PayPal webhook (Phase 2) if needed.
+          console.error(
+            `PayPal post-payment processing failed for order ${data.orderId}:`,
+            postPaymentError
+          );
+        }
+      }
+
+      return {
+        success: true,
+        data: { success: data.success, orderId: data.orderId, transactionId: data.transactionId },
+      };
     } catch (error) {
       // Preserve authorization semantics — let NestJS exception filters map
       // these to correct HTTP status codes (403/404/400) instead of wrapping

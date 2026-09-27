@@ -33,9 +33,7 @@ export function PayPalPayment({
   useEffect(() => {
     // For now, using the client ID directly from env
     // In production, you should fetch this from your backend
-    const paypalClientId =
-      process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ||
-      'AdKthQphKNhUNoHOdzNp2rxM0a_USh28cEOUEUFpAYz0oJo36VvV1YMaCdVgfbpVQdfaEaXGR0gTLYdD';
+    const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || '';
     setClientId(paypalClientId);
     setIsLoadingClientId(false);
   }, []);
