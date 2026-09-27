@@ -1943,6 +1943,9 @@ model PaymentTransaction {
   stripeCustomerId           String?
   stripeBalanceTransactionId String? // For retrieving fee information
 
+  // PayPal Information
+  paypalOrderId String? @unique // PayPal order ID for indexed lookup (replaces JSON metadata scan)
+
   // Transaction Details
   amount        Decimal                  @db.Decimal(10, 2)
   currency      String                   @default("USD")
@@ -1990,6 +1993,7 @@ model PaymentTransaction {
   @@index([userId])
   @@index([status])
   @@index([stripePaymentIntentId])
+  @@index([paypalOrderId])
   @@index([createdAt])
   @@map("payment_transactions")
 }
