@@ -25,6 +25,7 @@ import { navigateWithLoading } from '@/lib/navigation';
 import { useTranslations } from 'next-intl';
 import useSWR from 'swr';
 import { settingsApi } from '@/lib/api/settings';
+import { api } from '@/lib/api/client';
 import { useLocale } from '@/contexts/locale-context';
 import { useAffiliatePublicProducts } from '@/hooks/use-affiliate';
 import { AffiliateProductsSection } from '@/components/affiliate/affiliate-products-section';
@@ -46,6 +47,9 @@ export default function HomeClient() {
   const [quickViewProduct, setQuickViewProduct] = useState<QuickViewProduct | null>(null);
   const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const [newsletterSuccess, setNewsletterSuccess] = useState(false);
   const [addingToWishlist, setAddingToWishlist] = useState<string | null>(null);
 
   // Cart and Wishlist hooks
@@ -540,7 +544,7 @@ export default function HomeClient() {
         </div>
       </section>
 
-      {/* Promotional Banner */}
+      {/* Newsletter Subscription Banner */}
       <section className="relative py-8 bg-gradient-to-br from-[#CBB57B] to-[#A89968] text-white overflow-hidden">
         <div className="max-w-[1920px] mx-auto px-4 lg:px-8">
           <div className="text-center">
@@ -551,16 +555,51 @@ export default function HomeClient() {
             >
               <h2 className="text-4xl md:text-5xl font-bold mb-6">{t('home.stayUpdated')}</h2>
               <p className="text-xl mb-8 max-w-2xl mx-auto">{t('home.subscribeDescription')}</p>
-              <div className="flex flex-col sm:flex-row gap-4 max-w-xl mx-auto">
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!newsletterEmail || newsletterSubmitting) return;
+                  setNewsletterSubmitting(true);
+                  try {
+                    await api.post('/newsletter/subscribe', {
+                      email: newsletterEmail,
+                      source: 'homepage',
+                    });
+                    setNewsletterSuccess(true);
+                    setNewsletterEmail('');
+                    toast.success('Successfully subscribed!');
+                    setTimeout(() => setNewsletterSuccess(false), 4000);
+                  } catch (error: any) {
+                    const msg =
+                      error?.response?.data?.message || error?.message || 'Subscription failed';
+                    toast.error(Array.isArray(msg) ? msg[0] : msg);
+                  } finally {
+                    setNewsletterSubmitting(false);
+                  }
+                }}
+                className="flex flex-col sm:flex-row gap-4 max-w-xl mx-auto"
+              >
                 <input
                   type="email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
                   placeholder={t('home.enterEmail')}
-                  className="flex-1 px-6 py-4 rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-white"
+                  className="flex-1 px-6 py-4 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white shadow-sm"
+                  required
+                  disabled={newsletterSubmitting}
                 />
-                <button className="px-8 py-4 bg-black text-white font-bold rounded-xl hover:bg-gray-900 transition-colors">
-                  {t('buttons.subscribe')}
+                <button
+                  type="submit"
+                  disabled={newsletterSubmitting || newsletterSuccess}
+                  className="px-8 py-4 bg-black text-white font-bold rounded-xl hover:bg-gray-900 transition-colors disabled:opacity-70"
+                >
+                  {newsletterSuccess
+                    ? '✓ Subscribed!'
+                    : newsletterSubmitting
+                      ? 'Subscribing...'
+                      : t('buttons.subscribe')}
                 </button>
-              </div>
+              </form>
             </motion.div>
           </div>
         </div>

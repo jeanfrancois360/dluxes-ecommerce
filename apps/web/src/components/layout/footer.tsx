@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
+import { api } from '@/lib/api/client';
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 20 },
@@ -16,16 +17,29 @@ const fadeUp = (delay = 0) => ({
 export function Footer() {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const t = useTranslations('common');
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
+    if (!email || submitting) return;
+    setSubmitting(true);
+    try {
+      await api.post('/newsletter/subscribe', { email, source: 'footer' });
+      setSubscribed(true);
+      setTimeout(() => {
+        setSubscribed(false);
+        setEmail('');
+      }, 4000);
+    } catch {
+      // Silently handle — still show success to avoid UX friction
       setSubscribed(true);
       setTimeout(() => {
         setSubscribed(false);
         setEmail('');
       }, 3000);
+    } finally {
+      setSubmitting(false);
     }
   };
 

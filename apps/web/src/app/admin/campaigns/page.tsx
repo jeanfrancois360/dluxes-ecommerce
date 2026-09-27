@@ -43,7 +43,14 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type CampaignStatus = 'DRAFT' | 'SCHEDULED' | 'SENDING' | 'SENT' | 'FAILED' | 'CANCELLED';
-type CampaignAudience = 'ALL' | 'SELLERS' | 'BUYERS' | 'ADMINS' | 'DELIVERY_PARTNERS';
+type CampaignAudience =
+  | 'ALL'
+  | 'SELLERS'
+  | 'BUYERS'
+  | 'ADMINS'
+  | 'DELIVERY_PARTNERS'
+  | 'NEWSLETTER_SUBSCRIBERS'
+  | 'ALL_INCLUDING_NEWSLETTER';
 
 interface Campaign {
   id: string;
@@ -95,11 +102,13 @@ const STATUS_CONFIG: Record<CampaignStatus, { label: string; className: string }
 };
 
 const AUDIENCE_LABELS: Record<CampaignAudience, string> = {
-  ALL: 'All Users',
+  ALL: 'All Registered Users',
   SELLERS: 'Sellers',
   BUYERS: 'Buyers',
   ADMINS: 'Admins',
   DELIVERY_PARTNERS: 'Delivery Partners',
+  NEWSLETTER_SUBSCRIBERS: 'Newsletter Subscribers',
+  ALL_INCLUDING_NEWSLETTER: 'Everyone (Users + Newsletter)',
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
