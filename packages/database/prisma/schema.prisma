@@ -1933,8 +1933,8 @@ enum NotificationPriority {
 
 // Payment Transactions for comprehensive tracking
 model PaymentTransaction {
-  id      String @id @default(cuid())
-  orderId String
+  id      String  @id @default(cuid())
+  orderId String?
   userId  String
 
   // Stripe Information
@@ -1982,7 +1982,7 @@ model PaymentTransaction {
   updatedAt DateTime @updatedAt
 
   // Relations
-  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order         Order?         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   webhookEvents WebhookEvent[]
   commissions   Commission[]
 
