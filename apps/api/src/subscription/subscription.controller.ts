@@ -285,6 +285,17 @@ export class SubscriptionController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
   async cancelSubscription(@Req() req: any) {
+    // Check if this is a PayPal subscription
+    const sub = await this.subscriptionService.findSubscription(req.user.id);
+    if (sub?.paypalSubscriptionId) {
+      const data = await this.subscriptionService.cancelPayPalSubscription(
+        req.user.id,
+        this.paypalBillingService
+      );
+      return { success: true, ...data };
+    }
+
+    // Stripe cancellation
     await this.stripeSubscriptionService.cancelSubscription(req.user.id);
     return {
       success: true,

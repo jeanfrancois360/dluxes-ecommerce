@@ -187,7 +187,12 @@ export class AdvertisementPlansController {
     @Param('id') id: string,
     @Body() body?: { reason?: string }
   ) {
-    return this.plansService.cancelSubscription(id, req.user.userId, body?.reason);
+    return this.plansService.cancelSubscription(
+      id,
+      req.user.userId,
+      body?.reason,
+      this.paypalBillingService
+    );
   }
 
   // ========================================================================
