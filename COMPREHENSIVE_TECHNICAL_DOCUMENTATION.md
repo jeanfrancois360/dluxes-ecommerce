@@ -2,8 +2,8 @@
 
 # NextPik E-commerce Platform
 
-**Version:** 2.13.0
-**Last Updated:** September 27, 2026 (PayPal Escrow Integration & Webhook System)
+**Version:** 2.14.0
+**Last Updated:** September 27, 2026 (PayPal Payment Option for All Subscription & Credit Flows)
 **Status:** Production-Ready
 
 ---
@@ -10083,6 +10083,128 @@ This comprehensive technical documentation provides a complete overview of the N
 
 ---
 
+## Version 2.14.0 — PayPal Payment Option for All Flows (September 27, 2026)
+
+### Overview
+
+Added PayPal as an alternative payment method for all subscription, credit, and fee payment flows. Previously, only product checkout supported PayPal — now all 6 payment flows offer both Stripe and PayPal.
+
+### Payment Flows with PayPal Support
+
+| Flow                      | Stripe Method    | PayPal Endpoints                                             | Frontend Page                  |
+| ------------------------- | ---------------- | ------------------------------------------------------------ | ------------------------------ |
+| **Product Checkout**      | Payment Intent   | `POST /payment/paypal/create-order` + `/capture`             | `/checkout` (existing)         |
+| **Seller Subscriptions**  | Checkout Session | `POST /subscription/paypal/create-order` + `/capture`        | `/seller/subscription/plans`   |
+| **Selling Credits**       | Checkout Session | `POST /seller/credits/paypal/create-order` + `/capture`      | `/seller/selling-credits`      |
+| **Ad Plan Subscriptions** | Checkout Session | `POST /advertisement-plans/paypal/create-order` + `/capture` | `/seller/advertisement-plans`  |
+| **Credit Packages**       | Checkout Session | `POST /credits/paypal/purchase/:id` + `/capture`             | API ready (no standalone page) |
+| **Hot Deals ($1 fee)**    | Payment Intent   | `POST /hot-deals/:id/paypal/create-order` + `/capture`       | `/urgent-requests/new`         |
+
+### Shared PaymentMethodSelector Component
+
+**File:** `apps/web/src/components/shared/payment-method-selector.tsx`
+
+A reusable card-style selector offering Credit/Debit Card (Stripe) and PayPal options. Features:
+
+- Brand colors (gold accent for Stripe, PayPal blue for PayPal)
+- Checkmark indicator on selected method
+- Disabled state support during processing
+- Used on all 4 seller payment pages
+
+```tsx
+import {
+  PaymentMethodSelector,
+  type PaymentMethod,
+} from '@/components/shared/payment-method-selector';
+
+const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
+
+<PaymentMethodSelector
+  selected={paymentMethod}
+  onChange={setPaymentMethod}
+  disabled={isProcessing}
+/>;
+```
+
+### PayPal Subscription Limitations
+
+- PayPal subscriptions use one-time payments (no PayPal Billing Agreements)
+- Auto-renewal is NOT supported via PayPal — sellers must manually renew
+- Stripe subscriptions continue to support auto-renewal normally
+- Clear messaging in API responses: "PayPal subscriptions do not auto-renew"
+
+### Bugs Fixed
+
+1. **`plan.price` → `plan.monthlyPrice`** (`subscription.service.ts`) — TypeScript compile error; `SubscriptionPlan` model has no `price` field, only `monthlyPrice` and `yearlyPrice`
+
+2. **`assertOrderAccess` crash for non-order payments** (`paypal.service.ts`) — Credit and subscription PayPal transactions use placeholder `orderId` values (e.g., `credit-1727456789`). The original `assertOrderAccess()` call threw `NotFoundException` since no real order exists. Fix: detect `credit-` prefix and fall back to a simple user ownership check.
+
+### Files Modified
+
+**Backend (10 files):**
+
+| File                                | Changes                                          |
+| ----------------------------------- | ------------------------------------------------ |
+| `paypal.service.ts`                 | Fixed `assertOrderAccess` for non-order payments |
+| `subscription.service.ts`           | Fixed `plan.price` bug, added PayPal methods     |
+| `subscription.controller.ts`        | Added 2 PayPal endpoints                         |
+| `subscription.module.ts`            | Imported PaymentModule                           |
+| `seller-credits.service.ts`         | Added PayPal credit purchase methods             |
+| `seller-credits.controller.ts`      | Added 2 PayPal endpoints                         |
+| `advertisement-plans.service.ts`    | Added PayPal subscribe/capture methods           |
+| `advertisement-plans.controller.ts` | Added 2 PayPal endpoints, injected PayPalService |
+| `advertisement.module.ts`           | Imported PaymentModule                           |
+| `credits.service.ts`                | Added PayPal purchase/capture methods            |
+| `credits.controller.ts`             | Added 2 PayPal endpoints, injected PayPalService |
+| `hot-deals.service.ts`              | Added PayPal order/capture methods               |
+| `hot-deals.controller.ts`           | Added 2 PayPal endpoints, injected PayPalService |
+| `hot-deals.module.ts`               | Imported PaymentModule                           |
+
+**Frontend (9 files):**
+
+| File                                            | Changes                                                                     |
+| ----------------------------------------------- | --------------------------------------------------------------------------- |
+| `components/shared/payment-method-selector.tsx` | **New** — shared Stripe/PayPal selector                                     |
+| `app/seller/subscription/plans/page.tsx`        | Added PaymentMethodSelector + PayPal checkout flow                          |
+| `app/seller/selling-credits/page.tsx`           | Added PaymentMethodSelector + PayPal purchase flow                          |
+| `app/seller/advertisement-plans/page.tsx`       | Added PaymentMethodSelector + PayPal subscribe flow                         |
+| `app/urgent-requests/new/page.tsx`              | Added PaymentMethodSelector + PayPal flow with localStorage pending capture |
+| `lib/api/subscription.ts`                       | Added `createPayPalOrder()`, `capturePayPalOrder()`                         |
+| `lib/api/advertisement-plans.ts`                | Added `createPayPalOrder()`, `capturePayPalOrder()`                         |
+| `lib/api/credits.ts`                            | Added `createPayPalPurchase()`, `capturePayPalPurchase()`                   |
+| `lib/api/hot-deals.ts`                          | Added `createPayPalOrder()`, `capturePayPalPayment()`                       |
+
+### API Endpoints (New)
+
+```
+# Seller Subscriptions (PayPal)
+POST /subscription/paypal/create-order        # Create PayPal order for subscription
+POST /subscription/paypal/capture             # Capture and activate subscription
+
+# Selling Credits (PayPal)
+POST /seller/credits/paypal/create-order      # Create PayPal order for credits
+POST /seller/credits/paypal/capture           # Capture and add credits
+
+# Advertisement Plans (PayPal)
+POST /advertisement-plans/paypal/create-order # Create PayPal order for ad plan
+POST /advertisement-plans/paypal/capture      # Capture and activate ad subscription
+
+# Credit Packages (PayPal)
+POST /credits/paypal/purchase/:packageId      # Create PayPal order for package
+POST /credits/paypal/capture                  # Capture and add credits
+
+# Hot Deals (PayPal)
+POST /hot-deals/:id/paypal/create-order       # Create PayPal order for $1 fee
+POST /hot-deals/:id/paypal/capture            # Capture and activate hot deal
+```
+
+### Tested
+
+- Type-check: 6/6 packages pass with zero errors
+- Commit: `704db41`
+
+---
+
 ## Version 2.13.0 — PayPal Escrow Integration & Webhook System (September 27, 2026)
 
 ### Overview
@@ -10257,7 +10379,7 @@ WHERE "paymentMethod" = 'PAYPAL' AND metadata->>'paypalOrderId' IS NOT NULL AND 
 - PayPal saved payment methods (not applicable — PayPal doesn't support this)
 - Admin webhook monitoring UI for PayPal events
 
-**Document Version:** 2.1.0
+**Document Version:** 2.2.0
 **Last Updated:** September 27, 2026
 **Maintained By:** Development Team
 **Contact:** [Your contact information]
