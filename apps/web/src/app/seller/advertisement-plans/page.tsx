@@ -14,6 +14,7 @@ import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/seller/page-header';
 import {
   PaymentMethodSelector,
+  usePaymentMethods,
   type PaymentMethod,
 } from '@/components/shared/payment-method-selector';
 
@@ -56,7 +57,8 @@ export default function SellerAdvertisementPlansPage() {
   const [subscribing, setSubscribing] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
+  const { stripeEnabled, paypalEnabled, defaultMethod } = usePaymentMethods();
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(defaultMethod);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showTrialModal, setShowTrialModal] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<{
@@ -84,7 +86,7 @@ export default function SellerAdvertisementPlansPage() {
       billingPeriod: plan.billingPeriod,
     });
     setTrialAcknowledged(trialDays === 0); // Auto-acknowledge if no trial
-    setPaymentMethod('stripe');
+    setPaymentMethod(defaultMethod);
     setShowTrialModal(true);
   };
 
@@ -681,6 +683,8 @@ export default function SellerAdvertisementPlansPage() {
                 selected={paymentMethod}
                 onChange={setPaymentMethod}
                 disabled={!!subscribing}
+                stripeEnabled={stripeEnabled}
+                paypalEnabled={paypalEnabled}
               />
 
               {pendingPlan.trialDays > 0 && (

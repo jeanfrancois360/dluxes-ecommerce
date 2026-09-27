@@ -48,6 +48,7 @@ import {
 } from '@/lib/api/hot-deals';
 import {
   PaymentMethodSelector,
+  usePaymentMethods,
   type PaymentMethod,
 } from '@/components/shared/payment-method-selector';
 import { getIconComponent } from '@/lib/hot-deal-icons';
@@ -541,7 +542,8 @@ function HotDealFormInner({
   const [selectedBudgetType, setSelectedBudgetType] = useState<BudgetType | ''>('');
   const [cardComplete, setCardComplete] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
+  const { stripeEnabled, paypalEnabled, defaultMethod } = usePaymentMethods();
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(defaultMethod);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
@@ -906,6 +908,8 @@ function HotDealFormInner({
               selected={paymentMethod}
               onChange={setPaymentMethod}
               disabled={isSubmitting}
+              stripeEnabled={stripeEnabled}
+              paypalEnabled={paypalEnabled}
             />
 
             {paymentMethod === 'stripe' && (
