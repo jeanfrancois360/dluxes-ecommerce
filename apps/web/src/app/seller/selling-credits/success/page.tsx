@@ -13,12 +13,14 @@ export default function PurchaseSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
+  const isPayPal = searchParams.get('paypal') === 'true';
+  const paypalToken = searchParams.get('token'); // PayPal appends token=ORDER_ID on return
   const [isLoading, setIsLoading] = useState(true);
   const [purchaseData, setPurchaseData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!sessionId && !isPayPal) {
       router.push('/seller/selling-credits');
       return;
     }
@@ -55,7 +57,46 @@ export default function PurchaseSuccessPage() {
       });
     }, 50);
 
-    // Verify and process purchase using session_id
+    // Handle PayPal capture
+    if (isPayPal && paypalToken) {
+      const capturePayPal = async () => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+        try {
+          const res = await fetch(`${API_URL}/seller/credits/paypal/capture`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            body: JSON.stringify({ paypalOrderId: paypalToken }),
+          });
+          const data = await safeJson(res);
+          if (res.ok && data.success) {
+            // Fetch updated balance
+            const balRes = await fetch(`${API_URL}/seller/credits`, {
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token && { Authorization: `Bearer ${token}` }),
+              },
+            });
+            const balData = await safeJson(balRes);
+            setPurchaseData(balData.data || balData);
+          } else {
+            setError(data.message || 'Failed to process PayPal payment');
+          }
+        } catch (err) {
+          setError('Failed to process PayPal payment. Please check your credit history.');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      capturePayPal();
+      return () => clearInterval(interval);
+    }
+
+    // Verify and process Stripe purchase using session_id
     const fetchPurchaseInfo = async () => {
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
 
