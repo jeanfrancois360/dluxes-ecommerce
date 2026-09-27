@@ -475,14 +475,80 @@ DELETE /products/:id                # Delete
 PATCH  /products/:id/inventory      # Adjust inventory
 ```
 
-### Payment (Stripe)
+### Payment (Stripe + PayPal)
 
 ```
-POST  /payment/create-intent        # Create payment intent
+POST  /payment/create-intent        # Stripe payment intent
+POST  /payment/create-intent-saved  # Stripe with saved card
 POST  /payment/webhook              # Stripe webhook handler
 GET   /payment/status/:orderId      # Payment status
 POST  /payment/refund/:orderId      # Process refund
 GET   /payment/health               # Health metrics (admin)
+POST  /payment/paypal/create-order  # PayPal order for checkout
+POST  /payment/paypal/capture/:id   # Capture PayPal payment
+POST  /payment/paypal/refund/:id    # Refund PayPal capture
+POST  /webhooks/paypal              # PayPal webhook receiver
+```
+
+### Subscriptions (Stripe + PayPal)
+
+```
+GET   /subscription/plans                     # List plans (public)
+GET   /subscription/my-subscription           # Current subscription
+GET   /subscription/can-list/:productType     # Check listing permission
+POST  /subscription/create-checkout           # Stripe checkout session
+POST  /subscription/verify-checkout           # Verify & activate
+POST  /subscription/create-portal             # Stripe billing portal
+POST  /subscription/cancel                    # Cancel at period end
+POST  /subscription/resume                    # Resume cancelled
+POST  /subscription/paypal/create-order       # PayPal subscription order
+POST  /subscription/paypal/capture            # Capture & activate
+```
+
+### Selling Credits (Stripe + PayPal)
+
+```
+GET   /seller/credits                         # Credit balance
+GET   /seller/credits/history                 # Transaction history
+GET   /seller/credits/price                   # Current price
+POST  /seller/credits/checkout                # Stripe checkout
+POST  /seller/credits/setup-card              # Card capture (SetupIntent)
+GET   /seller/credits/verify-session          # Verify Stripe session
+POST  /seller/credits/paypal/create-order     # PayPal credit order
+POST  /seller/credits/paypal/capture          # Capture & add credits
+```
+
+### Advertisement Plans (Stripe + PayPal)
+
+```
+GET   /advertisement-plans                    # List active plans (public)
+GET   /advertisement-plans/:slug              # Plan by slug
+POST  /advertisement-plans/subscribe          # Stripe subscribe
+GET   /advertisement-plans/seller/subscription # Current subscription
+POST  /advertisement-plans/subscriptions/:id/cancel # Cancel
+POST  /advertisement-plans/paypal/create-order # PayPal ad plan order
+POST  /advertisement-plans/paypal/capture      # Capture & activate
+```
+
+### Credit Packages (Stripe + PayPal)
+
+```
+GET   /credits/packages                       # List packages (public)
+GET   /credits/balance                        # User balance
+GET   /credits/check/:action                  # Check credits for action
+POST  /credits/purchase/:packageId            # Stripe purchase
+POST  /credits/paypal/purchase/:packageId     # PayPal purchase
+POST  /credits/paypal/capture                 # Capture & add credits
+```
+
+### Hot Deals (Stripe + PayPal)
+
+```
+POST  /hot-deals                              # Create deal
+POST  /hot-deals/:id/payment-intent           # Stripe $1 fee
+POST  /hot-deals/:id/confirm-payment          # Confirm Stripe payment
+POST  /hot-deals/:id/paypal/create-order      # PayPal $1 fee
+POST  /hot-deals/:id/paypal/capture           # Capture & activate
 ```
 
 ### Orders
