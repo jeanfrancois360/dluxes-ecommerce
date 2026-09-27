@@ -30,6 +30,13 @@ import {
   Phone,
   Calendar,
   Users as UsersIcon,
+  Eye,
+  EyeOff,
+  ShoppingBag,
+  Store,
+  Truck,
+  Lock,
+  X,
 } from 'lucide-react';
 
 interface User {
@@ -87,10 +94,12 @@ function UsersContent() {
     firstName: '',
     lastName: '',
     email: '',
+    phone: '',
     password: '',
     role: 'BUYER',
   });
   const [addUserLoading, setAddUserLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const search = useDebounce(searchInput, 500);
 
@@ -512,11 +521,26 @@ function UsersContent() {
         {/* Add User Modal */}
         {showAddUser && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-lg font-bold text-gray-900">Add New User</h2>
-                <p className="text-sm text-gray-500 mt-1">Create a new platform user account</p>
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#CBB57B]/15 flex items-center justify-center">
+                    <UserPlus className="w-5 h-5 text-[#CBB57B]" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Add New User</h2>
+                    <p className="text-xs text-gray-400">Create a new platform user account</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAddUser(false)}
+                  className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
               </div>
+
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -528,6 +552,7 @@ function UsersContent() {
                       email: addUserForm.email,
                       password: addUserForm.password,
                       role: addUserForm.role,
+                      ...(addUserForm.phone ? { phone: addUserForm.phone } : {}),
                     });
                     toast.success(`User ${addUserForm.email} created successfully`);
                     setShowAddUser(false);
@@ -535,9 +560,11 @@ function UsersContent() {
                       firstName: '',
                       lastName: '',
                       email: '',
+                      phone: '',
                       password: '',
                       role: 'BUYER',
                     });
+                    setShowPassword(false);
                     fetchUsers();
                   } catch (error: any) {
                     const msg =
@@ -547,75 +574,177 @@ function UsersContent() {
                     setAddUserLoading(false);
                   }
                 }}
-                className="p-6 space-y-4"
+                className="p-6 space-y-5"
               >
+                {/* Name */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                       First Name
                     </label>
-                    <input
-                      type="text"
-                      value={addUserForm.firstName}
-                      onChange={(e) =>
-                        setAddUserForm({ ...addUserForm, firstName: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/40 focus:border-[#CBB57B]"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={addUserForm.firstName}
+                        onChange={(e) =>
+                          setAddUserForm({ ...addUserForm, firstName: e.target.value })
+                        }
+                        className="w-full pl-3 pr-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] text-sm transition-all"
+                        placeholder="John"
+                        required
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                       Last Name
                     </label>
                     <input
                       type="text"
                       value={addUserForm.lastName}
                       onChange={(e) => setAddUserForm({ ...addUserForm, lastName: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/40 focus:border-[#CBB57B]"
+                      className="w-full pl-3 pr-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] text-sm transition-all"
+                      placeholder="Doe"
                       required
                     />
                   </div>
                 </div>
+
+                {/* Email */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={addUserForm.email}
-                    onChange={(e) => setAddUserForm({ ...addUserForm, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/40 focus:border-[#CBB57B]"
-                    required
-                  />
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="email"
+                      value={addUserForm.email}
+                      onChange={(e) => setAddUserForm({ ...addUserForm, email: e.target.value })}
+                      className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] text-sm transition-all"
+                      placeholder="user@example.com"
+                      required
+                    />
+                  </div>
                 </div>
+
+                {/* Phone */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                  <input
-                    type="password"
-                    value={addUserForm.password}
-                    onChange={(e) => setAddUserForm({ ...addUserForm, password: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/40 focus:border-[#CBB57B]"
-                    required
-                    minLength={12}
-                    placeholder="Min 12 characters"
-                  />
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Phone Number{' '}
+                    <span className="text-gray-300 font-normal normal-case">(optional)</span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="tel"
+                      value={addUserForm.phone}
+                      onChange={(e) => setAddUserForm({ ...addUserForm, phone: e.target.value })}
+                      className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] text-sm transition-all"
+                      placeholder="+1 (555) 000-0000"
+                    />
+                  </div>
                 </div>
+
+                {/* Password */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                  <select
-                    value={addUserForm.role}
-                    onChange={(e) => setAddUserForm({ ...addUserForm, role: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/40 focus:border-[#CBB57B]"
-                  >
-                    <option value="BUYER">Buyer</option>
-                    <option value="SELLER">Seller</option>
-                    <option value="DELIVERY_PARTNER">Delivery Partner</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={addUserForm.password}
+                      onChange={(e) => setAddUserForm({ ...addUserForm, password: e.target.value })}
+                      className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#CBB57B]/30 focus:border-[#CBB57B] text-sm transition-all"
+                      placeholder="Min 12 characters"
+                      required
+                      minLength={12}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {addUserForm.password.length > 0 && addUserForm.password.length < 12 && (
+                    <p className="mt-1.5 text-xs text-amber-600">
+                      {12 - addUserForm.password.length} more character
+                      {12 - addUserForm.password.length !== 1 ? 's' : ''} needed
+                    </p>
+                  )}
                 </div>
-                <div className="flex gap-3 pt-2">
+
+                {/* Role */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    Role
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      {
+                        value: 'BUYER',
+                        label: 'Buyer',
+                        icon: ShoppingBag,
+                        desc: 'Can purchase products',
+                      },
+                      {
+                        value: 'SELLER',
+                        label: 'Seller',
+                        icon: Store,
+                        desc: 'Can sell + buy products',
+                      },
+                      {
+                        value: 'DELIVERY_PARTNER',
+                        label: 'Delivery',
+                        icon: Truck,
+                        desc: 'Handle deliveries',
+                      },
+                      { value: 'ADMIN', label: 'Admin', icon: Shield, desc: 'Platform management' },
+                    ].map(({ value, label, icon: Icon, desc }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setAddUserForm({ ...addUserForm, role: value })}
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
+                          addUserForm.role === value
+                            ? 'border-[#CBB57B] bg-[#CBB57B]/5 shadow-sm'
+                            : 'border-gray-100 bg-gray-50 hover:border-gray-200'
+                        }`}
+                      >
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            addUserForm.role === value
+                              ? 'bg-[#CBB57B]/15 text-[#CBB57B]'
+                              : 'bg-white text-gray-400'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div
+                            className={`text-sm font-semibold ${addUserForm.role === value ? 'text-gray-900' : 'text-gray-600'}`}
+                          >
+                            {label}
+                          </div>
+                          <div className="text-[10px] text-gray-400 truncate">{desc}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 pt-1">
                   <button
                     type="button"
-                    onClick={() => setShowAddUser(false)}
+                    onClick={() => {
+                      setShowAddUser(false);
+                      setShowPassword(false);
+                    }}
                     disabled={addUserLoading}
                     className="flex-1 py-2.5 border border-gray-200 rounded-xl font-semibold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
                   >
@@ -623,10 +752,20 @@ function UsersContent() {
                   </button>
                   <button
                     type="submit"
-                    disabled={addUserLoading}
-                    className="flex-1 py-2.5 bg-[#CBB57B] text-white rounded-xl font-bold text-sm hover:bg-[#a89158] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    disabled={addUserLoading || addUserForm.password.length < 12}
+                    className="flex-1 py-2.5 bg-[#CBB57B] text-white rounded-xl font-bold text-sm hover:bg-[#a89158] transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {addUserLoading ? 'Creating...' : 'Create User'}
+                    {addUserLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4" />
+                        Create User
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
