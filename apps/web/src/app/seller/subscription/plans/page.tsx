@@ -474,18 +474,20 @@ export default function SellerPlansPage() {
       return;
     }
 
-    // For all plans (including free tier), show trial modal if user has no subscription yet
-    const isNewSubscriber = !currentTier || currentTier === 'FREE';
-    const needsTrial = isNewSubscriber && price > 0;
-
-    if (needsTrial) {
-      setPendingPlan({ id: planId, name: planName, price, tier });
-      setTrialAcknowledged(false);
-      setShowTrialModal(true);
+    if (price <= 0) {
+      // Free plans go directly
+      await processCheckout(planId, planName, price);
       return;
     }
 
-    await processCheckout(planId, planName, price);
+    // Show confirmation modal with payment method selector
+    const isNewSubscriber = !currentTier || currentTier === 'FREE';
+    const needsTrial = isNewSubscriber;
+
+    setPendingPlan({ id: planId, name: planName, price, tier });
+    setTrialAcknowledged(!needsTrial); // Auto-acknowledge if not a new subscriber (upgrade)
+    setPaymentMethod('stripe');
+    setShowTrialModal(true);
   };
 
   const processCheckout = async (
@@ -580,15 +582,6 @@ export default function SellerPlansPage() {
               <span className="font-semibold ml-0.5">{currentPlan.name}</span>
             </motion.div>
           )}
-
-          {/* Payment Method Selector */}
-          <div className="max-w-sm mx-auto mb-6">
-            <PaymentMethodSelector
-              selected={paymentMethod}
-              onChange={setPaymentMethod}
-              disabled={!!checkoutLoading}
-            />
-          </div>
 
           {/* Billing toggle */}
           <div className="inline-flex items-center bg-white border border-neutral-200 rounded-2xl p-1 shadow-sm">
@@ -730,7 +723,7 @@ export default function SellerPlansPage() {
         </motion.div>
       </div>
 
-      {/* ── Trial Acknowledgment Modal ── */}
+      {/* ── Subscription Confirmation Modal ── */}
       {showTrialModal && pendingPlan && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
@@ -743,12 +736,24 @@ export default function SellerPlansPage() {
                 <div className="w-10 h-10 rounded-xl bg-[#CBB57B]/15 flex items-center justify-center">
                   <Shield className="w-5 h-5 text-[#CBB57B]" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">Start Your Free Trial</h2>
+                <h2 className="text-lg font-bold text-gray-900">
+                  {trialAcknowledged === false && (!currentTier || currentTier === 'FREE')
+                    ? 'Start Your Free Trial'
+                    : `Subscribe to ${pendingPlan.name}`}
+                </h2>
               </div>
               <p className="text-sm text-gray-500 mt-2">
-                You&apos;ll get {TRIAL_DAYS} days of free access to the{' '}
-                <span className="font-semibold text-gray-700">{pendingPlan.name}</span> plan. A
-                payment method is required to start your trial.
+                {!currentTier || currentTier === 'FREE' ? (
+                  <>
+                    You&apos;ll get {TRIAL_DAYS} days of free access to the{' '}
+                    <span className="font-semibold text-gray-700">{pendingPlan.name}</span> plan.
+                  </>
+                ) : (
+                  <>
+                    You&apos;re upgrading to the{' '}
+                    <span className="font-semibold text-gray-700">{pendingPlan.name}</span> plan.
+                  </>
+                )}
               </p>
             </div>
 
@@ -762,47 +767,59 @@ export default function SellerPlansPage() {
                     {selectedInterval === 'YEARLY' ? t('billing.year') : t('billing.month')}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>Due today</span>
-                  <span className="font-semibold text-green-600">$0.00</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
-                  <span>First charge</span>
-                  <span>
-                    {new Date(Date.now() + TRIAL_DAYS * 86400000).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </span>
-                </div>
+                {!currentTier || currentTier === 'FREE' ? (
+                  <>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>Due today</span>
+                      <span className="font-semibold text-green-600">$0.00</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                      <span>First charge</span>
+                      <span>
+                        {new Date(Date.now() + TRIAL_DAYS * 86400000).toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Billed</span>
+                    <span className="font-semibold">
+                      {selectedInterval === 'YEARLY' ? 'Annually' : 'Monthly'}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {/* Acknowledgment checkbox */}
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={trialAcknowledged}
-                  onChange={(e) => setTrialAcknowledged(e.target.checked)}
-                  className="mt-1 w-4 h-4 rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]/30 cursor-pointer"
-                />
-                <span className="text-sm text-gray-600 leading-relaxed">
-                  I understand that my subscription will automatically renew at{' '}
-                  <span className="font-semibold text-gray-900">
-                    {formatCurrencyAmount(pendingPlan.price)}/
-                    {selectedInterval === 'YEARLY' ? 'year' : 'month'}
-                  </span>{' '}
-                  after my free trial ends on{' '}
-                  <span className="font-semibold text-gray-900">
-                    {new Date(Date.now() + TRIAL_DAYS * 86400000).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </span>{' '}
-                  unless I cancel before that date.
-                </span>
-              </label>
+              {/* Payment Method */}
+              <PaymentMethodSelector
+                selected={paymentMethod}
+                onChange={setPaymentMethod}
+                disabled={!!checkoutLoading}
+              />
+
+              {/* Trial acknowledgment (only for new subscribers) */}
+              {(!currentTier || currentTier === 'FREE') && (
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={trialAcknowledged}
+                    onChange={(e) => setTrialAcknowledged(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded border-gray-300 text-[#CBB57B] focus:ring-[#CBB57B]/30 cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-600 leading-relaxed">
+                    I understand my subscription will auto-renew at{' '}
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrencyAmount(pendingPlan.price)}/
+                      {selectedInterval === 'YEARLY' ? 'year' : 'month'}
+                    </span>{' '}
+                    after the trial ends unless I cancel.
+                  </span>
+                </label>
+              )}
             </div>
 
             <div className="px-6 pb-6 flex gap-3">
@@ -825,7 +842,7 @@ export default function SellerPlansPage() {
                 ) : (
                   <ArrowRight className="w-4 h-4" />
                 )}
-                Start Free Trial
+                {!currentTier || currentTier === 'FREE' ? 'Start Free Trial' : 'Subscribe Now'}
               </button>
             </div>
           </motion.div>
