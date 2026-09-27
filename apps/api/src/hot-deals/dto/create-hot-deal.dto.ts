@@ -89,7 +89,9 @@ export class CreateHotDealDto {
 
   @IsString()
   @IsOptional()
-  @Matches(/^\d{5}(-\d{4})?$/, { message: 'Invalid ZIP code format' })
+  @Matches(/^[A-Za-z0-9][A-Za-z0-9 -]{1,9}[A-Za-z0-9]$/, {
+    message: 'Invalid postal/ZIP code format',
+  })
   zipCode?: string;
 
   @IsArray()

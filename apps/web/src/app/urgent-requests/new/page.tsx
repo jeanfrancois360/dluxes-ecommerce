@@ -1562,7 +1562,10 @@ function HotDealFormInner({
                 <input
                   type="text"
                   {...register('zipCode', {
-                    pattern: { value: /^\d{5}(-\d{4})?$/, message: t('zipInvalid') },
+                    pattern: {
+                      value: /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}[A-Za-z0-9]$/,
+                      message: t('zipInvalid'),
+                    },
                   })}
                   placeholder={t('zipPlaceholder')}
                   className={inputClass}
