@@ -538,7 +538,7 @@ export class PayPalService {
           brand_name: 'NextPik',
           landing_page: 'BILLING',
           user_action: 'PAY_NOW',
-          return_url: `${this.configService.get('FRONTEND_URL')}/seller/selling-credits/success`,
+          return_url: `${this.configService.get('FRONTEND_URL')}/seller/selling-credits/success?paypal=true`,
           cancel_url: `${this.configService.get('FRONTEND_URL')}/seller/selling-credits?canceled=true`,
         },
       });
