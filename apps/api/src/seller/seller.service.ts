@@ -16,7 +16,7 @@ import { SETTING_DEFAULTS } from '../settings/settings.defaults';
 import { CurrencyService } from '../currency/currency.service';
 import { GelatoOrdersService } from '../gelato/gelato-orders.service';
 import { ReferralService } from '../referral/referral.service';
-import { ProductStatus } from '@prisma/client';
+import { ProductStatus, PaymentStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
@@ -865,6 +865,19 @@ export class SellerService {
     if (!allowedStatuses.includes(status)) {
       throw new ForbiddenException(
         `Sellers can only update order status to: ${allowedStatuses.join(', ')}`
+      );
+    }
+
+    // Guard: reject advancing if payment has not been received
+    const requiresPayment = ['PROCESSING', 'SHIPPED', 'DELIVERED'];
+    if (
+      requiresPayment.includes(status) &&
+      order.paymentStatus !== PaymentStatus.PAID &&
+      order.paymentStatus !== PaymentStatus.PARTIALLY_REFUNDED
+    ) {
+      throw new ForbiddenException(
+        `Cannot move order to ${status}: payment status is ${order.paymentStatus}. ` +
+          `Order must be paid before it can be processed.`
       );
     }
 
