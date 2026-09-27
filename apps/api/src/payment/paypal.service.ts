@@ -240,8 +240,8 @@ export class PayPalService {
       }
 
       // Skip order access check for non-order payments (credits, subscriptions)
-      // which use placeholder orderId values like "credit-1234567890"
-      const isNonOrderPayment = transaction.orderId.startsWith('credit-');
+      // which have null orderId
+      const isNonOrderPayment = !transaction.orderId;
       if (isNonOrderPayment) {
         // For credit/subscription purchases, verify the user matches the transaction
         if (transaction.userId !== user.id && transaction.userId !== user.userId) {
@@ -554,7 +554,6 @@ export class PayPalService {
       // Store as a PaymentTransaction without an orderId (credit purchase, not product order)
       await this.prisma.paymentTransaction.create({
         data: {
-          orderId: `credit-${Date.now()}`, // Placeholder — credits don't have a real order
           userId: data.userId,
           paymentMethod: PaymentMethod.PAYPAL,
           paypalOrderId: paypalOrder.id,
