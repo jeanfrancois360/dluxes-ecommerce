@@ -965,4 +965,151 @@ export class SubscriptionService {
       throw error;
     }
   }
+
+  // ==========================================================================
+  // PAYPAL SUBSCRIPTION (First Payment Only — No Auto-Renewal)
+  // ==========================================================================
+
+  /**
+   * Create PayPal order for subscription first payment.
+   * Auto-renewal is NOT supported via PayPal — seller must renew manually.
+   */
+  async createPayPalSubscriptionOrder(
+    userId: string,
+    planId: string,
+    billingCycle: 'MONTHLY' | 'YEARLY',
+    paypalService: any
+  ) {
+    // Validate plan
+    const plan = await this.prisma.subscriptionPlan.findUnique({
+      where: { id: planId },
+    });
+
+    if (!plan || !plan.isActive) {
+      throw new NotFoundException('Subscription plan not found or inactive');
+    }
+
+    if (plan.tier === SubscriptionTier.FREE) {
+      throw new BadRequestException('Free plan does not require payment');
+    }
+
+    // Calculate price
+    const price = billingCycle === 'YEARLY' ? Number(plan.yearlyPrice) : Number(plan.monthlyPrice);
+    if (price <= 0) {
+      throw new BadRequestException('Invalid plan price');
+    }
+
+    const description = `${plan.name} Plan (${billingCycle === 'YEARLY' ? 'Annual' : 'Monthly'})`;
+
+    // Create PayPal order
+    const paypalResult = await paypalService.createCreditOrder({
+      amount: price,
+      currency: 'USD',
+      userId,
+      metadata: {
+        type: 'subscription',
+        subscriptionPlanId: planId,
+        billingCycle,
+        userId,
+      },
+      description,
+    });
+
+    return {
+      ...paypalResult,
+      planName: plan.name,
+      billingCycle,
+      price,
+    };
+  }
+
+  /**
+   * Capture PayPal subscription payment and activate subscription.
+   */
+  async capturePayPalSubscription(userId: string, paypalOrderId: string, paypalService: any) {
+    // Capture PayPal order
+    const captureResult = await paypalService.captureOrder(paypalOrderId, {
+      id: userId,
+      userId,
+      email: '',
+      role: 'SELLER',
+    });
+
+    if (!captureResult.success) {
+      throw new BadRequestException('PayPal capture failed');
+    }
+
+    // Get transaction metadata
+    const transaction = await this.prisma.paymentTransaction.findUnique({
+      where: { paypalOrderId },
+    });
+
+    if (!transaction) {
+      throw new NotFoundException('Payment transaction not found');
+    }
+
+    const metadata = transaction.metadata as any;
+    const planId = metadata?.subscriptionPlanId;
+    const billingCycle = metadata?.billingCycle || 'MONTHLY';
+
+    if (!planId) {
+      throw new BadRequestException('Invalid PayPal order — missing subscription metadata');
+    }
+
+    // Get plan details
+    const plan = await this.prisma.subscriptionPlan.findUnique({
+      where: { id: planId },
+    });
+
+    if (!plan) {
+      throw new NotFoundException('Subscription plan not found');
+    }
+
+    // Calculate period
+    const now = new Date();
+    const periodEnd = new Date(now);
+    if (billingCycle === 'YEARLY') {
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    } else {
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+    }
+
+    // Activate subscription
+    const subscription = await this.prisma.sellerSubscription.upsert({
+      where: { userId },
+      create: {
+        userId,
+        planId,
+        status: 'ACTIVE',
+        billingCycle,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        creditsAllocated: plan.monthlyCredits,
+        creditsUsed: 0,
+      },
+      update: {
+        planId,
+        status: 'ACTIVE',
+        billingCycle,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+        canceledAt: null,
+        cancelAtPeriodEnd: false,
+        creditsAllocated: plan.monthlyCredits,
+        creditsUsed: 0,
+      },
+    });
+
+    this.logger.log(
+      `PayPal subscription activated: ${userId} → ${plan.name} (${billingCycle}), expires ${periodEnd.toISOString()}`
+    );
+
+    return {
+      subscription,
+      planName: plan.name,
+      billingCycle,
+      periodEnd,
+      message: `${plan.name} plan activated. Note: PayPal subscriptions do not auto-renew. Please renew before ${periodEnd.toLocaleDateString()}.`,
+    };
+  }
 }

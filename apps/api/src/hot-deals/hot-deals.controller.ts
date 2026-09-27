@@ -12,6 +12,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { HotDealsService } from './hot-deals.service';
+import { PayPalService } from '../payment/paypal.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { CreateHotDealDto } from './dto/create-hot-deal.dto';
@@ -24,7 +25,10 @@ import { HotDealQueryDto } from './dto/hot-deal-query.dto';
  */
 @Controller('hot-deals')
 export class HotDealsController {
-  constructor(private readonly hotDealsService: HotDealsService) {}
+  constructor(
+    private readonly hotDealsService: HotDealsService,
+    private readonly paypalService: PayPalService
+  ) {}
 
   /**
    * Create a new hot deal (requires authentication)
@@ -173,6 +177,57 @@ export class HotDealsController {
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to confirm payment',
+      };
+    }
+  }
+
+  /**
+   * Create a PayPal order for the $1 hot deal posting fee
+   * @route POST /hot-deals/:id/paypal/create-order
+   */
+  @Post(':id/paypal/create-order')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async createPayPalOrder(@Param('id') id: string, @Req() req: any) {
+    try {
+      const result = await this.hotDealsService.createPayPalOrder(
+        id,
+        req.user.id,
+        this.paypalService
+      );
+      return { success: true, data: result };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to create PayPal order',
+      };
+    }
+  }
+
+  /**
+   * Capture PayPal payment and activate hot deal
+   * @route POST /hot-deals/:id/paypal/capture
+   */
+  @Post(':id/paypal/capture')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async capturePayPalPayment(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() body: { paypalOrderId: string }
+  ) {
+    try {
+      const deal = await this.hotDealsService.capturePayPalPayment(
+        id,
+        req.user.id,
+        body.paypalOrderId,
+        this.paypalService
+      );
+      return { success: true, data: deal };
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to capture PayPal payment',
       };
     }
   }

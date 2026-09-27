@@ -85,6 +85,19 @@ export const advertisementPlansApi = {
     return response.data || response;
   },
 
+  async createPayPalOrder(planId: string): Promise<{ approvalUrl: string; paypalOrderId: string }> {
+    const response = await api.post('/advertisement-plans/paypal/create-order', { planId });
+    const result = response.data || response;
+    return result;
+  },
+
+  async capturePayPalOrder(
+    paypalOrderId: string
+  ): Promise<{ subscription: AdPlanSubscription; message: string }> {
+    const response = await api.post('/advertisement-plans/paypal/capture', { paypalOrderId });
+    return response.data || response;
+  },
+
   // Admin
   async adminGetAll(): Promise<AdvertisementPlan[]> {
     const response = await api.get('/advertisement-plans/admin/plans');

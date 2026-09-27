@@ -894,4 +894,196 @@ export class SellerCreditsService {
       return defaultValue;
     }
   }
+
+  // ==========================================
+  // PAYPAL CREDIT PURCHASE
+  // ==========================================
+
+  /**
+   * Create a PayPal order for credit purchase.
+   * Validates store, calculates price, creates PayPal order.
+   */
+  async createPayPalCreditOrder(userId: string, months: number) {
+    // Validate months range
+    const minMonths = await this.getSettingNumber(
+      'seller_min_credit_purchase',
+      SETTING_DEFAULTS.seller.min_credit_purchase
+    );
+    const maxMonths = await this.getSettingNumber(
+      'seller_max_credit_purchase',
+      SETTING_DEFAULTS.seller.max_credit_purchase
+    );
+
+    if (months < minMonths || months > maxMonths) {
+      throw new BadRequestException(`Months must be between ${minMonths} and ${maxMonths}`);
+    }
+
+    // Get store
+    const store = await this.prisma.store.findUnique({
+      where: { userId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    if (store.status !== StoreStatus.ACTIVE) {
+      throw new ForbiddenException('Your store must be approved before purchasing credits.');
+    }
+
+    // Calculate price
+    const pricePerMonth = await this.getCreditPrice();
+    const totalAmount = pricePerMonth * months;
+
+    // Import PayPalService dynamically to avoid circular dependency
+    const { PayPalService } = await import('../payment/paypal.service');
+
+    // Create internal reference for tracking
+    const referenceId = `credits-${userId}-${Date.now()}`;
+
+    // We need to use the PayPalService instance from the controller,
+    // so we return the data needed to create the order
+    return {
+      success: true,
+      data: {
+        amount: totalAmount,
+        currency: 'USD',
+        months,
+        pricePerMonth,
+        storeId: store.id,
+        userId,
+        referenceId,
+        description: `${months} Month${months > 1 ? 's' : ''} of Selling Credits for ${store.name}`,
+      },
+    };
+  }
+
+  /**
+   * Capture PayPal credit order and process the purchase.
+   * Called after buyer approves on PayPal.
+   */
+  async capturePayPalCreditOrder(userId: string, paypalOrderId: string, paypalService: any) {
+    // Capture the PayPal order
+    const captureResult = await paypalService.captureOrder(paypalOrderId, {
+      id: userId,
+      userId,
+      email: '',
+      role: 'SELLER',
+    });
+
+    if (!captureResult.success) {
+      throw new BadRequestException('PayPal capture failed');
+    }
+
+    // Get the PayPal order details to extract metadata
+    const transaction = await this.prisma.paymentTransaction.findUnique({
+      where: { paypalOrderId },
+    });
+
+    if (!transaction) {
+      throw new NotFoundException('Payment transaction not found');
+    }
+
+    const metadata = transaction.metadata as any;
+
+    // Extract credit purchase details from metadata
+    const months = metadata?.creditMonths;
+    const storeId = metadata?.creditStoreId;
+
+    if (!months || !storeId) {
+      throw new BadRequestException('Invalid PayPal order — missing credit purchase metadata');
+    }
+
+    const monthsNum = parseInt(months, 10);
+    const pricePerMonth = await this.getCreditPrice();
+    const totalAmountPaid = pricePerMonth * monthsNum;
+
+    // Check if already processed (idempotency via paypalOrderId)
+    const existingTransaction = await this.prisma.sellerCreditTransaction.findFirst({
+      where: { stripeSessionId: `paypal-${paypalOrderId}` },
+    });
+
+    if (existingTransaction) {
+      return {
+        success: true,
+        message: 'Credit purchase already processed',
+        data: { alreadyProcessed: true },
+      };
+    }
+
+    // Get store
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const now = new Date();
+    const balanceBefore = store.creditsBalance;
+    const balanceAfter = balanceBefore + monthsNum;
+
+    // Calculate new expiry date
+    let newExpiryDate: Date;
+    if (store.creditsExpiresAt && store.creditsExpiresAt > now) {
+      newExpiryDate = new Date(store.creditsExpiresAt);
+      newExpiryDate.setMonth(newExpiryDate.getMonth() + monthsNum);
+    } else {
+      newExpiryDate = new Date(now);
+      newExpiryDate.setMonth(newExpiryDate.getMonth() + monthsNum);
+    }
+
+    // Transaction: Update store + create transaction record
+    await this.prisma.$transaction([
+      this.prisma.store.update({
+        where: { id: storeId },
+        data: {
+          creditsBalance: balanceAfter,
+          creditsExpiresAt: newExpiryDate,
+          creditsGraceEndsAt: null,
+        },
+      }),
+      this.prisma.sellerCreditTransaction.create({
+        data: {
+          userId,
+          storeId,
+          type: SellerCreditTransactionType.PURCHASE,
+          amount: monthsNum,
+          balanceBefore,
+          balanceAfter,
+          amountPaid: totalAmountPaid,
+          currency: 'USD',
+          stripeSessionId: `paypal-${paypalOrderId}`, // Use as idempotency key
+          stripePaymentId: captureResult.transactionId,
+          description: `Purchased ${monthsNum} month${monthsNum > 1 ? 's' : ''} of selling credits (PayPal)`,
+        },
+      }),
+      ...(store.creditsGraceEndsAt
+        ? [
+            this.prisma.product.updateMany({
+              where: { storeId, status: 'ARCHIVED' },
+              data: { status: 'ACTIVE' },
+            }),
+          ]
+        : []),
+    ]);
+
+    this.logger.log(
+      `PayPal credit purchase processed: Store ${storeId}, ${monthsNum} months, $${totalAmountPaid}`
+    );
+
+    return {
+      success: true,
+      message: `Successfully added ${monthsNum} months of credits`,
+      data: {
+        storeId,
+        monthsPurchased: monthsNum,
+        amountPaid: totalAmountPaid,
+        balanceBefore,
+        balanceAfter,
+        expiresAt: newExpiryDate,
+      },
+    };
+  }
 }

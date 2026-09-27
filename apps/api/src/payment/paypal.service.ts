@@ -239,8 +239,18 @@ export class PayPalService {
         throw new NotFoundException('Payment order not found');
       }
 
-      // Verify the calling user owns this order before capturing funds.
-      await assertOrderAccess(this.prisma, transaction.orderId, user, 'buyer');
+      // Skip order access check for non-order payments (credits, subscriptions)
+      // which use placeholder orderId values like "credit-1234567890"
+      const isNonOrderPayment = transaction.orderId.startsWith('credit-');
+      if (isNonOrderPayment) {
+        // For credit/subscription purchases, verify the user matches the transaction
+        if (transaction.userId !== user.id && transaction.userId !== user.userId) {
+          throw new ForbiddenException('This payment does not belong to you');
+        }
+      } else {
+        // Verify the calling user owns this order before capturing funds.
+        await assertOrderAccess(this.prisma, transaction.orderId, user, 'buyer');
+      }
 
       if (transaction.status === PaymentTransactionStatus.SUCCEEDED) {
         throw new BadRequestException('Order already captured');
@@ -494,5 +504,79 @@ export class PayPalService {
     };
 
     return mapping[countryName] || 'US'; // Default to US if not found
+  }
+
+  /**
+   * Create a PayPal order for non-order payments (credits, subscriptions).
+   * Unlike createOrder(), this does NOT require a NextPik order ID.
+   * Stores metadata in the PaymentTransaction for post-capture processing.
+   */
+  async createCreditOrder(data: {
+    amount: number;
+    currency: string;
+    userId: string;
+    metadata: Record<string, string>;
+    description: string;
+  }): Promise<{ orderId: string; approvalUrl: string }> {
+    const client = this.getClient();
+
+    try {
+      const request = new paypal.orders.OrdersCreateRequest();
+      request.prefer('return=representation');
+      request.requestBody({
+        intent: 'CAPTURE',
+        purchase_units: [
+          {
+            amount: {
+              currency_code: data.currency.toUpperCase(),
+              value: data.amount.toFixed(2),
+            },
+            description: data.description,
+          },
+        ],
+        application_context: {
+          brand_name: 'NextPik',
+          landing_page: 'BILLING',
+          user_action: 'PAY_NOW',
+          return_url: `${this.configService.get('FRONTEND_URL')}/seller/selling-credits/success`,
+          cancel_url: `${this.configService.get('FRONTEND_URL')}/seller/selling-credits?canceled=true`,
+        },
+      });
+
+      const response = await client.execute(request);
+      const paypalOrder = response.result;
+
+      const approvalUrl = paypalOrder.links?.find((link: any) => link.rel === 'approve')?.href;
+      if (!approvalUrl) {
+        throw new BadRequestException('Failed to get PayPal approval URL');
+      }
+
+      // Store as a PaymentTransaction without an orderId (credit purchase, not product order)
+      await this.prisma.paymentTransaction.create({
+        data: {
+          orderId: `credit-${Date.now()}`, // Placeholder — credits don't have a real order
+          userId: data.userId,
+          paymentMethod: PaymentMethod.PAYPAL,
+          paypalOrderId: paypalOrder.id,
+          amount: new Decimal(data.amount),
+          currency: data.currency.toUpperCase(),
+          status: PaymentTransactionStatus.PENDING,
+          metadata: {
+            paypalOrderId: paypalOrder.id,
+            ...data.metadata,
+          },
+        },
+      });
+
+      this.logger.log(
+        `PayPal credit order created: ${paypalOrder.id} for user ${data.userId} ($${data.amount})`
+      );
+
+      return { orderId: paypalOrder.id, approvalUrl };
+    } catch (error) {
+      this.logger.error('PayPal credit order creation failed:', error);
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException(`PayPal credit order creation failed: ${error.message}`);
+    }
   }
 }

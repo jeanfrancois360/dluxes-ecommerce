@@ -115,6 +115,24 @@ export const creditsApi = {
   async purchase(packageId: string): Promise<PurchaseResponse> {
     return api.post(`/credits/purchase/${packageId}`, {});
   },
+
+  /**
+   * Create PayPal order for credit package purchase
+   */
+  async createPayPalPurchase(packageId: string): Promise<{ orderId: string; approvalUrl: string }> {
+    const response = await api.post(`/credits/paypal/purchase/${packageId}`, {});
+    return response.data || response;
+  },
+
+  /**
+   * Capture PayPal credit package payment
+   */
+  async capturePayPalPurchase(
+    paypalOrderId: string
+  ): Promise<{ success: boolean; creditsAdded: number }> {
+    const response = await api.post('/credits/paypal/capture', { paypalOrderId });
+    return response.data || response;
+  },
 };
 
 export default creditsApi;

@@ -9,6 +9,10 @@ import Link from 'next/link';
 import { subscriptionApi } from '@/lib/api/subscription';
 import { useMySubscription } from '@/hooks/use-subscription';
 import {
+  PaymentMethodSelector,
+  type PaymentMethod,
+} from '@/components/shared/payment-method-selector';
+import {
   Check,
   Sparkles,
   Crown,
@@ -400,6 +404,7 @@ export default function SellerPlansPage() {
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const {
@@ -492,12 +497,24 @@ export default function SellerPlansPage() {
     try {
       setCheckoutLoading(planId);
 
-      const { url } = await subscriptionApi.createCheckout(planId, selectedInterval, trialDays);
-      if (url) {
-        toast.success(t('toasts.redirecting'));
-        window.location.href = url;
+      if (paymentMethod === 'paypal') {
+        // PayPal flow: no trial support, one-time payment
+        const result = await subscriptionApi.createPayPalOrder(planId, selectedInterval);
+        if (result.approvalUrl) {
+          toast.success(t('toasts.redirecting'));
+          window.location.href = result.approvalUrl;
+        } else {
+          throw new Error('No PayPal approval URL received');
+        }
       } else {
-        throw new Error('No checkout URL received');
+        // Stripe flow
+        const { url } = await subscriptionApi.createCheckout(planId, selectedInterval, trialDays);
+        if (url) {
+          toast.success(t('toasts.redirecting'));
+          window.location.href = url;
+        } else {
+          throw new Error('No checkout URL received');
+        }
       }
     } catch (error: any) {
       const message = error?.response?.data?.message || error?.message || t('errors.upgrade');
@@ -563,6 +580,15 @@ export default function SellerPlansPage() {
               <span className="font-semibold ml-0.5">{currentPlan.name}</span>
             </motion.div>
           )}
+
+          {/* Payment Method Selector */}
+          <div className="max-w-sm mx-auto mb-6">
+            <PaymentMethodSelector
+              selected={paymentMethod}
+              onChange={setPaymentMethod}
+              disabled={!!checkoutLoading}
+            />
+          </div>
 
           {/* Billing toggle */}
           <div className="inline-flex items-center bg-white border border-neutral-200 rounded-2xl p-1 shadow-sm">

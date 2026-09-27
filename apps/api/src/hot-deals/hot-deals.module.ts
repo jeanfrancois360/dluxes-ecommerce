@@ -7,9 +7,10 @@ import { HotDealCategoriesService } from './hot-deal-categories.service';
 import { HotDealCategoriesController } from './hot-deal-categories.controller';
 import { DatabaseModule } from '../database/database.module';
 import { EmailModule } from '../email/email.module';
+import { PaymentModule } from '../payment/payment.module';
 
 @Module({
-  imports: [DatabaseModule, ConfigModule, EmailModule],
+  imports: [DatabaseModule, ConfigModule, EmailModule, PaymentModule],
   providers: [HotDealsService, HotDealsCronService, HotDealCategoriesService],
   controllers: [HotDealCategoriesController, HotDealsController],
   exports: [HotDealsService, HotDealCategoriesService],

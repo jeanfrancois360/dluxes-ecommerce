@@ -12,6 +12,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { AdvertisementPlansService } from './advertisement-plans.service';
+import { PayPalService } from '../payment/paypal.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -19,7 +20,10 @@ import { PlanBillingPeriod, SubscriptionStatus } from '@prisma/client';
 
 @Controller('advertisement-plans')
 export class AdvertisementPlansController {
-  constructor(private readonly plansService: AdvertisementPlansService) {}
+  constructor(
+    private readonly plansService: AdvertisementPlansService,
+    private readonly paypalService: PayPalService
+  ) {}
 
   // ========================================================================
   // Admin Endpoints (Must come BEFORE wildcard routes)
@@ -184,6 +188,48 @@ export class AdvertisementPlansController {
     @Body() body?: { reason?: string }
   ) {
     return this.plansService.cancelSubscription(id, req.user.userId, body?.reason);
+  }
+
+  // ========================================================================
+  // PayPal Endpoints
+  // ========================================================================
+
+  /**
+   * Create PayPal order for ad plan subscription.
+   * POST /advertisement-plans/paypal/create-order
+   */
+  @Post('paypal/create-order')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
+  async createPayPalSubscription(@Request() req, @Body() body: { planId: string }) {
+    if (!body.planId) {
+      throw new BadRequestException('planId is required');
+    }
+    const data = await this.plansService.createPayPalSubscription(
+      req.user.userId,
+      body.planId,
+      this.paypalService
+    );
+    return { success: true, data };
+  }
+
+  /**
+   * Capture PayPal ad plan payment and activate subscription.
+   * POST /advertisement-plans/paypal/capture
+   */
+  @Post('paypal/capture')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER', 'ADMIN', 'SUPER_ADMIN')
+  async capturePayPalSubscription(@Request() req, @Body() body: { paypalOrderId: string }) {
+    if (!body.paypalOrderId) {
+      throw new BadRequestException('paypalOrderId is required');
+    }
+    const data = await this.plansService.capturePayPalSubscription(
+      req.user.userId,
+      body.paypalOrderId,
+      this.paypalService
+    );
+    return { success: true, data };
   }
 
   // ========================================================================

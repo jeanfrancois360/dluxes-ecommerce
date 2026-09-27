@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
@@ -19,7 +19,7 @@ import { AuthorizationModule } from '../common/authorization/authorization.modul
     DatabaseModule,
     SettingsModule,
     CurrencyModule,
-    SubscriptionModule,
+    forwardRef(() => SubscriptionModule),
     ReferralModule,
     AuthorizationModule,
   ],

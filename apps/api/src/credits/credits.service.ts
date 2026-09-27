@@ -408,4 +408,120 @@ export class CreditsService {
       packageName,
     };
   }
+
+  // ==========================================================================
+  // PAYPAL CREDIT PACKAGE PURCHASE
+  // ==========================================================================
+
+  /**
+   * Create PayPal order for credit package purchase.
+   */
+  async createPayPalPurchase(userId: string, packageId: string, paypalService: any) {
+    const creditPackage = await this.prisma.creditPackage.findUnique({
+      where: { id: packageId },
+    });
+
+    if (!creditPackage) {
+      throw new NotFoundException('Credit package not found');
+    }
+
+    if (!creditPackage.isActive) {
+      throw new BadRequestException('This package is no longer available');
+    }
+
+    const price = Number(creditPackage.price);
+    const description = `${creditPackage.name} (${creditPackage.credits} credits)`;
+
+    const paypalResult = await paypalService.createCreditOrder({
+      amount: price,
+      currency: creditPackage.currency.toUpperCase(),
+      userId,
+      metadata: {
+        type: 'credit_package',
+        creditPackageId: packageId,
+        credits: creditPackage.credits.toString(),
+        packageName: creditPackage.name,
+        userId,
+      },
+      description,
+    });
+
+    return {
+      ...paypalResult,
+      packageName: creditPackage.name,
+      credits: creditPackage.credits,
+      price,
+    };
+  }
+
+  /**
+   * Capture PayPal credit package payment and add credits.
+   */
+  async capturePayPalPurchase(userId: string, paypalOrderId: string, paypalService: any) {
+    const captureResult = await paypalService.captureOrder(paypalOrderId, {
+      id: userId,
+      userId,
+      email: '',
+      role: 'SELLER',
+    });
+
+    if (!captureResult.success) {
+      throw new BadRequestException('PayPal capture failed');
+    }
+
+    const transaction = await this.prisma.paymentTransaction.findUnique({
+      where: { paypalOrderId },
+    });
+
+    if (!transaction) {
+      throw new NotFoundException('Payment transaction not found');
+    }
+
+    const metadata = transaction.metadata as any;
+    const packageId = metadata?.creditPackageId;
+    const credits = metadata?.credits;
+    const packageName = metadata?.packageName;
+
+    if (!packageId || !credits) {
+      throw new BadRequestException('Invalid PayPal order — missing credit package metadata');
+    }
+
+    const creditsAmount = parseInt(credits, 10);
+
+    // Check idempotency
+    const existing = await this.prisma.creditTransaction.findFirst({
+      where: {
+        action: 'purchase_package',
+        description: { contains: paypalOrderId },
+      },
+    });
+
+    if (existing) {
+      return {
+        success: true,
+        message: 'Credit purchase already processed',
+        alreadyProcessed: true,
+      };
+    }
+
+    await this.addCredits(
+      userId,
+      creditsAmount,
+      'PURCHASE',
+      'purchase_package',
+      `Purchased ${packageName} (${creditsAmount} credits) - PayPal Order: ${paypalOrderId}`,
+      packageId
+    );
+
+    this.logger.log(
+      `PayPal credit package purchase processed for user ${userId}: ${creditsAmount} credits`
+    );
+
+    return {
+      success: true,
+      userId,
+      creditsAdded: creditsAmount,
+      packageName,
+    };
+  }
 }
