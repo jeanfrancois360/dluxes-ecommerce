@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Body,
   Param,
   Query,
   UseGuards,
@@ -10,12 +11,16 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { CreditsService } from './credits.service';
+import { PayPalService } from '../payment/paypal.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreditTransactionType } from '@prisma/client';
 
 @Controller('credits')
 export class CreditsController {
-  constructor(private readonly creditsService: CreditsService) {}
+  constructor(
+    private readonly creditsService: CreditsService,
+    private readonly paypalService: PayPalService
+  ) {}
 
   /**
    * Get available credit packages (public)
@@ -64,7 +69,7 @@ export class CreditsController {
     @Req() req: any,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-    @Query('type') type?: string,
+    @Query('type') type?: string
   ) {
     const data = await this.creditsService.getTransactionHistory(req.user.id, {
       page: page ? parseInt(page) : undefined,
@@ -81,9 +86,42 @@ export class CreditsController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   async purchasePackage(@Req() req: any, @Param('packageId') packageId: string) {
-    const data = await this.creditsService.purchasePackage(
+    const data = await this.creditsService.purchasePackage(req.user.id, packageId);
+    return { success: true, data };
+  }
+
+  // ==========================================
+  // PAYPAL CREDIT PACKAGE PURCHASE
+  // ==========================================
+
+  /**
+   * Create PayPal order for credit package purchase
+   * POST /credits/paypal/purchase/:packageId
+   */
+  @Post('paypal/purchase/:packageId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async createPayPalPurchase(@Req() req: any, @Param('packageId') packageId: string) {
+    const data = await this.creditsService.createPayPalPurchase(
       req.user.id,
       packageId,
+      this.paypalService
+    );
+    return { success: true, data };
+  }
+
+  /**
+   * Capture PayPal credit package payment
+   * POST /credits/paypal/capture
+   */
+  @Post('paypal/capture')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async capturePayPalPurchase(@Req() req: any, @Body() body: { paypalOrderId: string }) {
+    const data = await this.creditsService.capturePayPalPurchase(
+      req.user.id,
+      body.paypalOrderId,
+      this.paypalService
     );
     return { success: true, data };
   }

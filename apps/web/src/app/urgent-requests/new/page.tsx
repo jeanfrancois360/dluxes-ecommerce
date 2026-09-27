@@ -46,6 +46,10 @@ import {
   URGENCY_CONFIG,
   getCategoryColors,
 } from '@/lib/api/hot-deals';
+import {
+  PaymentMethodSelector,
+  type PaymentMethod,
+} from '@/components/shared/payment-method-selector';
 import { getIconComponent } from '@/lib/hot-deal-icons';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -537,6 +541,7 @@ function HotDealFormInner({
   const [selectedBudgetType, setSelectedBudgetType] = useState<BudgetType | ''>('');
   const [cardComplete, setCardComplete] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
@@ -639,6 +644,34 @@ function HotDealFormInner({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step]);
 
+  // Handle PayPal return (capture pending payment)
+  useEffect(() => {
+    const pending = localStorage.getItem('hd_paypal_pending');
+    if (!pending) return;
+
+    const { dealId, paypalOrderId } = JSON.parse(pending);
+    localStorage.removeItem('hd_paypal_pending');
+
+    if (dealId && paypalOrderId) {
+      setIsSubmitting(true);
+      setStep('payment');
+      setCreatedDealId(dealId);
+      hotDealsApi
+        .capturePayPalPayment(dealId, paypalOrderId)
+        .then(() => {
+          clearDraft();
+          setStep('success');
+          toast.success(t('hotDealPublished'));
+          setTimeout(() => router.push('/urgent-requests'), 3000);
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : 'PayPal payment failed');
+          toast.error('PayPal payment failed');
+        })
+        .finally(() => setIsSubmitting(false));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleImageFiles = async (files: FileList | null) => {
     if (!files) return;
     const toUpload = Array.from(files).slice(0, 3 - uploadedImages.length);
@@ -701,33 +734,60 @@ function HotDealFormInner({
   };
 
   const handlePayment = async () => {
-    if (!stripe || !elements || !createdDealId) {
-      setError('Payment system not ready. Please refresh.');
+    if (!createdDealId) {
+      setError('Deal not created. Please go back and try again.');
       return;
     }
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      setError('Card element not found. Please refresh and try again.');
-      return;
-    }
+
     setIsSubmitting(true);
     setError(null);
     try {
-      const paymentResponse = await api.post(`/hot-deals/${createdDealId}/payment-intent`, {});
-      const { clientSecret } = paymentResponse?.data ?? paymentResponse;
-      if (!clientSecret) throw new Error('Failed to initialize payment');
+      if (paymentMethod === 'paypal') {
+        // PayPal flow: redirect to PayPal for approval
+        const result = await hotDealsApi.createPayPalOrder(createdDealId);
+        if (result.approvalUrl) {
+          // Store deal ID and PayPal order ID for capture on return
+          localStorage.setItem(
+            'hd_paypal_pending',
+            JSON.stringify({
+              dealId: createdDealId,
+              paypalOrderId: result.paypalOrderId,
+            })
+          );
+          window.location.href = result.approvalUrl;
+        } else {
+          throw new Error('Failed to get PayPal approval URL');
+        }
+      } else {
+        // Stripe flow
+        if (!stripe || !elements) {
+          setError('Payment system not ready. Please refresh.');
+          setIsSubmitting(false);
+          return;
+        }
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) {
+          setError('Card element not found. Please refresh and try again.');
+          setIsSubmitting(false);
+          return;
+        }
 
-      const { error: stripeErr, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: { card: cardElement },
-      });
-      if (stripeErr) throw new Error(stripeErr.message);
-      if (paymentIntent?.status !== 'succeeded') throw new Error('Payment was not successful');
+        const paymentResponse = await api.post(`/hot-deals/${createdDealId}/payment-intent`, {});
+        const { clientSecret } = paymentResponse?.data ?? paymentResponse;
+        if (!clientSecret) throw new Error('Failed to initialize payment');
 
-      await hotDealsApi.confirmPayment(createdDealId, paymentIntent.id);
-      clearDraft();
-      setStep('success');
-      toast.success(t('hotDealPublished'));
-      setTimeout(() => router.push('/urgent-requests'), 3000);
+        const { error: stripeErr, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: { card: cardElement },
+        });
+        if (stripeErr) throw new Error(stripeErr.message);
+        if (paymentIntent?.status !== 'succeeded') throw new Error('Payment was not successful');
+
+        await hotDealsApi.confirmPayment(createdDealId, paymentIntent.id);
+        clearDraft();
+        setStep('success');
+        toast.success(t('hotDealPublished'));
+        setTimeout(() => router.push('/urgent-requests'), 3000);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('paymentFailed'));
       toast.error(t('paymentFailed'));
@@ -786,7 +846,10 @@ function HotDealFormInner({
 
   // ── PAYMENT ──
   if (step === 'payment') {
-    const payReady = !isSubmitting && !stripeLoading && !stripeError && !!stripe && cardComplete;
+    const payReady =
+      paymentMethod === 'paypal'
+        ? !isSubmitting
+        : !isSubmitting && !stripeLoading && !stripeError && !!stripe && cardComplete;
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -838,102 +901,117 @@ function HotDealFormInner({
               </motion.div>
             )}
 
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-semibold text-gray-700">Card information</label>
-                <div className="flex items-center gap-1.5">
-                  {['VISA', 'MC', 'AMEX'].map((b) => (
-                    <span
-                      key={b}
-                      className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs font-bold text-gray-600"
-                    >
-                      {b}
-                    </span>
-                  ))}
-                </div>
-              </div>
+            {/* Payment Method Selector */}
+            <PaymentMethodSelector
+              selected={paymentMethod}
+              onChange={setPaymentMethod}
+              disabled={isSubmitting}
+            />
 
-              {stripeError ? (
-                <div className="border border-red-200 rounded-xl p-4 bg-red-50 flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-red-700">Payment system unavailable</p>
-                    <p className="text-xs text-red-500 mt-1">{stripeError}</p>
+            {paymentMethod === 'stripe' && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-semibold text-gray-700">Card information</label>
+                  <div className="flex items-center gap-1.5">
+                    {['VISA', 'MC', 'AMEX'].map((b) => (
+                      <span
+                        key={b}
+                        className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs font-bold text-gray-600"
+                      >
+                        {b}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              ) : stripeLoading ? (
-                <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 flex items-center gap-3">
-                  <Loader2 className="w-4 h-4 text-[#CBB57B] animate-spin" />
-                  <div className="h-4 bg-gray-200 rounded animate-pulse flex-1" />
-                </div>
-              ) : (
-                <div className="relative">
-                  <div
-                    className={`relative p-4 bg-white border-2 rounded-xl transition-all duration-200 ${
-                      cardError
-                        ? 'border-red-400 hd-shake'
-                        : cardComplete
-                          ? 'border-green-400 bg-green-50/30'
-                          : 'border-gray-200'
-                    } focus-within:border-[#CBB57B] focus-within:ring-4 focus-within:ring-[#CBB57B]/10`}
-                  >
-                    <CardElement
-                      options={{
-                        style: {
-                          base: {
-                            fontSize: '16px',
-                            color: '#111827',
-                            fontFamily: '"Inter", system-ui, sans-serif',
-                            backgroundColor: 'transparent',
-                            '::placeholder': { color: '#9CA3AF' },
-                            iconColor: '#CBB57B',
-                          },
-                          invalid: { color: '#EF4444', iconColor: '#EF4444' },
-                        },
-                        hidePostalCode: true,
-                      }}
-                      onChange={handleCardChange}
-                    />
-                    <AnimatePresence>
-                      {cardComplete && !cardError && (
-                        <motion.div
-                          key="check"
-                          initial={{ scale: 0, rotate: -90 }}
-                          animate={{ scale: 1, rotate: 0 }}
-                          exit={{ scale: 0 }}
-                          transition={{ type: 'spring', stiffness: 260, damping: 16 }}
-                          className="absolute -right-2.5 -top-2.5 z-10"
-                        >
-                          <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center shadow-md border-2 border-white">
-                            <CheckCircle className="w-4 h-4 text-white" />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+
+                {stripeError ? (
+                  <div className="border border-red-200 rounded-xl p-4 bg-red-50 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-700">
+                        Payment system unavailable
+                      </p>
+                      <p className="text-xs text-red-500 mt-1">{stripeError}</p>
+                    </div>
                   </div>
-                  {cardError && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-2 text-sm text-red-600 flex items-center gap-1.5"
+                ) : stripeLoading ? (
+                  <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 flex items-center gap-3">
+                    <Loader2 className="w-4 h-4 text-[#CBB57B] animate-spin" />
+                    <div className="h-4 bg-gray-200 rounded animate-pulse flex-1" />
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div
+                      className={`relative p-4 bg-white border-2 rounded-xl transition-all duration-200 ${
+                        cardError
+                          ? 'border-red-400 hd-shake'
+                          : cardComplete
+                            ? 'border-green-400 bg-green-50/30'
+                            : 'border-gray-200'
+                      } focus-within:border-[#CBB57B] focus-within:ring-4 focus-within:ring-[#CBB57B]/10`}
                     >
-                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                      {cardError}
-                    </motion.p>
-                  )}
-                  <p className="mt-2 text-xs text-gray-400 flex items-center gap-1.5">
-                    <Shield className="w-3.5 h-3.5 text-green-500" />
-                    256-bit SSL encryption. We never store your card details.
-                  </p>
-                </div>
-              )}
-            </div>
+                      <CardElement
+                        options={{
+                          style: {
+                            base: {
+                              fontSize: '16px',
+                              color: '#111827',
+                              fontFamily: '"Inter", system-ui, sans-serif',
+                              backgroundColor: 'transparent',
+                              '::placeholder': { color: '#9CA3AF' },
+                              iconColor: '#CBB57B',
+                            },
+                            invalid: { color: '#EF4444', iconColor: '#EF4444' },
+                          },
+                          hidePostalCode: true,
+                        }}
+                        onChange={handleCardChange}
+                      />
+                      <AnimatePresence>
+                        {cardComplete && !cardError && (
+                          <motion.div
+                            key="check"
+                            initial={{ scale: 0, rotate: -90 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            exit={{ scale: 0 }}
+                            transition={{ type: 'spring', stiffness: 260, damping: 16 }}
+                            className="absolute -right-2.5 -top-2.5 z-10"
+                          >
+                            <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center shadow-md border-2 border-white">
+                              <CheckCircle className="w-4 h-4 text-white" />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                    {cardError && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-2 text-sm text-red-600 flex items-center gap-1.5"
+                      >
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        {cardError}
+                      </motion.p>
+                    )}
+                    <p className="mt-2 text-xs text-gray-400 flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-green-500" />
+                      256-bit SSL encryption. We never store your card details.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center justify-center gap-6 flex-wrap py-2 border-t border-gray-100">
               {[
                 { Icon: Lock, label: 'SSL Encrypted', color: 'text-green-500' },
-                { Icon: Shield, label: 'PCI Compliant', color: 'text-blue-500' },
-                { Icon: CheckCheck, label: 'Stripe Secured', color: 'text-violet-500' },
+                { Icon: Shield, label: 'Secure Payment', color: 'text-blue-500' },
+                {
+                  Icon: CheckCheck,
+                  label: paymentMethod === 'paypal' ? 'PayPal Protected' : 'Stripe Secured',
+                  color: 'text-violet-500',
+                },
               ].map(({ Icon, label, color }) => (
                 <span key={label} className="flex items-center gap-1.5 text-xs text-gray-500">
                   <Icon className={`w-3.5 h-3.5 ${color}`} />
@@ -982,9 +1060,11 @@ function HotDealFormInner({
                   )}
                   {isSubmitting
                     ? 'Processing…'
-                    : stripeLoading
+                    : stripeLoading && paymentMethod === 'stripe'
                       ? 'Loading…'
-                      : 'Pay $1.00 & Publish'}
+                      : paymentMethod === 'paypal'
+                        ? 'Pay $1.00 with PayPal'
+                        : 'Pay $1.00 & Publish'}
                 </span>
               </button>
             </div>

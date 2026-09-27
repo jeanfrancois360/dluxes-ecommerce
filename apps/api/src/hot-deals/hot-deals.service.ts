@@ -71,6 +71,102 @@ export class HotDealsService {
     return { clientSecret: paymentIntent.client_secret };
   }
 
+  /**
+   * Create a PayPal order for the $1 hot deal posting fee
+   */
+  async createPayPalOrder(hotDealId: string, userId: string, paypalService: any) {
+    const deal = await this.hotDeal.findUnique({ where: { id: hotDealId } });
+
+    if (!deal) {
+      throw new NotFoundException('Hot deal not found');
+    }
+    if (deal.userId !== userId) {
+      throw new ForbiddenException('Not authorized');
+    }
+    if (deal.status !== HotDealStatus.PENDING) {
+      throw new BadRequestException('This hot deal has already been paid for or cancelled');
+    }
+
+    const paypalResult = await paypalService.createCreditOrder({
+      amount: 1.0,
+      currency: 'USD',
+      userId,
+      metadata: {
+        type: 'hot_deal',
+        hotDealId,
+        userId,
+      },
+      description: `Hot Deal posting fee — ${deal.title}`,
+    });
+
+    return { approvalUrl: paypalResult.approvalUrl, paypalOrderId: paypalResult.orderId };
+  }
+
+  /**
+   * Capture PayPal payment and activate hot deal
+   */
+  async capturePayPalPayment(
+    hotDealId: string,
+    userId: string,
+    paypalOrderId: string,
+    paypalService: any
+  ) {
+    const deal = await this.hotDeal.findUnique({ where: { id: hotDealId } });
+
+    if (!deal) {
+      throw new NotFoundException('Hot deal not found');
+    }
+    if (deal.userId !== userId) {
+      throw new ForbiddenException('Not authorized');
+    }
+    if (deal.status !== HotDealStatus.PENDING) {
+      throw new BadRequestException('This hot deal has already been processed');
+    }
+
+    const captureResult = await paypalService.captureOrder(paypalOrderId, {
+      id: userId,
+      userId,
+      email: '',
+      role: 'BUYER',
+    });
+
+    if (!captureResult.success) {
+      throw new BadRequestException('PayPal capture failed');
+    }
+
+    // Activate the hot deal
+    const updatedDeal = await this.hotDeal.update({
+      where: { id: hotDealId },
+      data: {
+        status: HotDealStatus.ACTIVE,
+        paymentStatus: PaymentStatus.PAID,
+        paymentIntentId: `paypal-${paypalOrderId}`,
+        publishedAt: new Date(),
+      },
+      include: {
+        user: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
+    });
+
+    this.logger.log(`Hot deal ${hotDealId} activated via PayPal payment`);
+
+    // Send activation email (fire-and-forget)
+    this.emailService
+      .sendHotDealActivated(deal.contactEmail, {
+        userName: updatedDeal.user.firstName || 'there',
+        dealTitle: deal.title,
+        dealId: hotDealId,
+        expiresAt: deal.expiresAt,
+        city: deal.city,
+        category: deal.categoryId,
+      })
+      .catch((err) => this.logger.error(`Failed to send hot deal activation email:`, err));
+
+    return updatedDeal;
+  }
+
   // Type assertion helper for HotDeal model (until migration is run)
   private get hotDeal() {
     return (this.prisma as any).hotDeal;

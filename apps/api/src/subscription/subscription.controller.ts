@@ -18,12 +18,14 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { SubscriptionTier } from '@prisma/client';
+import { PayPalService } from '../payment/paypal.service';
 
 @Controller('subscription')
 export class SubscriptionController {
   constructor(
     private readonly subscriptionService: SubscriptionService,
-    private readonly stripeSubscriptionService: StripeSubscriptionService
+    private readonly stripeSubscriptionService: StripeSubscriptionService,
+    private readonly paypalService: PayPalService
   ) {}
 
   // ==========================================================================
@@ -310,5 +312,46 @@ export class SubscriptionController {
   async syncStripe() {
     const data = await this.stripeSubscriptionService.syncStripePrices();
     return { success: true, ...data };
+  }
+
+  // ==========================================================================
+  // PAYPAL SUBSCRIPTION ENDPOINTS
+  // ==========================================================================
+
+  /**
+   * Create PayPal order for subscription (first payment).
+   * Auto-renewal is NOT supported via PayPal — seller must renew manually.
+   * POST /subscription/paypal/create-order
+   */
+  @Post('paypal/create-order')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  async createPayPalSubscriptionOrder(
+    @Req() req: any,
+    @Body() body: { planId: string; billingCycle: 'MONTHLY' | 'YEARLY' }
+  ) {
+    const data = await this.subscriptionService.createPayPalSubscriptionOrder(
+      req.user.id,
+      body.planId,
+      body.billingCycle,
+      this.paypalService
+    );
+    return { success: true, data };
+  }
+
+  /**
+   * Capture PayPal subscription payment and activate subscription.
+   * POST /subscription/paypal/capture
+   */
+  @Post('paypal/capture')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  async capturePayPalSubscription(@Req() req: any, @Body() body: { paypalOrderId: string }) {
+    const data = await this.subscriptionService.capturePayPalSubscription(
+      req.user.id,
+      body.paypalOrderId,
+      this.paypalService
+    );
+    return { success: true, data };
   }
 }

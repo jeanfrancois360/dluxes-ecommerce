@@ -14,6 +14,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { SellerCreditsService } from './seller-credits.service';
+import { PayPalService } from '../payment/paypal.service';
 
 /**
  * Seller controller for managing credits and subscriptions
@@ -22,7 +23,10 @@ import { SellerCreditsService } from './seller-credits.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SELLER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
 export class SellerCreditsController {
-  constructor(private readonly sellerCreditsService: SellerCreditsService) {}
+  constructor(
+    private readonly sellerCreditsService: SellerCreditsService,
+    private readonly paypalService: PayPalService
+  ) {}
 
   /**
    * Get current credit balance and status
@@ -134,5 +138,64 @@ export class SellerCreditsController {
     }
 
     return this.sellerCreditsService.verifyAndProcessSession(req.user.id, sessionId);
+  }
+
+  // ==========================================
+  // PAYPAL CREDIT PURCHASE
+  // ==========================================
+
+  /**
+   * Create PayPal order for credit purchase
+   * POST /seller/credits/paypal/create-order
+   * Body: { months: number }
+   */
+  @Post('paypal/create-order')
+  @HttpCode(HttpStatus.OK)
+  async createPayPalOrder(@Req() req: any, @Body() body: { months: number }) {
+    const { months } = body;
+    if (!months || typeof months !== 'number' || months < 1 || months > 12) {
+      return { success: false, message: 'Months must be a number between 1 and 12' };
+    }
+
+    // Get validated credit purchase data
+    const creditData = await this.sellerCreditsService.createPayPalCreditOrder(req.user.id, months);
+    const { amount, currency, storeId, userId, description } = creditData.data;
+
+    // Create a placeholder order in the system to get an orderId for PayPal
+    // We reuse the PayPal service's createOrder which needs an orderId
+    // For credits, we create a PayPal order directly
+    const paypalResult = await this.paypalService.createCreditOrder({
+      amount,
+      currency,
+      userId,
+      metadata: {
+        type: 'seller_credits',
+        creditMonths: months.toString(),
+        creditStoreId: storeId,
+        userId,
+      },
+      description,
+    });
+
+    return { success: true, data: paypalResult };
+  }
+
+  /**
+   * Capture PayPal order and process credit purchase
+   * POST /seller/credits/paypal/capture
+   * Body: { paypalOrderId: string }
+   */
+  @Post('paypal/capture')
+  @HttpCode(HttpStatus.OK)
+  async capturePayPalOrder(@Req() req: any, @Body() body: { paypalOrderId: string }) {
+    if (!body.paypalOrderId) {
+      return { success: false, message: 'PayPal order ID is required' };
+    }
+
+    return this.sellerCreditsService.capturePayPalCreditOrder(
+      req.user.id,
+      body.paypalOrderId,
+      this.paypalService
+    );
   }
 }

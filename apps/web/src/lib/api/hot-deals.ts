@@ -192,6 +192,16 @@ export const hotDealsApi = {
     return api.post(`/hot-deals/${dealId}/confirm-payment`, { paymentIntentId });
   },
 
+  async createPayPalOrder(dealId: string): Promise<{ approvalUrl: string; paypalOrderId: string }> {
+    const response = await api.post(`/hot-deals/${dealId}/paypal/create-order`, {});
+    return response.data || response;
+  },
+
+  async capturePayPalPayment(dealId: string, paypalOrderId: string): Promise<HotDeal> {
+    const response = await api.post(`/hot-deals/${dealId}/paypal/capture`, { paypalOrderId });
+    return response.data || response;
+  },
+
   async markFulfilled(dealId: string): Promise<HotDeal> {
     return api.patch(`/hot-deals/${dealId}/fulfill`);
   },

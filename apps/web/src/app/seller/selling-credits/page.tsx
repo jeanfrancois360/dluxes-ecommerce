@@ -22,6 +22,10 @@ import {
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/seller/page-header';
+import {
+  PaymentMethodSelector,
+  type PaymentMethod,
+} from '@/components/shared/payment-method-selector';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -84,6 +88,7 @@ export default function SellingCreditsPage() {
   const [selectedMonths, setSelectedMonths] = useState(1);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
 
   // Fetch credit balance
   const {
@@ -172,30 +177,56 @@ export default function SellingCreditsPage() {
 
     setIsPurchasing(true);
     try {
-      const res = await fetch(`${API_URL}/seller/credits/checkout`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ months: selectedMonths }),
-      });
+      if (paymentMethod === 'paypal') {
+        // PayPal flow
+        const res = await fetch(`${API_URL}/seller/credits/paypal/create-order`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ months: selectedMonths }),
+        });
 
-      if (!res.ok) {
-        const error = await safeJson(res);
-        throw new Error(error.message || 'Failed to create checkout session');
-      }
+        if (!res.ok) {
+          const error = await safeJson(res);
+          throw new Error(error.message || 'Failed to create PayPal order');
+        }
 
-      const response = await safeJson(res);
-      const sessionUrl = response.data?.sessionUrl || response.sessionUrl;
+        const response = await safeJson(res);
+        const approvalUrl = response.data?.approvalUrl;
 
-      if (sessionUrl) {
-        // Redirect to Stripe Checkout
-        window.location.href = sessionUrl;
+        if (approvalUrl) {
+          window.location.href = approvalUrl;
+        } else {
+          throw new Error('No PayPal approval URL received');
+        }
       } else {
-        console.error('Invalid response structure:', response);
-        throw new Error(t('errors.noCheckoutUrl'));
+        // Stripe flow
+        const res = await fetch(`${API_URL}/seller/credits/checkout`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ months: selectedMonths }),
+        });
+
+        if (!res.ok) {
+          const error = await safeJson(res);
+          throw new Error(error.message || 'Failed to create checkout session');
+        }
+
+        const response = await safeJson(res);
+        const sessionUrl = response.data?.sessionUrl || response.sessionUrl;
+
+        if (sessionUrl) {
+          window.location.href = sessionUrl;
+        } else {
+          throw new Error(t('errors.noCheckoutUrl'));
+        }
       }
     } catch (error: any) {
       console.error('Purchase error:', error);
@@ -513,6 +544,13 @@ export default function SellingCreditsPage() {
               <span className="font-bold text-[#CBB57B]">${totalPrice.toFixed(2)}</span>
             </div>
           </div>
+
+          {/* Payment Method */}
+          <PaymentMethodSelector
+            selected={paymentMethod}
+            onChange={setPaymentMethod}
+            disabled={isPurchasing}
+          />
 
           {/* Purchase Button */}
           <button

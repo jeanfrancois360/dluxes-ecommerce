@@ -207,6 +207,36 @@ export const subscriptionApi = {
   },
 
   // ========================================================================
+  // PayPal Subscription Endpoints
+  // ========================================================================
+
+  /**
+   * Create PayPal order for subscription purchase
+   */
+  async createPayPalOrder(
+    planId: string,
+    billingCycle: 'MONTHLY' | 'YEARLY'
+  ): Promise<{ orderId: string; approvalUrl: string; planName: string; price: number }> {
+    const response = await api.post('/subscription/paypal/create-order', {
+      planId,
+      billingCycle,
+    });
+    return response.data || response;
+  },
+
+  /**
+   * Capture PayPal subscription payment
+   */
+  async capturePayPalOrder(
+    paypalOrderId: string
+  ): Promise<{ subscription: any; planName: string; message: string }> {
+    const response = await api.post('/subscription/paypal/capture', {
+      paypalOrderId,
+    });
+    return response.data || response;
+  },
+
+  // ========================================================================
   // Admin Endpoints
   // ========================================================================
 

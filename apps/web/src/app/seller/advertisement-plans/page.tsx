@@ -7,10 +7,15 @@ import {
   useMyAdSubscription,
   useAdPlanSubscriptionMutations,
 } from '@/hooks/use-advertisements';
+import { advertisementPlansApi } from '@/lib/api/advertisement-plans';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/seller/page-header';
+import {
+  PaymentMethodSelector,
+  type PaymentMethod,
+} from '@/components/shared/payment-method-selector';
 
 export default function SellerAdvertisementPlansPage() {
   const t = useTranslations('sellerAdPlans');
@@ -37,6 +42,7 @@ export default function SellerAdvertisementPlansPage() {
   const [subscribing, setSubscribing] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showTrialModal, setShowTrialModal] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<{
@@ -76,10 +82,27 @@ export default function SellerAdvertisementPlansPage() {
   const processSubscribe = async (planSlug: string) => {
     try {
       setSubscribing(planSlug);
-      const result = await subscribe(planSlug, billingPeriod);
-      if (result?.checkoutUrl) return;
-      toast.success(t('toast.subscribeSuccess'));
-      await refreshSubscription();
+
+      if (paymentMethod === 'paypal') {
+        // PayPal flow: find plan ID from slug
+        const plan = plans.find((p) => p.slug === planSlug);
+        if (!plan) throw new Error('Plan not found');
+
+        const result = await advertisementPlansApi.createPayPalOrder(plan.id);
+        if (result?.approvalUrl) {
+          window.location.href = result.approvalUrl;
+          return;
+        }
+        // Free plan activated immediately
+        toast.success(t('toast.subscribeSuccess'));
+        await refreshSubscription();
+      } else {
+        // Stripe flow
+        const result = await subscribe(planSlug, billingPeriod);
+        if (result?.checkoutUrl) return;
+        toast.success(t('toast.subscribeSuccess'));
+        await refreshSubscription();
+      }
     } catch (error: any) {
       console.error('Subscribe error:', error);
       toast.error(error?.response?.data?.message || t('toast.subscribeError'));
@@ -262,7 +285,16 @@ export default function SellerAdvertisementPlansPage() {
           </div>
         )}
 
-        {/* Plans are monthly only */}
+        {/* Payment Method Selector (only if no active subscription) */}
+        {!isActive && (
+          <div className="max-w-sm mx-auto mb-8">
+            <PaymentMethodSelector
+              selected={paymentMethod}
+              onChange={setPaymentMethod}
+              disabled={!!subscribing}
+            />
+          </div>
+        )}
 
         {/* Plans Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
