@@ -2987,6 +2987,10 @@ model AdvertisementPlan {
   isFeatured   Boolean @default(false)
   displayOrder Int     @default(0)
 
+  // PayPal Integration
+  paypalProductId String?
+  paypalPlanId    String? // PayPal billing plan ID
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -3076,6 +3080,11 @@ model SubscriptionPlan {
   stripePriceIdMonthly String?
   stripePriceIdYearly  String?
 
+  // PayPal Integration
+  paypalProductId      String?
+  paypalPlanIdMonthly  String?
+  paypalPlanIdYearly   String?
+
   // Display
   isPopular    Boolean @default(false)
   isActive     Boolean @default(true)
@@ -3118,6 +3127,9 @@ model SellerSubscription {
   // Stripe
   stripeSubscriptionId String?
   stripeCustomerId     String?
+
+  // PayPal
+  paypalSubscriptionId String?
 
   // Trial
   trialEndsAt DateTime?

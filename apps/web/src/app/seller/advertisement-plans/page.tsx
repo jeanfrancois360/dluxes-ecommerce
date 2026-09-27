@@ -22,14 +22,28 @@ export default function SellerAdvertisementPlansPage() {
   const searchParams = useSearchParams();
   const { plans, isLoading: plansLoading } = useAdvertisementPlans();
 
-  // Show toast on return from Stripe Checkout
+  // Handle return from Stripe/PayPal
   useEffect(() => {
     if (searchParams.get('subscribed') === 'true') {
-      toast.success('Subscription activated! You can now create ads.');
+      // PayPal return — activate subscription
+      const paypalParam = searchParams.get('paypal');
+      const planIdParam = searchParams.get('planId');
+      const subIdParam = searchParams.get('subscription_id');
+      if (paypalParam === 'true' && planIdParam && subIdParam) {
+        advertisementPlansApi
+          .activatePayPalSubscription(subIdParam, planIdParam)
+          .then(() => {
+            toast.success('PayPal subscription activated! You can now create ads.');
+            refreshSubscription();
+          })
+          .catch(() => toast.error('Failed to activate PayPal subscription.'));
+      } else {
+        toast.success('Subscription activated! You can now create ads.');
+      }
     } else if (searchParams.get('canceled') === 'true') {
       toast.info('Subscription was not completed.');
     }
-  }, [searchParams]);
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
   const {
     subscription,
     plan: currentPlan,

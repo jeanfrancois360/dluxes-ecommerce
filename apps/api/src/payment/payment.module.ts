@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 import { PayPalService } from './paypal.service';
+import { PayPalBillingService } from './paypal-billing.service';
 import { PaymentMonitorService } from './payment-monitor.service';
 import { PayPalWebhookService } from './paypal-webhook.service';
 import { PayPalWebhookController } from './paypal-webhook.controller';
@@ -24,7 +25,19 @@ import { AuthorizationModule } from '../common/authorization/authorization.modul
     AuthorizationModule,
   ],
   controllers: [PaymentController, PayPalWebhookController],
-  providers: [PaymentService, PayPalService, PaymentMonitorService, PayPalWebhookService],
-  exports: [PaymentService, PayPalService, PaymentMonitorService, PayPalWebhookService],
+  providers: [
+    PaymentService,
+    PayPalService,
+    PayPalBillingService,
+    PaymentMonitorService,
+    PayPalWebhookService,
+  ],
+  exports: [
+    PaymentService,
+    PayPalService,
+    PayPalBillingService,
+    PaymentMonitorService,
+    PayPalWebhookService,
+  ],
 })
 export class PaymentModule {}

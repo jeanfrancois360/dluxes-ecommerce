@@ -967,20 +967,19 @@ export class SubscriptionService {
   }
 
   // ==========================================================================
-  // PAYPAL SUBSCRIPTION (First Payment Only — No Auto-Renewal)
+  // PAYPAL RECURRING SUBSCRIPTION (via PayPal Subscriptions API)
   // ==========================================================================
 
   /**
-   * Create PayPal order for subscription first payment.
-   * Auto-renewal is NOT supported via PayPal — seller must renew manually.
+   * Create PayPal recurring subscription.
+   * Uses PayPal Subscriptions API for auto-renewal.
    */
   async createPayPalSubscriptionOrder(
     userId: string,
     planId: string,
     billingCycle: 'MONTHLY' | 'YEARLY',
-    paypalService: any
+    paypalBillingService: any
   ) {
-    // Validate plan
     const plan = await this.prisma.subscriptionPlan.findUnique({
       where: { id: planId },
     });
@@ -993,30 +992,57 @@ export class SubscriptionService {
       throw new BadRequestException('Free plan does not require payment');
     }
 
-    // Calculate price
     const price = billingCycle === 'YEARLY' ? Number(plan.yearlyPrice) : Number(plan.monthlyPrice);
     if (price <= 0) {
       throw new BadRequestException('Invalid plan price');
     }
 
-    const description = `${plan.name} Plan (${billingCycle === 'YEARLY' ? 'Annual' : 'Monthly'})`;
+    // Sync plan to PayPal (creates product + billing plans if needed)
+    const paypalIds = await paypalBillingService.syncSubscriptionPlan({
+      id: plan.id,
+      name: plan.name,
+      description: plan.description,
+      monthlyPrice: Number(plan.monthlyPrice),
+      yearlyPrice: Number(plan.yearlyPrice),
+      currency: plan.currency || 'USD',
+    });
 
-    // Create PayPal order
-    const paypalResult = await paypalService.createCreditOrder({
-      amount: price,
-      currency: 'USD',
-      userId,
-      metadata: {
-        type: 'subscription',
-        subscriptionPlanId: planId,
-        billingCycle,
-        userId,
+    // Save PayPal IDs on plan
+    await this.prisma.subscriptionPlan.update({
+      where: { id: planId },
+      data: {
+        paypalProductId: paypalIds.paypalProductId,
+        paypalPlanIdMonthly: paypalIds.paypalPlanIdMonthly,
+        paypalPlanIdYearly: paypalIds.paypalPlanIdYearly,
       },
-      description,
+    });
+
+    const paypalPlanId =
+      billingCycle === 'YEARLY' ? paypalIds.paypalPlanIdYearly : paypalIds.paypalPlanIdMonthly;
+
+    if (!paypalPlanId) {
+      throw new BadRequestException('PayPal billing plan not available for this cycle');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, firstName: true, lastName: true },
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    const result = await paypalBillingService.createSubscription({
+      planId: paypalPlanId,
+      returnUrl: `${frontendUrl}/seller/subscription/success?paypal=true&planId=${planId}&billingCycle=${billingCycle}`,
+      cancelUrl: `${frontendUrl}/seller/subscription/cancel?paypal=true`,
+      subscriberEmail: user?.email,
+      subscriberName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+      metadata: { userId, planId, billingCycle },
     });
 
     return {
-      ...paypalResult,
+      approvalUrl: result.approvalUrl,
+      paypalSubscriptionId: result.subscriptionId,
       planName: plan.name,
       billingCycle,
       price,
@@ -1024,39 +1050,25 @@ export class SubscriptionService {
   }
 
   /**
-   * Capture PayPal subscription payment and activate subscription.
+   * Activate subscription after PayPal approval.
+   * Called from the success page with the PayPal subscription ID.
    */
-  async capturePayPalSubscription(userId: string, paypalOrderId: string, paypalService: any) {
-    // Capture PayPal order
-    const captureResult = await paypalService.captureOrder(paypalOrderId, {
-      id: userId,
-      userId,
-      email: '',
-      role: 'SELLER',
-    });
+  async capturePayPalSubscription(
+    userId: string,
+    paypalSubscriptionId: string,
+    planId: string,
+    billingCycle: 'MONTHLY' | 'YEARLY',
+    paypalBillingService: any
+  ) {
+    // Verify subscription is active in PayPal
+    const paypalSub = await paypalBillingService.getSubscription(paypalSubscriptionId);
 
-    if (!captureResult.success) {
-      throw new BadRequestException('PayPal capture failed');
+    if (paypalSub.status !== 'ACTIVE' && paypalSub.status !== 'APPROVED') {
+      throw new BadRequestException(
+        `PayPal subscription is not active (status: ${paypalSub.status})`
+      );
     }
 
-    // Get transaction metadata
-    const transaction = await this.prisma.paymentTransaction.findUnique({
-      where: { paypalOrderId },
-    });
-
-    if (!transaction) {
-      throw new NotFoundException('Payment transaction not found');
-    }
-
-    const metadata = transaction.metadata as any;
-    const planId = metadata?.subscriptionPlanId;
-    const billingCycle = metadata?.billingCycle || 'MONTHLY';
-
-    if (!planId) {
-      throw new BadRequestException('Invalid PayPal order — missing subscription metadata');
-    }
-
-    // Get plan details
     const plan = await this.prisma.subscriptionPlan.findUnique({
       where: { id: planId },
     });
@@ -1065,7 +1077,6 @@ export class SubscriptionService {
       throw new NotFoundException('Subscription plan not found');
     }
 
-    // Calculate period
     const now = new Date();
     const periodEnd = new Date(now);
     if (billingCycle === 'YEARLY') {
@@ -1074,7 +1085,6 @@ export class SubscriptionService {
       periodEnd.setMonth(periodEnd.getMonth() + 1);
     }
 
-    // Activate subscription
     const subscription = await this.prisma.sellerSubscription.upsert({
       where: { userId },
       create: {
@@ -1086,6 +1096,7 @@ export class SubscriptionService {
         currentPeriodEnd: periodEnd,
         creditsAllocated: plan.monthlyCredits,
         creditsUsed: 0,
+        paypalSubscriptionId,
       },
       update: {
         planId,
@@ -1097,11 +1108,12 @@ export class SubscriptionService {
         cancelAtPeriodEnd: false,
         creditsAllocated: plan.monthlyCredits,
         creditsUsed: 0,
+        paypalSubscriptionId,
       },
     });
 
     this.logger.log(
-      `PayPal subscription activated: ${userId} → ${plan.name} (${billingCycle}), expires ${periodEnd.toISOString()}`
+      `PayPal recurring subscription activated: ${userId} → ${plan.name} (${billingCycle}), PayPal sub: ${paypalSubscriptionId}`
     );
 
     return {
@@ -1109,7 +1121,33 @@ export class SubscriptionService {
       planName: plan.name,
       billingCycle,
       periodEnd,
-      message: `${plan.name} plan activated. Note: PayPal subscriptions do not auto-renew. Please renew before ${periodEnd.toLocaleDateString()}.`,
+      autoRenew: true,
+      message: `${plan.name} plan activated with automatic renewal via PayPal.`,
     };
+  }
+
+  /**
+   * Cancel PayPal recurring subscription
+   */
+  async cancelPayPalSubscription(userId: string, paypalBillingService: any) {
+    const subscription = await this.prisma.sellerSubscription.findUnique({
+      where: { userId },
+    });
+
+    if (!subscription?.paypalSubscriptionId) {
+      throw new BadRequestException('No active PayPal subscription found');
+    }
+
+    await paypalBillingService.cancelSubscription(
+      subscription.paypalSubscriptionId,
+      'User requested cancellation'
+    );
+
+    await this.prisma.sellerSubscription.update({
+      where: { userId },
+      data: { cancelAtPeriodEnd: true, canceledAt: new Date() },
+    });
+
+    return { message: 'PayPal subscription cancelled. Access continues until period end.' };
   }
 }

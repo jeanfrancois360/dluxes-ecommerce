@@ -18,14 +18,14 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { SubscriptionTier } from '@prisma/client';
-import { PayPalService } from '../payment/paypal.service';
+import { PayPalBillingService } from '../payment/paypal-billing.service';
 
 @Controller('subscription')
 export class SubscriptionController {
   constructor(
     private readonly subscriptionService: SubscriptionService,
     private readonly stripeSubscriptionService: StripeSubscriptionService,
-    private readonly paypalService: PayPalService
+    private readonly paypalBillingService: PayPalBillingService
   ) {}
 
   // ==========================================================================
@@ -319,8 +319,8 @@ export class SubscriptionController {
   // ==========================================================================
 
   /**
-   * Create PayPal order for subscription (first payment).
-   * Auto-renewal is NOT supported via PayPal — seller must renew manually.
+   * Create PayPal recurring subscription.
+   * Uses PayPal Subscriptions API for automatic renewal.
    * POST /subscription/paypal/create-order
    */
   @Post('paypal/create-order')
@@ -334,24 +334,46 @@ export class SubscriptionController {
       req.user.id,
       body.planId,
       body.billingCycle,
-      this.paypalService
+      this.paypalBillingService
     );
     return { success: true, data };
   }
 
   /**
-   * Capture PayPal subscription payment and activate subscription.
-   * POST /subscription/paypal/capture
+   * Activate PayPal subscription after user approval.
+   * Called from success page with PayPal subscription ID.
+   * POST /subscription/paypal/activate
    */
-  @Post('paypal/capture')
+  @Post('paypal/activate')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SELLER')
-  async capturePayPalSubscription(@Req() req: any, @Body() body: { paypalOrderId: string }) {
+  async activatePayPalSubscription(
+    @Req() req: any,
+    @Body()
+    body: { paypalSubscriptionId: string; planId: string; billingCycle: 'MONTHLY' | 'YEARLY' }
+  ) {
     const data = await this.subscriptionService.capturePayPalSubscription(
       req.user.id,
-      body.paypalOrderId,
-      this.paypalService
+      body.paypalSubscriptionId,
+      body.planId,
+      body.billingCycle,
+      this.paypalBillingService
     );
     return { success: true, data };
+  }
+
+  /**
+   * Cancel PayPal recurring subscription.
+   * POST /subscription/paypal/cancel
+   */
+  @Post('paypal/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  async cancelPayPalSubscription(@Req() req: any) {
+    const data = await this.subscriptionService.cancelPayPalSubscription(
+      req.user.id,
+      this.paypalBillingService
+    );
+    return { success: true, ...data };
   }
 }
