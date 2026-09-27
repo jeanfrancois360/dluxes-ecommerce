@@ -801,6 +801,38 @@ export class AdvertisementPlansService {
       throw new NotFoundException('Advertisement plan not found');
     }
 
+    // Idempotency: check if already activated
+    const existing = await this.prisma.sellerPlanSubscription.findFirst({
+      where: { stripeSubscriptionId: `paypal-sub-${paypalSubscriptionId}` },
+      include: { plan: true },
+    });
+
+    if (existing) {
+      this.logger.log(
+        `Ad plan subscription already activated for PayPal sub ${paypalSubscriptionId}`
+      );
+      return {
+        subscription: existing,
+        planName: existing.plan.name,
+        periodEnd: existing.currentPeriodEnd,
+        autoRenew: true,
+        message: `${existing.plan.name} plan is already active.`,
+      };
+    }
+
+    // Cancel any existing active subscriptions for this seller
+    await this.prisma.sellerPlanSubscription.updateMany({
+      where: {
+        sellerId,
+        status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL] },
+      },
+      data: {
+        status: SubscriptionStatus.CANCELLED,
+        cancelledAt: new Date(),
+        autoRenew: false,
+      },
+    });
+
     const now = new Date();
     const periodEnd = this.calculatePeriodEnd(plan.billingPeriod, now);
 

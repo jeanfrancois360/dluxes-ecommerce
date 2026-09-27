@@ -138,6 +138,8 @@ export default function SellerAdvertisementPlansPage() {
       setCancelling(true);
       await cancel(subscription.id);
       toast.success(t('toast.cancelSuccess'));
+      // Small delay to ensure DB commit before refetch
+      await new Promise((r) => setTimeout(r, 500));
       await refreshSubscription();
       setShowCancelModal(false);
     } catch (error: any) {
