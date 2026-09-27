@@ -91,10 +91,14 @@ export const advertisementPlansApi = {
     return result;
   },
 
-  async capturePayPalOrder(
-    paypalOrderId: string
+  async activatePayPalSubscription(
+    paypalSubscriptionId: string,
+    planId: string
   ): Promise<{ subscription: AdPlanSubscription; message: string }> {
-    const response = await api.post('/advertisement-plans/paypal/capture', { paypalOrderId });
+    const response = await api.post('/advertisement-plans/paypal/activate', {
+      paypalSubscriptionId,
+      planId,
+    });
     return response.data || response;
   },
 

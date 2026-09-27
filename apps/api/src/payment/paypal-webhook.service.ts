@@ -188,6 +188,21 @@ export class PayPalWebhookService {
         case 'CUSTOMER.DISPUTE.UPDATED':
           await this.handleDisputeUpdated(event);
           break;
+        case 'BILLING.SUBSCRIPTION.ACTIVATED':
+          await this.handleSubscriptionActivated(event);
+          break;
+        case 'BILLING.SUBSCRIPTION.CANCELLED':
+          await this.handleSubscriptionCancelled(event);
+          break;
+        case 'BILLING.SUBSCRIPTION.SUSPENDED':
+          await this.handleSubscriptionSuspended(event);
+          break;
+        case 'BILLING.SUBSCRIPTION.EXPIRED':
+          await this.handleSubscriptionExpired(event);
+          break;
+        case 'PAYMENT.SALE.COMPLETED':
+          await this.handleSaleCompleted(event);
+          break;
         default:
           this.logger.log(`Unhandled PayPal webhook event type: ${eventType}`);
           await this.prisma.webhookEvent.update({
@@ -544,5 +559,170 @@ export class PayPalWebhookService {
 
     const data = (await response.json()) as { access_token: string };
     return data.access_token;
+  }
+
+  // ==========================================================================
+  // PAYPAL SUBSCRIPTION WEBHOOK HANDLERS
+  // ==========================================================================
+
+  private async handleSubscriptionActivated(event: any): Promise<void> {
+    const resource = event.resource;
+    const paypalSubscriptionId = resource?.id;
+    const customId = resource?.custom_id;
+
+    this.logger.log(`PayPal subscription activated: ${paypalSubscriptionId}`);
+
+    if (!paypalSubscriptionId) return;
+
+    // Try to parse metadata from custom_id
+    let metadata: any = {};
+    try {
+      metadata = customId ? JSON.parse(customId) : {};
+    } catch {
+      // custom_id might not be JSON
+    }
+
+    // Update seller subscription if found
+    const subscription = await this.prisma.sellerSubscription.findFirst({
+      where: { paypalSubscriptionId },
+    });
+
+    if (subscription) {
+      await this.prisma.sellerSubscription.update({
+        where: { id: subscription.id },
+        data: { status: 'ACTIVE' },
+      });
+      this.logger.log(`Seller subscription ${subscription.id} activated via webhook`);
+    }
+
+    // Also check ad plan subscriptions
+    const adSub = await this.prisma.sellerPlanSubscription.findFirst({
+      where: { stripeSubscriptionId: `paypal-sub-${paypalSubscriptionId}` },
+    });
+
+    if (adSub) {
+      await this.prisma.sellerPlanSubscription.update({
+        where: { id: adSub.id },
+        data: { status: 'ACTIVE' },
+      });
+      this.logger.log(`Ad plan subscription ${adSub.id} activated via webhook`);
+    }
+  }
+
+  private async handleSubscriptionCancelled(event: any): Promise<void> {
+    const paypalSubscriptionId = event.resource?.id;
+    this.logger.log(`PayPal subscription cancelled: ${paypalSubscriptionId}`);
+
+    if (!paypalSubscriptionId) return;
+
+    // Cancel seller subscription
+    const subscription = await this.prisma.sellerSubscription.findFirst({
+      where: { paypalSubscriptionId },
+    });
+
+    if (subscription) {
+      await this.prisma.sellerSubscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: 'CANCELLED',
+          canceledAt: new Date(),
+          cancelAtPeriodEnd: true,
+        },
+      });
+      this.logger.log(`Seller subscription ${subscription.id} cancelled via webhook`);
+    }
+
+    // Cancel ad plan subscription
+    const adSub = await this.prisma.sellerPlanSubscription.findFirst({
+      where: { stripeSubscriptionId: `paypal-sub-${paypalSubscriptionId}` },
+    });
+
+    if (adSub) {
+      await this.prisma.sellerPlanSubscription.update({
+        where: { id: adSub.id },
+        data: {
+          status: 'CANCELLED',
+          cancelledAt: new Date(),
+          autoRenew: false,
+        },
+      });
+      this.logger.log(`Ad plan subscription ${adSub.id} cancelled via webhook`);
+    }
+  }
+
+  private async handleSubscriptionSuspended(event: any): Promise<void> {
+    const paypalSubscriptionId = event.resource?.id;
+    this.logger.log(`PayPal subscription suspended: ${paypalSubscriptionId}`);
+
+    if (!paypalSubscriptionId) return;
+
+    const subscription = await this.prisma.sellerSubscription.findFirst({
+      where: { paypalSubscriptionId },
+    });
+
+    if (subscription) {
+      await this.prisma.sellerSubscription.update({
+        where: { id: subscription.id },
+        data: { status: 'PAST_DUE' },
+      });
+    }
+  }
+
+  private async handleSubscriptionExpired(event: any): Promise<void> {
+    const paypalSubscriptionId = event.resource?.id;
+    this.logger.log(`PayPal subscription expired: ${paypalSubscriptionId}`);
+
+    if (!paypalSubscriptionId) return;
+
+    const subscription = await this.prisma.sellerSubscription.findFirst({
+      where: { paypalSubscriptionId },
+    });
+
+    if (subscription) {
+      await this.prisma.sellerSubscription.update({
+        where: { id: subscription.id },
+        data: { status: 'EXPIRED' },
+      });
+    }
+  }
+
+  private async handleSaleCompleted(event: any): Promise<void> {
+    const resource = event.resource;
+    const billingAgreementId = resource?.billing_agreement_id;
+
+    this.logger.log(`PayPal sale completed for subscription: ${billingAgreementId}`);
+
+    if (!billingAgreementId) return;
+
+    // This is a recurring payment — extend the subscription period
+    const subscription = await this.prisma.sellerSubscription.findFirst({
+      where: { paypalSubscriptionId: billingAgreementId },
+      include: { plan: true },
+    });
+
+    if (subscription) {
+      const now = new Date();
+      const periodEnd = new Date(now);
+      if (subscription.billingCycle === 'YEARLY') {
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+      } else {
+        periodEnd.setMonth(periodEnd.getMonth() + 1);
+      }
+
+      await this.prisma.sellerSubscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: 'ACTIVE',
+          currentPeriodStart: now,
+          currentPeriodEnd: periodEnd,
+          creditsAllocated: subscription.plan.monthlyCredits,
+          creditsUsed: 0,
+        },
+      });
+
+      this.logger.log(
+        `Subscription ${subscription.id} renewed via PayPal sale, new period end: ${periodEnd.toISOString()}`
+      );
+    }
   }
 }

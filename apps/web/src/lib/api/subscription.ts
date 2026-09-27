@@ -225,14 +225,26 @@ export const subscriptionApi = {
   },
 
   /**
-   * Capture PayPal subscription payment
+   * Activate PayPal recurring subscription after approval
    */
-  async capturePayPalOrder(
-    paypalOrderId: string
-  ): Promise<{ subscription: any; planName: string; message: string }> {
-    const response = await api.post('/subscription/paypal/capture', {
-      paypalOrderId,
+  async activatePayPalSubscription(
+    paypalSubscriptionId: string,
+    planId: string,
+    billingCycle: 'MONTHLY' | 'YEARLY'
+  ): Promise<{ subscription: any; planName: string; message: string; autoRenew: boolean }> {
+    const response = await api.post('/subscription/paypal/activate', {
+      paypalSubscriptionId,
+      planId,
+      billingCycle,
     });
+    return response.data || response;
+  },
+
+  /**
+   * Cancel PayPal recurring subscription
+   */
+  async cancelPayPalSubscription(): Promise<{ message: string }> {
+    const response = await api.post('/subscription/paypal/cancel');
     return response.data || response;
   },
 

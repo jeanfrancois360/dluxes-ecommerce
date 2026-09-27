@@ -16,6 +16,12 @@ export default function SubscriptionSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
+  const isPayPal = searchParams.get('paypal') === 'true';
+  const paypalSubscriptionId = searchParams.get('subscription_id');
+  const paypalPlanId = searchParams.get('planId');
+  const paypalBillingCycle = (searchParams.get('billingCycle') || 'MONTHLY') as
+    | 'MONTHLY'
+    | 'YEARLY';
   const [loading, setLoading] = useState(true);
   const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [pollingStatus, setPollingStatus] = useState<
@@ -34,7 +40,37 @@ export default function SubscriptionSuccessPage() {
     };
   }, []);
 
+  // Handle PayPal subscription activation
   useEffect(() => {
+    if (!isPayPal || !paypalSubscriptionId || !paypalPlanId) return;
+
+    const activatePayPal = async () => {
+      setPollingStatus('verifying');
+      try {
+        const result = await subscriptionApi.activatePayPalSubscription(
+          paypalSubscriptionId,
+          paypalPlanId,
+          paypalBillingCycle
+        );
+        const info = await subscriptionApi.getMySubscription();
+        setSubscriptionData(info);
+        setPollingStatus('success');
+      } catch (error) {
+        console.error('PayPal activation failed:', error);
+        setPollingStatus('timeout');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const timer = setTimeout(activatePayPal, INITIAL_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [isPayPal, paypalSubscriptionId, paypalPlanId, paypalBillingCycle]);
+
+  useEffect(() => {
+    // Skip Stripe verification if this is a PayPal return
+    if (isPayPal) return;
+
     // Direct verification with Stripe (bypasses webhook delay)
     const verifyCheckoutDirectly = async (): Promise<boolean> => {
       if (!sessionId) {
