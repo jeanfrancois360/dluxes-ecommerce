@@ -161,9 +161,9 @@ export const envValidationSchema = Joi.object({
     .description('PayPal client secret (optional)'),
 
   PAYPAL_MODE: Joi.string()
-    .valid('sandbox', 'live')
+    .valid('sandbox', 'live', 'production')
     .default('sandbox')
-    .description('PayPal environment mode'),
+    .description('PayPal environment mode (sandbox, live, or production)'),
 
   PAYPAL_WEBHOOK_ID: Joi.string()
     .allow('')
