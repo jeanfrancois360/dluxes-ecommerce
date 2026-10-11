@@ -63,7 +63,6 @@ storybook-static
 *secrets*
 .env*
 !.env.example
-!.env.production.example
 
 # Temporary documentation and test files
 GELATO_QUICK_START.md

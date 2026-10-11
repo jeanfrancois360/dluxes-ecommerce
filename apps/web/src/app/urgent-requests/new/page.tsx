@@ -648,51 +648,30 @@ function HotDealFormInner({
 
   // Handle PayPal return (capture pending payment)
   useEffect(() => {
-    // Check URL params first (PayPal redirects back with ?paypal_success=true&dealId=xxx&token=ORDER_ID)
-    const urlParams = new URLSearchParams(window.location.search);
-    const isPayPalReturn = urlParams.get('paypal_success') === 'true';
-    const urlDealId = urlParams.get('dealId');
-    const urlToken = urlParams.get('token'); // PayPal appends token=ORDER_ID
-
-    // Also check localStorage as fallback
     const pending = localStorage.getItem('hd_paypal_pending');
-    let dealId = urlDealId;
-    let paypalOrderId = urlToken;
+    if (!pending) return;
 
-    if (!dealId && pending) {
-      try {
-        const parsed = JSON.parse(pending);
-        dealId = parsed.dealId;
-        paypalOrderId = parsed.paypalOrderId;
-      } catch {}
-    }
-
+    const { dealId, paypalOrderId } = JSON.parse(pending);
     localStorage.removeItem('hd_paypal_pending');
 
-    if (!dealId || !paypalOrderId) return;
-    if (!isPayPalReturn && !pending) return;
-
-    // Clean up URL params
-    if (isPayPalReturn) {
-      window.history.replaceState({}, '', window.location.pathname);
+    if (dealId && paypalOrderId) {
+      setIsSubmitting(true);
+      setStep('payment');
+      setCreatedDealId(dealId);
+      hotDealsApi
+        .capturePayPalPayment(dealId, paypalOrderId)
+        .then(() => {
+          clearDraft();
+          setStep('success');
+          toast.success(t('hotDealPublished'));
+          setTimeout(() => router.push('/urgent-requests'), 3000);
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : 'PayPal payment failed');
+          toast.error('PayPal payment failed');
+        })
+        .finally(() => setIsSubmitting(false));
     }
-
-    setIsSubmitting(true);
-    setStep('payment');
-    setCreatedDealId(dealId);
-    hotDealsApi
-      .capturePayPalPayment(dealId, paypalOrderId)
-      .then(() => {
-        clearDraft();
-        setStep('success');
-        toast.success(t('hotDealPublished'));
-        setTimeout(() => router.push('/urgent-requests'), 3000);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'PayPal payment failed');
-        toast.error('PayPal payment failed');
-      })
-      .finally(() => setIsSubmitting(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleImageFiles = async (files: FileList | null) => {

@@ -1090,7 +1090,6 @@ After completing any **major change** that is **confirmed working**, Claude MUST
 - User hasn't confirmed it works
 - It's a minor typo or style fix
 - It's a temporary debugging change
-- Never write "Confirmed working" / "Tested: ✅" for production until JF pastes production evidence (logs or SQL output) in the session. Unit tests passing ≠ production confirmed.
 
 ---
 

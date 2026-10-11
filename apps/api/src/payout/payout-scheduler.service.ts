@@ -40,12 +40,6 @@ export class PayoutSchedulerService {
   async processScheduledPayouts() {
     this.logger.log('Starting scheduled payout processing...');
 
-    // Global kill switch — blocks all payout creation
-    if (!(await this.settingsService.areSellerPayoutsEnabled())) {
-      this.logger.log('Seller payouts disabled (seller_payouts_enabled=false), skipping');
-      return { processed: 0, successful: 0, failed: 0, totalAmount: 0 };
-    }
-
     // Get active payout schedule configuration
     const config = await this.getActivePayoutConfig();
 
@@ -404,10 +398,6 @@ export class PayoutSchedulerService {
    * Manually trigger payout for a seller (Admin only)
    */
   async triggerManualPayout(sellerId: string, adminId: string) {
-    if (!(await this.settingsService.areSellerPayoutsEnabled())) {
-      throw new BadRequestException('Seller payouts are disabled (seller_payouts_enabled=false)');
-    }
-
     const config = await this.getActivePayoutConfig();
 
     if (!config) {
@@ -723,14 +713,6 @@ export class PayoutSchedulerService {
   async processPendingPayouts() {
     this.logger.log('Processing pending payouts...');
 
-    // Global kill switch — blocks all money transfers
-    if (!(await this.settingsService.areSellerPayoutsEnabled())) {
-      this.logger.log(
-        'Seller payouts disabled (seller_payouts_enabled=false), skipping pending processing'
-      );
-      return { processed: 0, failed: 0, failedPayoutIds: [] };
-    }
-
     const pendingPayouts = await this.prisma.payout.findMany({
       where: {
         status: PayoutStatus.PENDING,
@@ -939,12 +921,6 @@ export class PayoutSchedulerService {
    */
   async retryFailedPayouts() {
     this.logger.log('Retrying failed payouts...');
-
-    // Global kill switch — do NOT reset FAILED->PENDING while payouts are disabled
-    if (!(await this.settingsService.areSellerPayoutsEnabled())) {
-      this.logger.log('Seller payouts disabled (seller_payouts_enabled=false), skipping retry');
-      return { retried: 0, succeeded: 0 };
-    }
 
     const failedPayouts = await this.prisma.payout.findMany({
       where: {

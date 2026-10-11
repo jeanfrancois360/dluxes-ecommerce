@@ -9,10 +9,8 @@ import {
   UseGuards,
   Request,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
 import { PayoutSchedulerService } from './payout-scheduler.service';
-import { SettingsService } from '../settings/settings.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -20,10 +18,7 @@ import { PayoutFrequency } from '@prisma/client';
 
 @Controller('payouts')
 export class PayoutController {
-  constructor(
-    private readonly payoutService: PayoutSchedulerService,
-    private readonly settingsService: SettingsService
-  ) {}
+  constructor(private readonly payoutService: PayoutSchedulerService) {}
 
   /**
    * Get seller's pending payout amount
@@ -146,9 +141,6 @@ export class PayoutController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'SUPER_ADMIN')
   async processPendingPayouts() {
-    if (!(await this.settingsService.areSellerPayoutsEnabled())) {
-      throw new BadRequestException('Seller payouts are disabled (seller_payouts_enabled=false)');
-    }
     return this.payoutService.processPendingPayouts();
   }
 

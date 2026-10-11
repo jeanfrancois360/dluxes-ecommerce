@@ -517,8 +517,6 @@ export class PayPalService {
     userId: string;
     metadata: Record<string, string>;
     description: string;
-    returnUrl?: string;
-    cancelUrl?: string;
   }): Promise<{ orderId: string; approvalUrl: string }> {
     const client = this.getClient();
 
@@ -540,12 +538,8 @@ export class PayPalService {
           brand_name: 'NextPik',
           landing_page: 'BILLING',
           user_action: 'PAY_NOW',
-          return_url:
-            data.returnUrl ||
-            `${this.configService.get('FRONTEND_URL')}/seller/selling-credits/success?paypal=true`,
-          cancel_url:
-            data.cancelUrl ||
-            `${this.configService.get('FRONTEND_URL')}/seller/selling-credits?canceled=true`,
+          return_url: `${this.configService.get('FRONTEND_URL')}/seller/selling-credits/success?paypal=true`,
+          cancel_url: `${this.configService.get('FRONTEND_URL')}/seller/selling-credits?canceled=true`,
         },
       });
 

@@ -266,10 +266,6 @@ export class StripeConnectController {
         message: 'Payout created successfully',
       };
     } catch (error) {
-      // Re-throw kill-switch errors as proper 400 responses
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to create payout',

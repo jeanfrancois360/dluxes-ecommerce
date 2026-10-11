@@ -1023,37 +1023,4 @@ export class SettingsService {
       defaultFee,
     };
   }
-
-  /**
-   * Check if seller payouts are enabled.
-   * Returns false on missing key, wrong type, or any error.
-   * This is the global kill switch for all money movement to sellers.
-   */
-  async areSellerPayoutsEnabled(): Promise<boolean> {
-    try {
-      const setting = await this.prisma.systemSetting.findUnique({
-        where: { key: 'seller_payouts_enabled' },
-      });
-
-      if (!setting) {
-        this.logger.warn(
-          'seller_payouts_enabled setting not found — defaulting to DISABLED for safety'
-        );
-        return false;
-      }
-
-      const val = setting.value;
-      if (val === true || val === 'true') {
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      this.logger.warn(
-        'Error reading seller_payouts_enabled — defaulting to DISABLED for safety',
-        error instanceof Error ? error.message : error
-      );
-      return false;
-    }
-  }
 }
