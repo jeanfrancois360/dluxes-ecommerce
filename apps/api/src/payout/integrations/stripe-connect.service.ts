@@ -284,6 +284,11 @@ export class StripeConnectService {
     currency: string;
     status: string;
   }> {
+    // Global kill switch — must check before any Stripe API call
+    if (!(await this.settingsService.areSellerPayoutsEnabled())) {
+      throw new BadRequestException('Seller payouts are disabled (seller_payouts_enabled=false)');
+    }
+
     const stripe = await this.getStripe();
 
     try {

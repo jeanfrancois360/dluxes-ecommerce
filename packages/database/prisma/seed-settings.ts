@@ -155,6 +155,19 @@ const defaultSettings = [
     defaultValue: true,
   },
   {
+    key: 'seller_payouts_enabled',
+    category: 'payment',
+    value: false,
+    valueType: SettingValueType.BOOLEAN,
+    label: 'Seller Payouts Enabled',
+    description:
+      'Master switch for all automated and manual seller payouts. Set to false to halt all money transfers to sellers while keeping checkout and refunds working.',
+    isPublic: false,
+    isEditable: true,
+    requiresRestart: false,
+    defaultValue: false,
+  },
+  {
     key: 'payment_methods',
     category: 'payment',
     value: ['credit_card', 'stripe', 'paypal'],

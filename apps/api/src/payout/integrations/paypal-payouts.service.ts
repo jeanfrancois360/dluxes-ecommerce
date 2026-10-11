@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
+import { SettingsService } from '../../settings/settings.service';
 
 /**
  * PayPal Payouts API v1 Service
@@ -74,7 +75,8 @@ export class PayPalPayoutsService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly settingsService: SettingsService
   ) {
     const mode = this.configService.get<string>('PAYPAL_MODE') || 'sandbox';
     this.baseUrl =
@@ -166,6 +168,11 @@ export class PayPalPayoutsService {
     currency: string;
     note?: string;
   }): Promise<PayPalPayoutResult> {
+    // Global kill switch — must check before any PayPal API call
+    if (!(await this.settingsService.areSellerPayoutsEnabled())) {
+      throw new BadRequestException('Seller payouts are disabled (seller_payouts_enabled=false)');
+    }
+
     if (!this.isConfigured) {
       throw new BadRequestException(
         'PayPal Payouts is not configured. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET.'
