@@ -87,6 +87,7 @@ export class HotDealsService {
       throw new BadRequestException('This hot deal has already been paid for or cancelled');
     }
 
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const paypalResult = await paypalService.createCreditOrder({
       amount: 1.0,
       currency: 'USD',
@@ -97,6 +98,8 @@ export class HotDealsService {
         userId,
       },
       description: `Hot Deal posting fee — ${deal.title}`,
+      returnUrl: `${frontendUrl}/urgent-requests/new?paypal_success=true&dealId=${hotDealId}`,
+      cancelUrl: `${frontendUrl}/urgent-requests/new?paypal_canceled=true`,
     });
 
     return { approvalUrl: paypalResult.approvalUrl, paypalOrderId: paypalResult.orderId };
