@@ -10083,6 +10083,79 @@ This comprehensive technical documentation provides a complete overview of the N
 
 ---
 
+## Version 2.14.1 — Seller Payout Kill Switch (October 5, 2026)
+
+### Overview
+
+Added a global kill switch (`seller_payouts_enabled`) that blocks **all** automated and manual seller payout money movement (Stripe Connect transfers, PayPal batch payouts) with a single boolean setting. Default is `false` (disabled). Buyer checkout, refunds, and escrow ledger operations are unaffected.
+
+### Background
+
+Phase 1 audit (Stripe Connect readiness) confirmed the payout formula double-counts escrow + commission (D1) and can replay released escrows. This kill switch ensures no money moves to sellers until the formula is corrected.
+
+### Setting
+
+| Key                      | Type    | Category | Default | Public | Editable |
+| ------------------------ | ------- | -------- | ------- | ------ | -------- |
+| `seller_payouts_enabled` | BOOLEAN | payment  | `false` | No     | Yes      |
+
+**Helper method:** `settingsService.areSellerPayoutsEnabled()` — returns `false` on missing key, wrong type, or any error. Never falls back to `true`.
+
+### Guarded Paths
+
+| Path                                      | Guard Type           | Location                                                | Behavior when disabled                                                   |
+| ----------------------------------------- | -------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Scheduled payout creation (cron hourly)   | Outer — return early | `payout-scheduler.service.ts:processScheduledPayouts()` | Returns `{ processed: 0 }`, no DB writes                                 |
+| Pending payout execution (cron daily 2AM) | Outer — return early | `payout-scheduler.service.ts:processPendingPayouts()`   | Returns `{ processed: 0 }`, no provider calls                            |
+| Failed payout retry (cron every 6h)       | Outer — return early | `payout-scheduler.service.ts:retryFailedPayouts()`      | Returns `{ retried: 0 }`, FAILED rows stay FAILED                        |
+| Admin trigger for seller                  | Outer — throw        | `payout-scheduler.service.ts:triggerManualPayout()`     | `BadRequestException` (400)                                              |
+| `POST /payouts/admin/process-pending`     | Controller — throw   | `payout.controller.ts:processPendingPayouts()`          | `BadRequestException` (400)                                              |
+| Stripe Connect transfer                   | Inner — throw        | `stripe-connect.service.ts:createPayout()`              | `BadRequestException` before `stripe.transfers.create()`                 |
+| `POST /stripe-connect/manual-payout`      | Inner — re-thrown    | `stripe-connect.controller.ts:createManualPayout()`     | `BadRequestException` propagates as 400 (not caught as `success: false`) |
+| PayPal batch payout                       | Inner — throw        | `paypal-payouts.service.ts:createPayout()`              | `BadRequestException` before PayPal API call                             |
+
+### NOT Guarded (intentional)
+
+- **PayPal status polling** (`updatePayoutStatuses`) — must keep reconciling payouts already in flight
+- **Escrow auto-release** — ledger-only state transition, not money movement (Phase 3 scope)
+
+### Files Modified
+
+- `packages/database/prisma/seed-settings.ts` — Added `seller_payouts_enabled` setting (default `false`)
+- `apps/api/src/settings/settings.service.ts` — Added `areSellerPayoutsEnabled()` helper
+- `apps/api/src/payout/payout-scheduler.service.ts` — 4 outer guards (A1, A2/A3/A5, A4, A6)
+- `apps/api/src/payout/payout.controller.ts` — Controller-level guard on `POST /payouts/admin/process-pending`
+- `apps/api/src/payout/integrations/stripe-connect.service.ts` — Inner guard on `createPayout()`
+- `apps/api/src/payout/stripe-connect.controller.ts` — Re-throw `BadRequestException` in manual-payout catch
+- `apps/api/src/payout/integrations/paypal-payouts.service.ts` — Added `SettingsService` injection + inner guard on `createPayout()`
+
+### Tests
+
+- `apps/api/src/payout/payout-kill-switch.spec.ts` — 18 tests covering:
+  - Helper: returns `false` on missing key, non-boolean, DB error; `true` on `true`/`"true"`
+  - Scheduler OFF: zero provider calls, zero DB writes, FAILED rows stay FAILED, manual trigger throws
+  - Scheduler ON: proceeds to config check, queries PENDING/FAILED rows
+  - Stripe inner guard: `getStripe()` not called when disabled (verified by removing guard → test fails)
+  - PayPal inner guard: `getAccessToken()` not called when disabled (verified by removing guard → test fails)
+
+### Production Deployment
+
+Setting inserted in production database on October 5, 2026:
+
+```sql
+INSERT INTO system_settings (...) VALUES (..., 'seller_payouts_enabled', 'payment', 'false', 'BOOLEAN', ...);
+```
+
+**To enable payouts after formula fix:**
+
+```sql
+UPDATE system_settings SET value = 'true', "updatedAt" = NOW() WHERE key = 'seller_payouts_enabled';
+```
+
+**Tested:** ✅ Unit tests pass (18/18). Production deployment pending verification — enable only after payout formula fix.
+
+---
+
 ## Version 2.14.0 — PayPal Payment Option for All Flows (September 27, 2026)
 
 ### Overview
