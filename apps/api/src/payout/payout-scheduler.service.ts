@@ -170,16 +170,24 @@ export class PayoutSchedulerService {
   private async findEligibleSellers(config: any) {
     const minPayoutAmount = config.minPayoutAmount.toNumber();
 
-    // Find sellers with released escrow funds or confirmed commissions
-    // Exclude sellers who already have a pending/processing payout (prevent duplicates)
+    // Find sellers with released escrow funds that have unpaid commissions.
+    // The unpaid-commission filter prevents escrow replay: once a payout marks
+    // commissions paidOut, the escrow's order no longer matches.
+    // Exclude sellers who already have a pending/processing payout (prevent duplicates).
     const eligibleFromEscrow = await this.prisma.user.findMany({
       where: {
         role: 'SELLER',
         escrowTransactions: {
           some: {
             status: EscrowStatus.RELEASED,
-            releasedAt: {
-              not: null,
+            releasedAt: { not: null },
+            order: {
+              commissions: {
+                some: {
+                  paidOut: false,
+                  status: CommissionStatus.CONFIRMED,
+                },
+              },
             },
           },
         },
@@ -193,6 +201,14 @@ export class PayoutSchedulerService {
         escrowTransactions: {
           where: {
             status: EscrowStatus.RELEASED,
+            order: {
+              commissions: {
+                some: {
+                  paidOut: false,
+                  status: CommissionStatus.CONFIRMED,
+                },
+              },
+            },
           },
         },
         commissions: {
@@ -210,18 +226,13 @@ export class PayoutSchedulerService {
       },
     });
 
-    // Filter by minimum payout amount
+    // Payout amount = escrow.sellerAmount only (seller's net after platform fee).
+    // Commission records are used for tracking/linking, not amount calculation.
     return eligibleFromEscrow.filter((seller) => {
-      const escrowTotal = seller.escrowTransactions.reduce(
+      const total = seller.escrowTransactions.reduce(
         (sum, escrow) => sum + escrow.sellerAmount.toNumber(),
         0
       );
-      const commissionTotal = seller.commissions.reduce(
-        (sum, commission) => sum + commission.commissionAmount.toNumber(),
-        0
-      );
-      const total = escrowTotal + commissionTotal;
-
       return total >= minPayoutAmount;
     });
   }
@@ -234,10 +245,18 @@ export class PayoutSchedulerService {
       where: { id: sellerId },
       include: {
         store: true,
-        payoutSettings: true, // Include payout settings to determine payment method
+        payoutSettings: true,
         escrowTransactions: {
           where: {
             status: EscrowStatus.RELEASED,
+            order: {
+              commissions: {
+                some: {
+                  paidOut: false,
+                  status: CommissionStatus.CONFIRMED,
+                },
+              },
+            },
           },
         },
         commissions: {
@@ -254,18 +273,12 @@ export class PayoutSchedulerService {
       return null;
     }
 
-    // Calculate total amount from released escrow and confirmed commissions
-    const escrowAmount = seller.escrowTransactions.reduce(
+    // Payout amount = escrow.sellerAmount only (seller's net after platform fee).
+    // The unpaid-commission filter on escrows prevents replay.
+    const totalAmount = seller.escrowTransactions.reduce(
       (sum, escrow) => sum.add(escrow.sellerAmount),
       new Decimal(0)
     );
-
-    const commissionAmount = seller.commissions.reduce(
-      (sum, commission) => sum.add(commission.commissionAmount),
-      new Decimal(0)
-    );
-
-    const totalAmount = escrowAmount.add(commissionAmount);
 
     if (totalAmount.toNumber() < config.minPayoutAmount.toNumber()) {
       return null;
@@ -488,11 +501,22 @@ export class PayoutSchedulerService {
     const storeId = user?.store?.id;
     const currency = storeId ? await this.getPayoutCurrency(sellerId, storeId) : 'USD';
 
-    const [escrowReleased, commissionsConfirmed] = await Promise.all([
+    // Only count RELEASED escrows whose commissions haven't been paid out yet
+    // (prevents replay of already-paid escrows)
+    const [escrowReleased, platformFees] = await Promise.all([
       this.prisma.escrowTransaction.aggregate({
         where: {
           sellerId,
           status: EscrowStatus.RELEASED,
+          order: {
+            commissions: {
+              some: {
+                sellerId,
+                paidOut: false,
+                status: CommissionStatus.CONFIRMED,
+              },
+            },
+          },
         },
         _sum: { sellerAmount: true },
       }),
@@ -506,14 +530,13 @@ export class PayoutSchedulerService {
       }),
     ]);
 
-    const escrowAmount = escrowReleased._sum.sellerAmount || new Decimal(0);
-    const commissionAmount = commissionsConfirmed._sum.commissionAmount || new Decimal(0);
-    const totalPending = escrowAmount.add(commissionAmount);
+    const sellerAmount = escrowReleased._sum.sellerAmount || new Decimal(0);
+    const platformFeeAmount = platformFees._sum.commissionAmount || new Decimal(0);
 
     return {
-      escrowAmount: escrowAmount.toNumber(),
-      commissionAmount: commissionAmount.toNumber(),
-      totalPending: totalPending.toNumber(),
+      escrowAmount: sellerAmount.toNumber(),
+      commissionAmount: platformFeeAmount.toNumber(),
+      totalPending: sellerAmount.toNumber(),
       currency,
     };
   }
@@ -1266,7 +1289,7 @@ export class PayoutSchedulerService {
     const storeId = user.store.id;
 
     // Fetch all data in parallel
-    const [completedPayouts, pendingPayouts, unpaidCommissions, lastPayout, frequencySetting] =
+    const [completedPayouts, pendingPayouts, unpaidEscrows, lastPayout, frequencySetting] =
       await Promise.all([
         this.prisma.payout.aggregate({
           where: { sellerId, status: PayoutStatus.COMPLETED },
@@ -1280,13 +1303,21 @@ export class PayoutSchedulerService {
           },
           _sum: { amount: true },
         }),
-        this.prisma.commission.aggregate({
+        this.prisma.escrowTransaction.aggregate({
           where: {
             sellerId,
-            paidOut: false,
-            status: CommissionStatus.CONFIRMED,
+            status: EscrowStatus.RELEASED,
+            order: {
+              commissions: {
+                some: {
+                  sellerId,
+                  paidOut: false,
+                  status: CommissionStatus.CONFIRMED,
+                },
+              },
+            },
           },
-          _sum: { commissionAmount: true },
+          _sum: { sellerAmount: true },
         }),
         this.prisma.payout.findFirst({
           where: { sellerId, status: PayoutStatus.COMPLETED },
@@ -1305,7 +1336,7 @@ export class PayoutSchedulerService {
       totalPaidAllTime: Number(completedPayouts._sum.amount || 0),
       totalPayoutsCount: completedPayouts._count,
       pendingAmount: Number(pendingPayouts._sum.amount || 0),
-      nextPayoutAmount: Number(unpaidCommissions._sum.commissionAmount || 0),
+      nextPayoutAmount: Number(unpaidEscrows._sum.sellerAmount || 0),
       lastPayoutDate: lastPayout?.processedAt?.toISOString() || null,
       lastPayoutAmount: Number(lastPayout?.amount || 0),
       lastPayoutCurrency: lastPayout?.currency || currency,
@@ -1339,7 +1370,11 @@ export class PayoutSchedulerService {
       take: 100, // Limit to recent 100
     });
 
-    const total = commissions.reduce((sum, c) => sum + Number(c.commissionAmount || 0), 0);
+    // Total = seller's share (orderAmount - commissionAmount), not the platform fee
+    const total = commissions.reduce(
+      (sum, c) => sum + Number(c.orderAmount || 0) - Number(c.commissionAmount || 0),
+      0
+    );
 
     return {
       commissions,
